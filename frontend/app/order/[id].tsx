@@ -1,0 +1,107 @@
+import { useState } from "react";
+import { View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+
+import { api, invalidate, useApi } from "@/src/api";
+import { fmtDateTime, money } from "@/src/constants";
+import { useToast } from "@/src/toast";
+import { Badge, Btn, Card, ErrorState, Ic, Loading, Screen, Section, Txt } from "@/src/ui";
+import { space, useTheme } from "@/src/theme";
+
+export default function OrderDetail() {
+  const { id, new: isNew } = useLocalSearchParams<{ id: string; new?: string }>();
+  const router = useRouter();
+  const toast = useToast();
+  const { colors } = useTheme();
+  const q = useApi<any>(`/orders/${id}`);
+  const [busy, setBusy] = useState(false);
+  const o = q.data;
+
+  const cancel = async () => {
+    setBusy(true);
+    try {
+      await api(`/orders/${id}/cancel`, { method: "POST" });
+      invalidate();
+      toast.show("Pedido cancelado");
+    } catch (e: any) {
+      toast.show(e.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Screen title="Seguimiento de pedido" testID="order-detail-screen" refreshing={q.isRefetching} onRefresh={q.refetch}>
+      {q.isLoading ? <Loading /> : q.isError ? <ErrorState onRetry={() => q.refetch()} /> : (
+        <>
+          {isNew ? (
+            <Card tint="sage" style={{ marginBottom: space.xl }} testID="order-confirmation">
+              <Ic name="circle-check" size={28} />
+              <Txt v="h2" style={{ marginTop: space.sm }}>
+                ¡Pedido confirmado!
+              </Txt>
+              <Txt style={{ marginTop: 4 }}>Gracias. Te avisaremos de cada paso. Pago simulado, sin cargo real.</Txt>
+            </Card>
+          ) : null}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Txt v="h1" testID="order-number">
+              {o.number}
+            </Txt>
+            <Badge label={o.status} tint={o.status === "Cancelado" ? "coral" : "sage"} testID="order-status" />
+          </View>
+          <Txt v="caption">{fmtDateTime(o.created_at)}</Txt>
+          <Section title="Estado">
+            {o.timeline.map((s: any, i: number) => (
+              <View key={s.label} style={{ flexDirection: "row", gap: space.md }} testID={`order-step-${i}`}>
+                <View style={{ alignItems: "center" }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: s.done ? colors.sage : colors.surfaceTertiary, alignItems: "center", justifyContent: "center" }}>
+                    {s.done ? <Ic name="check" size={14} color={colors.onBrandPrimary} /> : null}
+                  </View>
+                  {i < o.timeline.length - 1 ? <View style={{ width: 2, height: 28, backgroundColor: s.done ? colors.sage : colors.surfaceTertiary }} /> : null}
+                </View>
+                <Txt v={s.done ? "medium" : "body"} color={s.done ? colors.onSurface : colors.muted} style={{ marginTop: 1 }}>
+                  {s.label}
+                </Txt>
+              </View>
+            ))}
+          </Section>
+          <Section title="Artículos">
+            {o.items.map((i: any, k: number) => (
+              <View key={k} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: colors.divider }}>
+                <View style={{ flex: 1 }}>
+                  <Txt v="medium">
+                    {i.qty} × {i.name}
+                  </Txt>
+                  {i.detail ? <Txt v="caption">{i.detail}</Txt> : null}
+                </View>
+                <Txt v="medium">{money(i.subtotal)}</Txt>
+              </View>
+            ))}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.md }}>
+              <Txt v="caption">Envío ({o.address.shipping})</Txt>
+              <Txt v="caption">{o.shipping_cost ? money(o.shipping_cost) : "Gratis"}</Txt>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.sm }}>
+              <Txt v="title">Total</Txt>
+              <Txt v="title" testID="order-total">
+                {money(o.total)}
+              </Txt>
+            </View>
+          </Section>
+          <Section title="Entrega y pago">
+            <Txt>{o.address.recipient} · {o.address.phone}</Txt>
+            <Txt v="caption">
+              {o.address.street}, {o.address.city}, C.P. {o.address.zip}
+            </Txt>
+            {o.address.gift_note ? <Txt v="caption" style={{ marginTop: space.sm }}>Mensaje: “{o.address.gift_note}”</Txt> : null}
+            <Txt v="caption" style={{ marginTop: space.sm }}>
+              {o.payment.method} · {o.payment.status}
+            </Txt>
+          </Section>
+          {o.status === "Confirmado" || o.status === "Preparando tu kit" ? <Btn label="Cancelar pedido" variant="ghost" loading={busy} onPress={cancel} testID="order-cancel-button" style={{ marginTop: space.xl }} /> : null}
+          <Btn label="Ver mis pedidos" variant="secondary" onPress={() => router.replace("/orders")} testID="order-all-button" style={{ marginTop: space.md }} />
+        </>
+      )}
+    </Screen>
+  );
+}

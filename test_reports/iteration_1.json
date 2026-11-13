@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 1. Backend: 27 pytest cases written and run against the public URL (auth/demo/forgot-reset, /me role switch, records CRUD for 7 kinds, caregiver permissions 403, network join/request/invite/accept/delete, signals and notifications, products, favorites, kits with size max, cart, checkout, orders, cancel, home, history). 26 of 27 pass; the failure is a 500 when cart qty is not a number. Frontend (390x844): these flows pass: landing -> welcome -> demo patient -> home; register a new patient through all 6 onboarding steps to home; Agenda FAB create event -> detail -> edit -> delete; patient sends a quick signal and the caregiver logs in and responds (status becomes Atendida); kit builder (6 steps, size limit enforced 4/4) -> save -> kit detail -> cart -> checkout (validation errors shown, Express shipping) -> order confirmation AM-xxxxx; catalog category chips, search empty state, product personalization (color, text, qty), favorites, cart detail; settings text size (11px -> 14.3px); network invite code, invite by email, invalid code message. CRITICAL: switching role from caregiver back to patient crashes the app to the ErrorBoundary screen. Deprecated packages detected: expo-router/unstable-native-tabs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/cart", "issue": "A non-numeric qty (e.g. 'abc') returns 500 (ValueError from int()) at server.py:729. Also: qty has no upper bound, ref_id is not checked against products/kits, and PUT /api/cart/{cid} qty has no upper bound."},
+      {"endpoint": "POST/PUT /api/kits", "issue": "kit_fields reads i['product_id'] directly, so an item without product_id gives 500 (KeyError) at server.py:651. Unknown product ids are saved and then silently dropped in kit_view."},
+      {"endpoint": "POST /api/network/invite", "issue": "No duplicate check, so the same email can be invited many times and each invite creates another pending link (server.py:327-338)."},
+      {"endpoint": "PUT /api/network/{id}/permissions", "issue": "'signals' is not in DEFAULT_PERMS, so a patient cannot turn signal delivery off for a person (server.py:252 vs 477)."},
+      {"endpoint": "POST /api/records/{kind}", "issue": "The raw dict body is stored without Pydantic validation. assignee_id can be any user id, which lets a caller send 'Te asignaron un pendiente' notifications to users outside their network (server.py:427-441)."},
+      {"endpoint": "PUT /api/me", "issue": "Arbitrary profile/settings keys and onboarding_done values of any type are accepted without validation."},
+      {"endpoint": "POST /api/auth/forgot", "issue": "MOCKED: demo_code is returned in the response for any email. This must be removed once an email provider is added. Login has no rate limiting."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Role switch (Profile) -> PatientHome", "issue": "After switching caregiver -> patient, the app crashes to the ErrorBoundary screen: 'Cannot read properties of undefined (reading length)' at src/components/patient-home.tsx:56 (d.today_events.length). RCA: PatientHome (patient-home.tsx:29) and CaregiverHome (caregiver-home.tsx:17) both use useApi(`/home?today=${today}`) with the same cache key, so PatientHome renders the cached caregiver payload, which has no today_events. Patient -> caregiver works only because of the payload shape.", "testID": "profile-switch-role-button", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Catalog / Favorites product cards", "issues": ["The favorite state only changes the stroke color of a 16px outline heart (src/components/product-card.tsx:17), so favorited items are hard to tell apart (even on the Favorites screen). Use a filled heart. On product detail the favorite state is only a tiny badge dot."]},
+      {"screen": "Network", "issues": ["The invite name/email, join code and request email inputs have no placeholders, so the empty boxes give no hint."]},
+      {"screen": "Global toast", "issues": ["The 'Kit agregado al carrito' toast stays visible across two navigations (cart -> checkout -> order confirmation) and covers the header title."]},
+      {"screen": "Signals", "issues": ["The 'Marcar como resuelta' ghost button has no border or background, so it barely reads as a button."]}
+    ],
+    "react_native_issues": [
+      {"component": "expo-router/unstable-native-tabs", "issue": "A deprecated import produces a Metro warning: 'expo-router/unstable-native-tabs is deprecated. Use expo-router/native-tabs'. Reference: /app/frontend/app/(tabs)/_layout.tsx:4"}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "CRITICAL: Fix the role-switch crash. Give the /home cache a role-specific key (e.g. `/home?today=${t}&role=${user.role}`) or invalidate/refetch /home on role switch, and guard PatientHome/CaregiverHome against the wrong payload shape (d?.role !== 'patient' -> loading; use optional chaining on today_events/upcoming/tasks).",
+    "Migrate the import in app/(tabs)/_layout.tsx:4 from 'expo-router/unstable-native-tabs' to 'expo-router/native-tabs'.",
+    "POST /api/cart: validate qty with Pydantic (int, 1..99), check that ref_id exists, and return 422 instead of 500.",
+    "Kits: validate items (product_id required and must exist) and return 422.",
+    "Network invite: return 409 for a duplicate pending/active invite to the same email; add 'signals' to DEFAULT_PERMS so it can be toggled.",
+    "Records: restrict assignee_id to the owner or caregivers with an active link; consider Pydantic models per kind.",
+    "Make the favorite state clearly visible (filled heart) on product cards and product detail; add placeholders to the Network inputs."
+  ],
+  "critical_code_review_comments": [
+    "Several screens share the same useApi cache key while expecting different response shapes (/home). Any shared key needs a consistent payload or a role in the key.",
+    "Backend endpoints take raw dict bodies (records, kits, cart, /me, permissions) with no Pydantic validation, which leads to 500s on malformed input.",
+    "server.py is 917 lines (over 700). Split it into routers (auth, network, records, signals, shop, orders).",
+    "Order status is computed from created_at (advances every 3 min). That is acceptable for a demo, but cancel is checked against the computed status, so an order can only be cancelled within the first 6 minutes."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_api.py (new)"],
+  "success_rate": {"backend": "96% (26/27)", "frontend": "~90% (all requested flows pass except the caregiver->patient role switch, which crashes)"},
+  "seed_data_creation": "Created TEST users test_shop_ui@example.com / Test12345, test_ui_37731@example.com / Test12345 and several test_xxxxxxxx@example.com (pytest); there is no delete-user endpoint, so they remain. test_shop_ui has 1 kit, 1 order (AM-57942), a cart item, favorite p1 and a pending invite to test_invitee_ui@example.com. Test records, kits and links on the demo accounts were deleted by id. The 3 TEST signals sent from demo@amodo.app were deleted by id. Some notifications created by the tests remain on demo@amodo.app and acompanante@amodo.app.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Frontend env var is EXPO_PUBLIC_BACKEND_URL (the test file falls back to it). pytest.ini uses xdist. In the web preview, Expo Router keeps hidden stacked screens in the DOM: use `:visible` or the testID-specific locator (e.g. [data-testid^=agenda-event-]) instead of get_by_text. Role switch: Perfil tab -> profile-switch-role-button:visible. To reproduce the crash: log in, switch to caregiver, then switch back to patient.",
+  "rca_of_issue": "Role-switch crash: useApi caches by URL key. CaregiverHome and PatientHome both request `/home?today=YYYY-MM-DD`. When the role changes, the Home tab swaps components, but the cached data is the previous role's payload ({role:'caregiver', patients, signals...}). PatientHome then reads d.today_events.length, gets undefined, throws a TypeError and the ErrorBoundary takes over. Mitigation: add the role to the key or invalidate on switch, and add shape guards."
+}

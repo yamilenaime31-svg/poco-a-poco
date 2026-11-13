@@ -1,0 +1,176 @@
+{
+  "app_name": "AMODO",
+  "personality": "8 Hand-Drawn / Journal LIGHT (Modified with clean sans-serif typography for an Editorial feel)",
+  "personality_one_liner": "A calming, sophisticated, and restorative companion that guides gently without pressure.",
+  "color": {
+    "surface": "#F5F5F2",
+    "onSurface": "#252525",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#252525",
+    "surfaceTertiary": "#EAEAE7",
+    "onSurfaceTertiary": "#252525",
+    "surfaceInverse": "#252525",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#9CB8A3",
+    "brandPrimary": "#9CB8A3",
+    "onBrandPrimary": "#1A251D",
+    "brandSecondary": "#C6BBD8",
+    "onBrandSecondary": "#252525",
+    "brandTertiary": "#DEA79C",
+    "onBrandTertiary": "#252525",
+    "success": "#9CB8A3",
+    "onSuccess": "#1A251D",
+    "warning": "#E0B36E",
+    "onWarning": "#252525",
+    "error": "#DEA79C",
+    "onError": "#252525",
+    "info": "#C6BBD8",
+    "onInfo": "#252525",
+    "border": "#E1E1DE",
+    "borderStrong": "#BDBDBA",
+    "divider": "#E1E1DE",
+    "muted": "#737373",
+    "onBrand": "#1A251D"
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "DM Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous editorial spacing. Use xl/2xl to create restorative breathing room. Never cram elements. Whitespace is used intentionally to avoid overwhelming the patient.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 8,
+    "md": 16,
+    "lg": 24,
+    "pill": 999
+  },
+  "shadow_tier": 0,
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use only on sticky bottom tab bar and sticky headers to maintain a clean editorial feel.",
+      "Ensure text on glass has a translucent tinted base underneath (≥70% of surface) for readability."
+    ],
+    "dont's": [
+      "Never use on general cards or lists.",
+      "Avoid heavy blur that creates a tech/dashboard aesthetic; keep it extremely subtle."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Landing",
+      "purpose": "Introduce AMODO warmly and direct users to select their role.",
+      "states": {
+        "loading": "Centered gentle spinner in brand primary.",
+        "empty": "N/A",
+        "error": "Soft coral error banner."
+      },
+      "layout": "Full-bleed hero image with a top-to-bottom gradient scrim. Typographic 'amodo' logo centered. Bottom 1/3 contains welcoming text and two primary CTAs (Soy Paciente / Soy Acompañante) pinned to bottom safe area."
+    },
+    {
+      "name": "Onboarding",
+      "purpose": "Gather context without pressure through a step-by-step calming flow.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "Inline text below inputs."
+      },
+      "layout": "One question per screen. Generous top padding. Questions in display 2xl. Options presented as large, softly rounded 'surfaceTertiary' chips. Sticky 'Continuar' button at bottom. Subtle progress bar at top."
+    },
+    {
+      "name": "Patient Home (Mi Día)",
+      "purpose": "Provide a gentle daily summary, quick actions, and shared agenda without gamified pressure.",
+      "states": {
+        "loading": "Skeleton text and soft boxes.",
+        "empty": "Abstract soft texture with 'Tu día está libre hoy' text.",
+        "error": "Retry state with gentle copy."
+      },
+      "layout": "Top section features a textured abstract sage banner (20% opacity) behind a personal greeting and 'Mi Día' summary card. Below: 'Señales rápidas' (Quick Signals) as a horizontal scroll of rounded, softly tinted containers (lavender, sage, coral). Bottom list of treatments and pending tasks using hairline dividers instead of heavy cards. No streaks or gamification elements."
+    },
+    {
+      "name": "Kit Builder",
+      "purpose": "Editorial-style e-commerce flow for building care kits.",
+      "states": {
+        "loading": "Shimmer effect on product grid.",
+        "empty": "Illustration/Image of empty bag with 'Empieza a crear tu kit'.",
+        "error": "Retry message."
+      },
+      "layout": "High-contrast editorial grid. Products float on '#F5F5F2' background with no heavy borders. Large, art-directed images. Categories as pill filters at the top. Cart/Checkout handled via a sticky bottom sheet over a blurred background."
+    },
+    {
+      "name": "Caregiver Home",
+      "purpose": "Centralized overview of the patient's well-being and shared tasks.",
+      "states": {
+        "loading": "Skeleton list.",
+        "empty": "No linked patients state with an 'Invitar paciente' button.",
+        "error": "Retry message."
+      },
+      "layout": "Linked patient selector at top. Clear, actionable summary of 'Requests Received' (Señales rápidas) in a dedicated surfaceSecondary card block. Below, a shared agenda view listing upcoming treatments and expenses (Gastos) using standard list rows with clear typographic hierarchy."
+    }
+  ],
+  "images": {
+    "onboarding_hero": {
+      "url": "https://images.unsplash.com/photo-1583329550487-0fa300a4cd1a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxjYWxtaW5nJTIwbWluaW1hbGlzdCUyMGludGVyaW9yfGVufDB8fHx8MTc5NDUzMDM3MHww&ixlib=rb-4.1.0&q=85",
+      "alt": "sunlit minimalist interior"
+    },
+    "patient_home_banner": {
+      "url": "https://images.unsplash.com/photo-1734606901353-5561d3c3ec72?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHNvZnQlMjBib3RhbmljYWwlMjBzYWdlJTIwZ3JlZW4lMjB0ZXh0dXJlfGVufDB8fHx8MTc5NDUzMDM3MHww&ixlib=rb-4.1.0&q=85",
+      "alt": "abstract sage green texture"
+    },
+    "kit_builder_hero": {
+      "url": "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwaGlnaCUyMGVuZCUyMHNraW5jYXJlJTIwd2VsbG5lc3MlMjBwcm9kdWN0JTIwcGhvdG9ncmFwaHl8ZW58MHx8fHwxNzk0NTMwMzcwfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "minimalist wellness product photography"
+    },
+    "caregiver_home_banner": {
+      "url": "https://images.unsplash.com/photo-1567016376408-0226e4d0c1ea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHwxfHxjYWxtaW5nJTIwbWluaW1hbGlzdCUyMGludGVyaW9yJTIwd2FybSUyMGxpZ2h0fGVufDB8fHx8MTc5NDUzMDM3MHww&ixlib=rb-4.1.0&q=85",
+      "alt": "calming minimalist interior archway"
+    }
+  },
+  "haptics": {
+    "events": {
+      "button_press": "selection",
+      "tab_change": "light",
+      "quick_signal_sent": "success",
+      "add_to_cart": "medium",
+      "role_select": "medium"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly adhere to the selected color palette: no blues, purples, or typical 'medical' colors. Use the provided sage green, lavender, and soft coral strategically.",
+    "Implement zero shadows (shadow_tier: 0). Use the contrast between '#F5F5F2' (background) and '#FFFFFF' (surfaces) to create depth. Ensure hairline dividers are used instead of heavy borders.",
+    "The UI must feel restorative, not clinical or gamified. Do not implement streaks, aggressive notifications, or anything that induces guilt.",
+    "For the Kit Builder, adopt an editorial minimalist e-commerce approach. Products should float on the background without bounding boxes.",
+    "Typography must be highly legible. Use Plus Jakarta Sans for headings and DM Sans for body text.",
+    "Apply gradient-to-dark scrims over hero/background images if text is overlaid, ensuring readability.",
+    "Use Phosphor line icons consistently. Avoid standard medical crosses or overly literal medical icons."
+  ]
+}
