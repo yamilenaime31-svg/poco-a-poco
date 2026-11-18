@@ -87,7 +87,7 @@ export default function KitDetail() {
             <Row key={i.product_id + idx} title={i.product.name} subtitle={[i.product.category, i.options?.color, i.options?.text ? `“${i.options.text}”` : null].filter(Boolean).join(" · ")} right={<Txt v="medium">{money(i.product.price)}</Txt>} onPress={() => router.push(`/product/${i.product_id}`)} testID={`kit-item-${i.product_id}`} last={idx === k.items.length - 1} />
           ))}
           <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.lg, marginTop: space.sm, borderTopWidth: 1, borderTopColor: colors.onSurface }}>
-            <Txt v="caption">Incluye base {money(k.base_price)}</Txt>
+            <Txt v="caption">Incluye base {money(k.base_price)} · precios de ejemplo</Txt>
             <Txt v="h2" testID="kit-detail-total">
               {money(k.total)}
             </Txt>

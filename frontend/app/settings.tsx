@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useAuth } from "@/src/auth";
+import { NotificationSettings } from "@/src/components/notification-settings";
 import { SHARE_KEYS } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Chip, ChipRow, Row, Screen, Section, SwitchRow, Txt } from "@/src/ui";
@@ -59,8 +60,8 @@ export default function Settings() {
         <Txt style={{ marginTop: space.md }}>Así se verá el texto en AMODO.</Txt>
         <SwitchRow label="Reducir animaciones" value={!!s.reduce_motion} onValueChange={(v) => setSetting("reduce_motion", v)} testID="settings-reduce-motion" />
       </Section>
-      <Section title="Notificaciones">
-        <SwitchRow label="Recordatorios de agenda" value={s.notif_agenda !== false} onValueChange={(v) => setSetting("notif_agenda", v)} testID="settings-notif-agenda" />
+      <NotificationSettings />
+      <Section title="Otros avisos">
         <SwitchRow label="Señales y respuestas" value={s.notif_signals !== false} onValueChange={(v) => setSetting("notif_signals", v)} testID="settings-notif-signals" />
         <SwitchRow label="Estado de pedidos" value={s.notif_orders !== false} onValueChange={(v) => setSetting("notif_orders", v)} testID="settings-notif-orders" />
       </Section>

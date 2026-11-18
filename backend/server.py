@@ -411,6 +411,12 @@ async def list_records(kind: str, owner_id: Optional[str] = None, assigned: Opti
         if q["owner_id"] != user["id"]:
             q["shared_with"] = user["id"]
     items = [clean(r) async for r in db.records.find(q).limit(500)]
+    if kind == "treatments":
+        today = datetime.now(timezone.utc).date().isoformat()
+        for r in items:
+            nxt = await db.records.find_one({"kind": "events", "treatment_id": r["id"], "date": {"$gte": today}}, sort=[("date", 1)])
+            if nxt:
+                r["next_session"] = nxt["date"]
     if kind in ("events", "transfers", "tasks"):
         items.sort(key=sort_key)
     else:
@@ -505,6 +511,8 @@ async def update_record(kind: str, rid: str, body: dict = Body(...), user=Depend
 async def delete_record(kind: str, rid: str, user=Depends(current_user)):
     await load_record(kind, rid, user, write=True)
     await db.records.delete_one({"id": rid})
+    if kind == "medications":
+        await db.doses.delete_many({"med_id": rid})
     return {"ok": True}
 
 
@@ -1200,6 +1208,8 @@ async def score_products(user: dict, today: str) -> tuple[list, str]:
         nxt = e
     tr = await db.records.find_one({"kind": "treatments", "owner_id": user["id"], "status": {"$in": list(STAGES)}})
     stage = STAGES.get((tr or {}).get("status") or (pr.get("treatment") or {}).get("status") or "")
+    from knowledge import boost, context_for
+    ctx = await context_for(user, today)
     out = []
     async for p in db.products.find({}):
         tags = set(p["tags"])
@@ -1226,25 +1236,29 @@ async def score_products(user: dict, today: str) -> tuple[list, str]:
             score += 1; why.append(f"Has incluido {p['category'].lower()} en tus kits.")
         if "Organizar papeles" in (needs.get("support") or []) and "organización" in tags:
             score += 2; why.append("Mencionaste que te vendría bien apoyo para organizar papeles.")
-        if nxt and "llevar" in tags:
-            score += 2; why.append(f"Es fácil de llevar a tu {nxt.get('title', 'cita').lower()} del {nxt['date']}.")
         if stage and tags & set(stage[1]):
             score += 1; why.append(f"Orientativo para la etapa «{stage[0]}» que registraste (no es una recomendación médica).")
         if p["id"] in fav_ids:
             score -= 1
-        out.append((score, why, p))
+        extra, details = boost(p, ctx)
+        if extra <= -100:
+            continue
+        score += extra
+        details = [{"type": "registro" if ("etapa" in w or "kits" in w or "papeles" in w) else "gustos", "text": w} for w in why] + details
+        why = [d["text"] for d in details]
+        out.append((score, why, p, details))
     out.sort(key=lambda x: -x[0])
-    headline = "Preparamos algunas ideas para tu próxima cita." if nxt else "Ideas según lo que nos contaste."
+    headline = "Para tu próxima cita" if ctx["next"] else "Ideas según lo que nos contaste."
     return out, headline
 
 
 @api.get("/recommendations")
 async def recommendations(today: str = Query(...), user=Depends(current_user)):
     scored, headline = await score_products(user, today)
-    personal = [(s, w, p) for s, w, p in scored if s > 0][:8]
-    general = [p for s, w, p in scored if s <= 0][: max(0, 4 - len(personal))]
-    items = [{**clean(p), "reasons": w[:2]} for s, w, p in personal] + [{**clean(p), "reasons": ["Una opción para empezar. Cuéntanos tus gustos para ideas más tuyas."], "general": True} for p in general]
-    by_id = {p["id"]: (s, w) for s, w, p in scored}
+    personal = [(s, w, p, d) for s, w, p, d in scored if s > 0][:8]
+    general = [p for s, w, p, d in scored if s <= 0][: max(0, 4 - len(personal))]
+    items = [{**clean(p), "reasons": w[:2], "reason_details": d[:3]} for s, w, p, d in personal] + [{**clean(p), "reasons": ["Una opción para empezar. Cuéntanos tus gustos para ideas más tuyas."], "reason_details": [], "general": True} for p in general]
+    by_id = {p["id"]: (s, w) for s, w, p, d in scored}
     kits = []
     for t in TEMPLATES:
         pts = [by_id[x] for x in t["items"] if x in by_id]
@@ -1257,7 +1271,7 @@ async def recommendations(today: str = Query(...), user=Depends(current_user)):
 
 @api.post("/recommendations/feedback")
 async def reco_feedback(product_id: str = Body(..., embed=True), action: str = Body(..., embed=True), user=Depends(current_user)):
-    field = {"dismiss": "profile.reco.dismissed", "owned": "profile.reco.owned"}.get(action)
+    field = {"dismiss": "profile.reco.dismissed", "owned": "profile.reco.owned", "interested": "profile.reco.interested"}.get(action)
     if action == "reset":
         await db.users.update_one({"id": user["id"]}, {"$set": {"profile.reco": {}}})
     elif field:
@@ -1291,6 +1305,9 @@ async def migrate_sharing():
     await db.meta.insert_one({"key": "sharing_v2", "at": now_iso()})
 
 
+import planner  # noqa: E402  (registers routes on `api`)
+import knowledge  # noqa: E402
+
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -1302,11 +1319,15 @@ async def startup():
     await seed_products()
     await seed_demo()
     await migrate_sharing()
+    await knowledge.seed_knowledge()
+    app.state.reminder_task = asyncio.create_task(planner.reminder_loop())
+    app.state.media_task = asyncio.create_task(planner.warm_media())
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
     app.state.index_task.cancel()
+    app.state.reminder_task.cancel()
     with suppress(asyncio.CancelledError):
         await app.state.index_task
     client.close()

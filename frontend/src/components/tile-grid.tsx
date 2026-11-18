@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { tintOf } from "@/src/constants";
 import { Ic, Txt, tap } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
@@ -20,7 +19,6 @@ export function TileGrid({ tiles }: { tiles: Tile[] }) {
       {rows.map((r) => (
         <View key={r[0].key} style={styles.row}>
           {r.map((t) => {
-            const tint = tintOf(colors, t.tint);
             return (
               <Pressable
                 key={t.key}
@@ -31,9 +29,9 @@ export function TileGrid({ tiles }: { tiles: Tile[] }) {
                   tap();
                   t.onPress();
                 }}
-                style={({ pressed }) => [styles.tile, stacked && styles.tileStacked, { backgroundColor: tint.bg, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.tile, stacked && styles.tileStacked, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
               >
-                <View style={[styles.icon, { backgroundColor: colors.surfaceSecondary }]}>
+                <View style={[styles.icon, { backgroundColor: colors.sageSoft }]}>
                   <Ic name={t.icon} size={15} />
                 </View>
                 <Txt v="medium" style={styles.label}>{t.label}</Txt>
@@ -49,7 +47,7 @@ export function TileGrid({ tiles }: { tiles: Tile[] }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: space.sm },
-  tile: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: 56, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.md },
+  tile: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: 56, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
   tileStacked: { flexDirection: "column", alignItems: "flex-start", gap: 6 },
   icon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   label: { flexShrink: 1, fontSize: 13, lineHeight: 17 },

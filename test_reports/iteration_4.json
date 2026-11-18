@@ -1,0 +1,59 @@
+{
+  "summary": "Iteration 4 tested both backend and frontend. Backend: new pytest suite test_amodo_iter4_planner.py, 11 of 12 passing. Covered: treatment parse via LLM (full plan / missing data asks questions / short text 422), plan commit (1 treatment + N events with treatment_id/series_id, next_session), series edit one/following/all (date shift + history), agenda (120-day limit, med '08:00, 20:00' expands per day, unique keys, caregiver sees only shared items), doses (realizado/omitido/validation/403 for caregiver on unshared med), pending, reminders (discreet generic text, cats/leads honoured, enabled=false -> empty, unique keys), needs/recommendations/explain/feedback/knowledge (nausea excludes 'Antojos y preferencias'), media (p1.jpg public, other paths 404). Regression suites iter1+iter2 all pass (36/36). The one failure: GET /api/pending?today=xx returns 500. Frontend (390/360): agenda Mes/Semana/Día/Lista with dots, day list, add sheet (7 options), dose sheet -> Realizado; /pending 5 filters + Realizado/Omitido/Deshacer; treatment assistant parse -> edit interval/count/start regenerates -> remove session -> confirm saves to DB and appears in Agenda; series edit -> series-scope-sheet with 3 options -> 'Esta y las siguientes' updates both events + history; 'Otro' + custom_name create/edit works; notification settings persist (cats, leads, custom 90 min, quiet, discreet) and web limitation text shown; Mis kits needs prompt + chips + save, compact reco cards, why-sheet with LLM text; catalog search + category chips + AI images + 'precio de ejemplo'; Inter everywhere and logo in PJS-800; no horizontal page overflow at 360/390; caregiver agenda sees only shared items. MAIN BUG: hard load / deep link (and native cold start) fires queries before the auth token is restored -> 401 'No pudimos cargar esto' on Agenda/Pendientes, and /record-form crashes ('Cannot read properties of null (reading id)'). Deprecated packages: no expo-av, expo-barcode-scanner or expo-background-fetch, but 'expo-router/unstable-native-tabs' raises a deprecation warning.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/pending?today=", "issue": "An invalid 'today' value (e.g. 'xx') gives 500 (ValueError in strptime, planner.py:232). Validate with _date_or_empty and return 422."},
+      {"endpoint": "PUT /api/series/{sid}", "issue": "History 'before' snapshot also stores unchanged fields (title/type/location/date). Noisy history; store only the fields that changed."},
+      {"endpoint": "reminder_loop", "issue": "Every 60s it scans all users and runs the full agenda queries for each one. Fine for an MVP, but O(users) DB load per minute."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Auth hydration (app/(tabs)/_layout.tsx:20-23, app/_layout.tsx)", "issue": "Screens render and useApi queries fire while auth ready=false, before the token is loaded from storage. Hard load of /agenda or /pending shows the error state ('No pudimos cargar esto / Inicia sesión para continuar', console 401 on /api/pending and /api/agenda) until the user taps Reintentar. This also affects native cold start and opening the app from a notification (reminder link /(tabs)/agenda). Fix: render a loader / return null until ready, or gate useApi with enabled: ready && hasToken.", "testID": "agenda-screen, pending-screen", "priority": "HIGH"},
+      {"component": "record-form crash on direct load", "issue": "/record-form?kind=treatments opened directly (deep link/refresh) crashes the whole app with ErrorBoundary 'Cannot read properties of null (reading id)'. Cause: user!.id at app/record-form.tsx:47 while user is still null. Same root cause as above; also guard user.", "testID": "record-save-button", "priority": "HIGH"},
+      {"component": "Treatment assistant session rows", "issue": "The per-session time input (ta-session-time-i) collapses to about 18px wide on web, so the time cannot be seen or edited. style {flex: 0, width: 72} combined with styles.mini {flex:1, minWidth:0} (app/treatment-assistant.tsx:126,148). Use flexGrow:0, flexShrink:0, width:72.", "testID": "ta-session-time-0", "priority": "MEDIUM"},
+      {"component": "Treatment assistant counters", "issue": "After removing a session (ta-session-remove-i), the 'Sesiones' field still shows the old count (3 while 2 sessions are listed).", "testID": "ta-count", "priority": "LOW"},
+      {"component": "Reco card feedback links", "issue": "'Me interesa', 'No me interesa' and 'Ya lo tengo' render with no spacing ('Me interesaNo me interesaYa lo tengo') on a 264px card. They are also tiny caption touch targets (<44px). src/components/reco-card.tsx:32-36 (styles.links).", "testID": "reco-interested-*, reco-dismiss-*, reco-owned-*", "priority": "MEDIUM"},
+      {"component": "Editing an assistant-created treatment", "issue": "Opening the treatment created by the assistant (name 'TEST_Radio', treatment_type 'Radioterapia') in record-form shows 'Otro' + custom name, because only the name is checked (record-form.tsx:38). On save, body.treatment_type = 'Otro' (line 68). This silently loses the real type, which is used by the knowledge needs and recommendations. Initialise the type chip from d.treatment_type when present.", "testID": "field-name-Otro", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Series edit history", "issue": "The backend stores history per event, but the event detail (app/event/[id].tsx) shows neither 'part of a series' nor the change history. Delete of a series event has no scope option.", "affected_testIDs": ["event-detail-screen", "event-delete-button"]}
+    ],
+    "design_issues": [
+      {"screen": "Mis kits needs prompt", "issues": ["Copy is built from a lowercased join of treatment types, for example '...durante otro, quimioterapia, radioterapia?' and 'Ideas para otro, quimioterapia, radioterapia: 1 tema(s) elegidos'. 'otro' should be omitted or replaced by the custom name, and 'tema(s)' should be pluralised properly (reco-card.tsx:88)."]},
+      {"screen": "reco-why-sheet", "issues": ["Duplicate reasons: 'Es fácil de llevar a tu análisis del 2026-11-19' (labelled TUS GUSTOS) plus 'Registraste «Análisis» el 2026-11-19; es fácil de llevar' (TU PRÓXIMA ACTIVIDAD).", "The stage and next-appointment reasons from score_products are typed 'gustos', so they show the wrong label 'TUS GUSTOS'.", "Dates appear in ISO format (2026-11-19) instead of a friendly format."]},
+      {"screen": "Pendientes", "issues": ["Dose row Realizado/Omitido/Deshacer pills are about 32px tall, below the 44px touch target.", "The record-form validation 'Este campo es necesario.' stays visible after the user types, until the next save."]},
+      {"screen": "Agenda (caregiver, Lista)", "issues": ["The empty state for a patient's shared agenda says 'Agrega citas... actividades que disfrutes'. Copy aimed at the owner, shown to the caregiver."]}
+    ],
+    "react_native_issues": [
+      {"component": "expo-router/unstable-native-tabs", "issue": "Console warning: '`expo-router/unstable-native-tabs` is deprecated. Use `expo-router/native-tabs` instead.' Reference: /app/frontend/app/(tabs)/_layout.tsx:4"}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter4_planner.py", "/app/test_reports/pytest/iter4.xml"],
+  "action_items": [
+    "HIGH: Gate rendering/queries on auth `ready` (tabs layout + root Stack), so deep links, refresh and native cold start don't 401 or crash. Guard `user!.id` in app/record-form.tsx:47.",
+    "Fix the collapsed ta-session-time input width in treatment-assistant.tsx (flexGrow:0/flexShrink:0/width:72). Keep ta-count in sync after removing a session.",
+    "Record-form treatments: initialise the type chip from treatment_type when the name is custom, so assistant-created treatments keep Quimioterapia/Radioterapia on edit.",
+    "Add spacing and bigger touch targets to the reco-card feedback links.",
+    "Dedupe the why-sheet reasons (score_products 'nxt llevar' vs knowledge.boost 'proxima'), use correct detail types for stage/next reasons, and format dates.",
+    "Fix the needs prompt copy (drop 'otro', proper plural).",
+    "Validate the `today` query in GET /api/pending (and the same pattern elsewhere) -> 422 instead of 500.",
+    "Migrate import to expo-router/native-tabs.",
+    "Optional: show series membership + change history in the event detail; offer a scope option when deleting a series event."
+  ],
+  "critical_code_review_comments": [
+    "planner.py update_series: title changes are applied only to the edited event even for scope=all (intentional?). History stores full snapshots of unchanged fields.",
+    "planner.py treatment_commit: status 'Por comenzar' compares against server date.today() (UTC), not the user's 'today'.",
+    "Treatment records also carry series_id, so queries by series_id without kind='events' return the treatment too. The backend correctly filters kind; keep it that way.",
+    "planner.py reminder_loop: full per-user agenda computation every minute; consider an indexed due-reminders query.",
+    "server.py is 1333 lines (>700). Consider splitting recommendations/kits/orders into modules like planner.py/knowledge.py."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter4_planner.py (new)"],
+  "success_rate": {"backend": "92% (11/12 new; 36/36 regression)", "frontend": "~85% (all requested flows work via in-app navigation; hard-load 401/crash and several UI defects)"},
+  "seed_data_creation": "Created and then removed: TEST_Quimio plan/series, TEST_Med, TEST_private (pytest fixtures), and from the UI TEST_Radio treatment + 2 events, TEST_Braquiterapia, TEST_MedUI + doses. The demo patient's settings.notif, profile.declared_needs and needs_prompt_answered were changed during UI tests and then $unset back to their original unset state. Fresh TEST_ users are deleted by the fixture.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Container date is 2026-11-18. Run pytest with `-n 0` or the default xdist from pytest.ini. LLM parse is fast (~5s, model gpt-5.4). To test pages via page.goto, expect the first fetch to 401 until the auth hydration bug is fixed; use in-app tab navigation or tap 'Reintentar'. The record-form save button testID is record-save-button; event detail edit is event-edit-button.",
+  "rca_of_issue": "Hard-load 401: TabsLayout only redirects when ready && !user, and otherwise renders children while ready=false. api.ts sets `token` asynchronously (loadToken), so useApi queries run with no Authorization header -> 401 -> retry disabled for 4xx -> error state remains until refetch. record-form uses user!.id during that window -> TypeError -> ErrorBoundary. Reproduce: log in, then page.goto('/pending') or '/record-form?kind=treatments'. Mitigation: return a splash until `ready`, or include `ready` in useApi's enabled."
+}

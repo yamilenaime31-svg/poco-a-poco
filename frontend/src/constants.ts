@@ -1,7 +1,7 @@
 import type { ThemeColors } from "@/src/theme";
 
 export type FieldType = "text" | "multiline" | "date" | "time" | "select" | "number" | "switch" | "assignee";
-export type FieldDef = { key: string; label: string; type: FieldType; options?: string[]; placeholder?: string; required?: boolean };
+export type FieldDef = { key: string; label: string; type: FieldType; options?: string[]; placeholder?: string; required?: boolean; showIf?: (v: Record<string, any>) => boolean };
 
 export type KindDef = {
   label: string;
@@ -38,6 +38,7 @@ export const KINDS: Record<string, KindDef> = {
     note: "Solo registras lo que tu equipo te indicó. AMODO no calcula ni sugiere tratamientos.",
     fields: [
       { key: "name", label: "Tipo de tratamiento", type: "select", required: true, options: ["Quimioterapia", "Radioterapia", "Inmunoterapia", "Cirugía", "Terapia dirigida", "Terapia hormonal", "Otro"] },
+      { key: "custom_name", label: "¿Qué tratamiento quieres registrar?", type: "text", placeholder: "Escribe el nombre del tratamiento", showIf: (v) => v.name === "Otro" || !!v._custom },
       { key: "status", label: "Estado", type: "select", options: ["Por comenzar", "En curso", "En pausa", "Finalizado"] },
       { key: "date", label: "Fecha de inicio", type: "date" },
       { key: "frequency", label: "Frecuencia", type: "text", placeholder: "Ej. Cada 21 días · Mi calendario cambia" },
@@ -58,7 +59,10 @@ export const KINDS: Record<string, KindDef> = {
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true },
       { key: "dose", label: "Indicación (como te la dieron)", type: "text", placeholder: "Ej. 1 tableta" },
-      { key: "schedule", label: "Horario", type: "text", placeholder: "Ej. Mañana y noche" },
+      { key: "times", label: "Horarios indicados (para recordatorios)", type: "text", placeholder: "Ej. 08:00, 20:00" },
+      { key: "schedule", label: "Indicación de horario (como te la dieron)", type: "text", placeholder: "Ej. Mañana y noche, con alimentos" },
+      { key: "start_date", label: "Desde", type: "date" },
+      { key: "end_date", label: "Hasta (opcional)", type: "date" },
       { key: "prescribed_by", label: "Indicado por", type: "text" },
       { key: "notes", label: "Notas", type: "multiline" },
     ],
@@ -91,6 +95,7 @@ export const KINDS: Record<string, KindDef> = {
       { key: "destination", label: "Hacia", type: "text" },
       { key: "mode", label: "Cómo", type: "select", options: ["Acompañante lleva", "Auto propio", "Taxi o app", "Transporte público", "Otro"] },
       { key: "driver", label: "¿Quién acompaña o lleva?", type: "text" },
+      { key: "confirmed", label: "Traslado confirmado", type: "switch" },
       { key: "notes", label: "Notas", type: "multiline" },
     ],
   },
@@ -137,6 +142,18 @@ export const SIGNALS = [
   { type: "compras", label: "Ayuda con compras", icon: "shopping-basket", tint: "butter" },
   { type: "llamada", label: "Llámame", icon: "phone", tint: "sky" },
 ] as const;
+export const TREATMENT_TYPES = ["Quimioterapia", "Radioterapia", "Inmunoterapia", "Cirugía", "Terapia dirigida", "Terapia hormonal", "Otro"];
+export const AGENDA_CATS: Record<string, { label: string; icon: string; tint: string }> = {
+  treatments: { label: "Tratamientos", icon: "layers", tint: "sage" },
+  appointments: { label: "Consultas", icon: "stethoscope", tint: "lavender" },
+  studies: { label: "Estudios", icon: "microscope", tint: "lavender" },
+  medications: { label: "Medicamentos programados", icon: "pill", tint: "coral" },
+  transfers: { label: "Traslados", icon: "car", tint: "sand" },
+  tasks: { label: "Pendientes", icon: "list-checks", tint: "sand" },
+  payments: { label: "Pagos", icon: "wallet", tint: "sand" },
+  personal: { label: "Actividades y otros", icon: "sun", tint: "sand" },
+};
+export const DEMO_PRICE = "precio de ejemplo";
 export const DEFAULT_FAV_SIGNALS = ["compania", "solo", "descanso", "venir", "ayuda"];
 export const MOODS = ["Tranquilo/a", "Con energía", "Cansado/a", "Con sueño", "Estresado/a", "Animado/a", "Incómodo/a", "Triste", "Necesito compañía", "Quiero descansar"];
 
@@ -218,7 +235,7 @@ export const SHARE_KEYS: { key: string; label: string }[] = [
 const DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const DAYS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+export const MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 export function isoDate(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");

@@ -42,3 +42,15 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Mis kits: compact "Armar nuevo kit", 3 equal quick tiles, 2x3 category grid
 - Avatar editor: icon category tabs + illustrated mini-avatar thumbnails (zoomed crops) that update preview live
 - Testing iteration 3: 20/21 passed; tile overflow at 360–375px fixed after
+
+## Iteration 4 (2026-11) — Identidad madura + ecosistema conectado
+- Inter across UI (logo keeps Plus Jakarta Sans 800 via fonts.logo); palette reduced to cream/white/sage with lavender/peach accents; neutral tiles; web focus ring in sage
+- Treatments: "Otro" → custom name (stored as name, treatment_type kept); multiple concurrent treatments
+- AI treatment assistant (/treatment-assistant, POST /api/treatments/parse → editable sessions → POST /api/treatments/plan creates treatment + linked events with series_id); never invents frequency, asks for missing data
+- Series edit scope (PUT /api/series/{id}: one/following/all, history[]) from record-form
+- Unified agenda GET /api/agenda (events, transfers, tasks, pending expenses, medication doses expanded from `times`); Agenda tab month/week/day/list + add sheet + dose sheet
+- Doses POST /api/doses (realizado/omitido/pendiente, explicit only); unified /pending screen + GET /api/pending with filters
+- Reminders: GET /api/reminders (prefs settings.notif: enabled, cats, leads, quiet, discreet; tz via settings.tz_offset); backend loop → in-app notifications (dedupe via reminders_sent unique key); device local notifications via expo-notifications (cancel-all + reschedule on every change/foreground). Web: in-app only.
+- Knowledge base (backend/knowledge.py, db.knowledge, NCI/ACS/MedlinePlus sources, reviewed 2026-06); needs asked never assumed (GET/PUT /api/recommendations/needs); boost() context: declared needs, next appointment, recent "rest" moods, "Me interesa"; exclusions (nausea/mouth → no food items); explain endpoint with LLM (cached) + sources sheet
+- Catalog search + visible chip bar; 32 AI illustrations (Gemini Nano Banana) in object storage served at /api/media/amodo/products/*; prices labelled "precio de ejemplo"
+- Backlog: series delete scope, show series history in event detail, native-tabs import deprecation

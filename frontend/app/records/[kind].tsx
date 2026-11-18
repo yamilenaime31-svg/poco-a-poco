@@ -12,9 +12,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 function subtitleFor(kind: string, r: any) {
   switch (kind) {
     case "treatments":
-      return [r.status, r.cycle_current && r.cycles_total ? `Ciclo ${r.cycle_current} de ${r.cycles_total}` : r.frequency, r.next_session ? `Próxima: ${fmtDate(r.next_session)}` : null].filter(Boolean).join(" · ");
+      return [r.treatment_type && r.treatment_type !== r.name ? r.treatment_type : null, r.status, r.cycle_current && r.cycles_total ? `Ciclo ${r.cycle_current} de ${r.cycles_total}` : r.frequency, r.next_session ? `Próxima: ${fmtDate(r.next_session)}` : null].filter(Boolean).join(" · ");
     case "medications":
-      return [r.dose, r.schedule].filter(Boolean).join(" · ");
+      return [r.dose, Array.isArray(r.times) ? r.times.join(", ") : r.times, r.schedule].filter(Boolean).join(" · ");
     case "tasks":
       return [r.date ? fmtDate(r.date) : null, r.owner_name ? `De ${r.owner_name}` : null, r.assignee_name].filter(Boolean).join(" · ");
     case "transfers":
@@ -82,8 +82,18 @@ export default function Records() {
           ) : null}
         </ScrollView>
       ) : null}
+      {kind === "treatments" && canAdd ? (
+        <Pressable onPress={() => router.push("/treatment-assistant")} testID="treatments-assistant-card" style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: 22, marginBottom: space.md, backgroundColor: colors.sageSoft, opacity: pressed ? 0.88 : 1 }]}>
+          <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceSecondary }}><Ic name="sparkles" size={18} /></View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Txt v="title">Cuéntame sobre tu tratamiento</Txt>
+            <Txt v="caption" color={colors.onSurface}>Escribe lo que te indicaron y te ayudo a organizarlo</Txt>
+          </View>
+          <Ic name="arrow-right" size={18} />
+        </Pressable>
+      ) : null}
       {def.note ? (
-        <Card tint="lavender" style={{ marginBottom: space.lg }} testID="records-note">
+        <Card style={{ marginBottom: space.lg }} testID="records-note">
           <View style={{ flexDirection: "row", gap: space.sm }}>
             <Ic name="info" size={18} />
             <Txt style={{ flex: 1, fontSize: 14 }}>{def.note}</Txt>

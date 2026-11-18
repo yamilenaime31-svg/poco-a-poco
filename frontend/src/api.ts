@@ -62,6 +62,12 @@ export function useApi<T = any>(path: string | null) {
   return q;
 }
 
+let afterInvalidate: (() => void) | null = null;
+export function onInvalidate(fn: (() => void) | null) {
+  afterInvalidate = fn;
+}
+
 export function invalidate() {
+  afterInvalidate?.();
   return queryClient.invalidateQueries();
 }

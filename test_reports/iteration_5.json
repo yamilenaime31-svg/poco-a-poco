@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 5 retest of the iteration-4 fixes. Every requested fix is verified. Backend: new suite test_amodo_iter5_fixes.py passes 5/5, and the full regression passes 53/53 (iter1, iter2, iter4, iter5), including the pending test that failed in iteration 4. Frontend (390px): (1) HIGH fix verified. Direct goto and reload of /agenda, /pending and /record-form?kind=treatments while logged in render with no 401 error state and no crash, for both the patient and the caregiver. (2) Treatment assistant: ta-session-time-i inputs are 76x38 and editable (edited 11:30 was saved to the DB). Removing a session updates ta-count from 3 to 2. (3) Editing the assistant-created TEST_Radio treatment shows Tipo=Radioterapia selected plus the custom name field. Saving keeps treatment_type Radioterapia, name TEST_Radio and the edited notes. 'Otro' with an empty name shows 'Escribe el nombre del tratamiento.' (4) Reco links are 44px tall with a 12px gap. (5) Why sheet shows the next-appointment reason once, labelled 'TU PRÓXIMA ACTIVIDAD', with the date as '19 de noviembre'. The stage reason is labelled 'LO QUE REGISTRASTE'. The needs prompt reads 'durante quimioterapia, radioterapia?' (no 'otro'), and 'tema(s)' is gone from the code. (6) Pending dose Realizado/Omitido buttons are 40px tall. (7) GET /api/pending?today=xx returns 422. (8) Regression passes: agenda month/week/day/list views, catalog category chips filter, and notification settings render (8 categories, 4 lead times, discreet switch). Deprecated packages: none found. All test data was cleaned up (2 events, 1 treatment, 1 medication, 1 dose).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/records/medications/{id}", "issue": "Deleting a medication leaves its dose records in the doses collection (no cascade). I removed the orphan dose by hand."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "treatment-assistant / record-form after save on a deep link", "issue": "When the screen was opened directly (no navigation history), Confirm or Save calls router.back(), which does nothing. The data is saved, but the user stays on the form. Use router.canGoBack() ? router.back() : router.replace('/(tabs)/agenda') (or the relevant list).", "testID": "ta-confirm, record-save-button", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Mis kits reco card", "issues": ["On the 264px card the three feedback links wrap to two rows ('Ya lo tengo' alone on the second row), which adds about 44px of card height. Consider shorter labels or a smaller gap so they fit on one row.", "The needs prompt link 'Ver opciones' is still a small caption target (hitSlop 6 only)."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter5_fixes.py", "/app/test_reports/pytest/pytest_iter5.xml"],
+  "action_items": [
+    "LOW: Add a router.canGoBack() fallback after Confirm/Save in treatment-assistant.tsx:70 and record-form.tsx:90/106/119 for deep-link entry.",
+    "LOW: Cascade-delete doses when a medication is deleted.",
+    "LOW: Keep the reco feedback links on one row; give 'Ver opciones' a 44px target."
+  ],
+  "critical_code_review_comments": [
+    "server.py score_products still computes `nxt` (line ~1204) but no longer uses it. This is a dead query that can be removed.",
+    "record-form: when `_custom` is true and the user clears custom_name, the name falls back to the type. This is acceptable, but no validation message is shown."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter5_fixes.py"],
+  "success_rate": {"backend": "100% (53/53)", "frontend": "100% of requested fixes verified"},
+  "seed_data_creation": "Temporary TEST_Radio treatment (2 sessions) and TEST_Med medication with 1 dose were created and then deleted by id. No seed or user data was modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Container date is 2026-11-18. The auth hydration bug is fixed, so page.goto deep links work after login. LLM treatment parse takes about 5s. Do not save the needs prompt for demo@amodo.app (currently asked=false); saving permanently sets needs_prompt_answered. Dose rows in /pending need a medication with times; create a TEST_ medication via the API and delete it and its doses afterwards."
+}

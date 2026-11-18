@@ -34,14 +34,14 @@ export function Ic({ name, size = 20, color }: { name: string; size?: number; co
 }
 
 const VARIANTS: Record<string, TextStyle & { fontSize: number; lineHeight: number }> = {
-  display: { fontFamily: fonts.displayBold, fontSize: 34, lineHeight: 40, letterSpacing: -0.8 },
-  h1: { fontFamily: fonts.display, fontSize: 25, lineHeight: 31, letterSpacing: -0.5 },
+  display: { fontFamily: fonts.displayBold, fontSize: 32, lineHeight: 38, letterSpacing: -1 },
+  h1: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.6 },
   h2: { fontFamily: fonts.display, fontSize: 18, lineHeight: 24, letterSpacing: -0.3 },
-  title: { fontFamily: fonts.displayMedium, fontSize: 15, lineHeight: 21 },
+  title: { fontFamily: fonts.displayMedium, fontSize: 15, lineHeight: 21, letterSpacing: -0.1 },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   medium: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 22 },
   caption: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
-  label: { fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 16, letterSpacing: 1, textTransform: "uppercase" },
+  label: { fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, textTransform: "uppercase" },
 };
 
 export function Txt({ v = "body", color, style, children, ...rest }: TextProps & { v?: keyof typeof VARIANTS | string; color?: string }) {
@@ -63,7 +63,7 @@ export function Logo({ size = 28, color }: { size?: number; color?: string }) {
   const { colors } = useTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-end" }} testID="amodo-logo">
-      <Text style={{ fontFamily: fonts.displayBold, fontSize: size, letterSpacing: -size * 0.06, color: color ?? colors.onSurface, lineHeight: size * 1.15 }}>amodo</Text>
+      <Text style={{ fontFamily: fonts.logo, fontSize: size, letterSpacing: -size * 0.06, color: color ?? colors.onSurface, lineHeight: size * 1.15 }}>amodo</Text>
       <View style={{ width: size * 0.22, height: size * 0.22, borderRadius: size, backgroundColor: colors.sage, marginLeft: 2, marginBottom: size * 0.2 }} />
     </View>
   );
@@ -379,6 +379,8 @@ export function Badge({ label, tint, testID }: { label: string; tint?: string; t
   );
 }
 
+export const mediaUrl = (u: string) => (u.startsWith("/") ? `${process.env.EXPO_PUBLIC_BACKEND_URL}${u}` : u);
+
 export function ProductImage({ product, height = 140, style }: { product?: { image?: string | null; category?: string }; height?: number; style?: StyleProp<ViewStyle> }) {
   const { colors } = useTheme();
   const cat = categoryOf(product?.category);
@@ -386,7 +388,7 @@ export function ProductImage({ product, height = 140, style }: { product?: { ima
   return (
     <View style={[{ height, borderRadius: radius.md, backgroundColor: t.bg, alignItems: "center", justifyContent: "center", overflow: "hidden" }, style]}>
       {product?.image ? (
-        <Image source={{ uri: product.image }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <Image source={{ uri: mediaUrl(product.image) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : (
         <>
           <View style={{ position: "absolute", width: height * 0.9, height: height * 0.9, borderRadius: height, backgroundColor: t.accent, opacity: 0.18, right: -height * 0.2, bottom: -height * 0.3 }} />

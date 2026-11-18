@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { money } from "@/src/constants";
+import { DEMO_PRICE, money } from "@/src/constants";
 import { Ic, ProductImage, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
@@ -31,7 +31,7 @@ export function ProductCard({ p, fav, onFav, onPress, selected, testID }: { p: a
         {p.name}
       </Txt>
       <Txt v="title" style={{ fontSize: 14, marginTop: 2 }}>
-        {money(p.price)}
+        {money(p.price)} <Txt v="caption">· {DEMO_PRICE}</Txt>
       </Txt>
     </Pressable>
   );

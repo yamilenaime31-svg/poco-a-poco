@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { TabScreen } from "@/src/components/tab-screen";
+import { RecoCard, NeedsPrompt } from "@/src/components/reco-card";
 import { TileGrid } from "@/src/components/tile-grid";
 import { CATEGORIES, money, tintOf, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
@@ -65,31 +66,14 @@ export default function MyKits() {
       <Section title="Recomendados para ti" action="Preferencias" onAction={() => router.push({ pathname: "/onboarding", params: { edit: "1", step: "identity" } })} testID="kits-reco">
         {reco.isLoading ? <Loading /> : (
           <>
+            <NeedsPrompt />
             <Txt v="title" style={{ marginBottom: space.md }} testID="reco-headline">{reco.data?.headline}</Txt>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl }} contentContainerStyle={{ gap: space.md, paddingHorizontal: space.xl }}>
-              {(reco.data?.products || []).map((p: any) => (
-                <View key={p.id} style={[styles.reco, { backgroundColor: colors.surfaceSecondary }]} testID={`reco-card-${p.id}`}>
-                  <ProductImage product={p} height={120} />
-                  <Txt v="caption" style={{ marginTop: space.sm }}>{p.category} · {money(p.price)}</Txt>
-                  <Txt v="title" numberOfLines={1}>{p.name}</Txt>
-                  <View style={[styles.why, { backgroundColor: colors.lavenderSoft }]}>
-                    <Txt v="label" color={colors.onSurface}>¿Por qué?</Txt>
-                    <Txt v="caption" color={colors.onSurface} numberOfLines={3} testID={`reco-reason-${p.id}`}>{p.reasons?.[0]}</Txt>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 6 }}>
-                    <Btn label="Ver" small variant="secondary" onPress={() => router.push(`/product/${p.id}`)} testID={`reco-view-${p.id}`} style={{ flex: 1, paddingHorizontal: 8 }} />
-                    <Btn label="A kit" small icon="plus" onPress={() => router.push({ pathname: "/kit-builder", params: { add: p.id } })} testID={`reco-add-${p.id}`} style={{ flex: 1, paddingHorizontal: 8 }} />
-                  </View>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
-                    <Pressable onPress={() => feedback(p.id, "dismiss", "No te lo mostraremos de nuevo")} testID={`reco-dismiss-${p.id}`} hitSlop={8}><Txt v="caption" style={{ textDecorationLine: "underline" }}>No me interesa</Txt></Pressable>
-                    <Pressable onPress={() => feedback(p.id, "owned", "Anotado: ya lo tienes")} testID={`reco-owned-${p.id}`} hitSlop={8}><Txt v="caption" style={{ textDecorationLine: "underline" }}>Ya lo tengo</Txt></Pressable>
-                  </View>
-                </View>
-              ))}
+              {(reco.data?.products || []).map((p: any) => <RecoCard key={p.id} p={p} onFeedback={feedback} />)}
             </ScrollView>
             <Txt v="caption" style={{ marginTop: space.lg, marginBottom: space.sm }}>Kits que podrías personalizar</Txt>
             {(reco.data?.kits || []).slice(0, 3).map((k: any, i: number) => (
-              <Row key={k.id} icon="package" tint={["sage", "lavender", "coral"][i]} title={k.name} subtitle={`${k.reason} · ${money(k.total)}`} onPress={() => router.push(`/kit/${k.id}`)} testID={`reco-kit-${k.id}`} last={i === 2} />
+              <Row key={k.id} icon="package" tint={["sage", "lavender", "coral"][i]} title={k.name} subtitle={`${k.reason} · ${money(k.total)} (ejemplo)`} onPress={() => router.push(`/kit/${k.id}`)} testID={`reco-kit-${k.id}`} last={i === 2} />
             ))}
             <Pressable onPress={() => feedback("", "reset", "Volvimos a mostrar todas las sugerencias")} testID="reco-reset" style={{ marginTop: space.sm }}><Txt v="caption" style={{ textDecorationLine: "underline" }}>Ver otras opciones de nuevo</Txt></Pressable>
           </>
@@ -121,6 +105,4 @@ const styles = StyleSheet.create({
   cta: { flexDirection: "row", alignItems: "center", gap: space.md, borderRadius: radius.lg, paddingVertical: space.md, paddingHorizontal: space.lg, marginTop: space.sm },
   ctaIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   quick: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, minHeight: 64, paddingVertical: space.sm, paddingHorizontal: 4, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
-  reco: { width: 240, borderRadius: radius.lg, padding: space.md },
-  why: { borderRadius: radius.sm, padding: space.sm, marginVertical: space.sm, minHeight: 64 },
 });

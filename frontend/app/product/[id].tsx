@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { KIT_SIZES, money } from "@/src/constants";
+import { DEMO_PRICE, KIT_SIZES, money } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, ErrorState, Field, IconBtn, Loading, ProductImage, Row, Screen, Sheet, Txt } from "@/src/ui";
@@ -99,7 +99,7 @@ export default function ProductDetail() {
             {p.name}
           </Txt>
           <Txt v="h2" style={{ marginTop: space.xs }} testID="product-price">
-            {money(p.price)}
+            {money(p.price)} <Txt v="caption">· {DEMO_PRICE}</Txt>
           </Txt>
           <Txt style={{ marginTop: space.md, marginBottom: space.xl }}>{p.description}</Txt>
           {p.colors?.length || p.personalize_text ? (

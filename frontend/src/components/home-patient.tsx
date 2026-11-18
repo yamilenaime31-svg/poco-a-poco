@@ -19,7 +19,7 @@ import { radius, space, useTheme } from "@/src/theme";
 export const ORGANIZE_TILES = [
   { label: "Tratamientos", icon: "layers", href: "/records/treatments", tint: "sage" },
   { label: "Medicamentos", icon: "pill", href: "/records/medications", tint: "lavender" },
-  { label: "Pendientes", icon: "list-checks", href: "/records/tasks", tint: "coral" },
+  { label: "Pendientes", icon: "list-checks", href: "/pending", tint: "coral" },
   { label: "Traslados", icon: "car", href: "/records/transfers", tint: "sky" },
   { label: "Gastos", icon: "wallet", href: "/records/expenses", tint: "butter" },
   { label: "Mi red de apoyo", icon: "users", href: "/network", tint: "lavender" },
@@ -208,7 +208,7 @@ export function PatientHome() {
             ) : <Txt v="caption">Nada programado por ahora.</Txt>}
           </Section>
 
-          <Section title="Pendientes" action="Todos" onAction={() => router.push("/records/tasks")} testID="home-tasks-section">
+          <Section title="Pendientes" action="Todos" onAction={() => router.push("/pending")} testID="home-tasks-section">
             {d.tasks.length === 0 ? <Txt v="caption">Sin pendientes. Descansar también cuenta.</Txt> : d.tasks.slice(0, 3).map((task: any, i: number) => (
               <Row key={task.id} title={task.title} subtitle={task.date ? fmtDate(task.date) : undefined} onPress={() => router.push({ pathname: "/record-form", params: { kind: "tasks", id: task.id } })} testID={`home-task-${task.id}`} last={i === Math.min(2, d.tasks.length - 1)}
                 right={<Pressable onPress={() => toggleTask(task)} hitSlop={10} testID={`home-task-check-${task.id}`} style={[styles.check, { borderColor: colors.borderStrong }]}><Ic name="check" size={14} color={colors.muted} /></Pressable>} />

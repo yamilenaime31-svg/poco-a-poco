@@ -6,7 +6,7 @@ import { ActivityIndicator, LogBox, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
-import { AuthProvider } from "@/src/auth";
+import { AuthProvider, useAuth } from "@/src/auth";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { queryClient } from "@/src/query-client";
 import { colors } from "@/src/theme";
@@ -23,9 +23,10 @@ export default function RootLayout() {
     "PJS-600": require("../assets/fonts/PJS-600.ttf"),
     "PJS-700": require("../assets/fonts/PJS-700.ttf"),
     "PJS-800": require("../assets/fonts/PJS-800.ttf"),
-    "DMS-400": require("../assets/fonts/DMS-400.ttf"),
-    "DMS-500": require("../assets/fonts/DMS-500.ttf"),
-    "DMS-700": require("../assets/fonts/DMS-700.ttf"),
+    "Inter-400": require("../assets/fonts/Inter-400.ttf"),
+    "Inter-500": require("../assets/fonts/Inter-500.ttf"),
+    "Inter-600": require("../assets/fonts/Inter-600.ttf"),
+    "Inter-700": require("../assets/fonts/Inter-700.ttf"),
   });
 
   if (!loaded && !error) {
@@ -44,7 +45,7 @@ export default function RootLayout() {
             <AuthProvider>
               <ToastProvider>
                 <StatusBar style="dark" />
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }} />
+                <AuthGate />
               </ToastProvider>
             </AuthProvider>
           </KeyboardProvider>
@@ -52,6 +53,18 @@ export default function RootLayout() {
       </ErrorBoundary>
     </GestureHandlerRootView>
   );
+}
+
+/** Screens mount only after the saved session is restored, so deep links / cold starts never call the API without a token. */
+function AuthGate() {
+  const { ready } = useAuth();
+  if (!ready)
+    return (
+      <View style={[styles.root, styles.center, { backgroundColor: colors.surface }]}>
+        <ActivityIndicator color={colors.sage} />
+      </View>
+    );
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }} />;
 }
 
 const styles = StyleSheet.create({

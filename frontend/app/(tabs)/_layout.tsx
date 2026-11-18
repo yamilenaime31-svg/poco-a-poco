@@ -4,6 +4,7 @@ import { Redirect, Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 import { useAuth } from "@/src/auth";
+import { useReminderSync } from "@/src/reminders";
 import { usesNativeTabs } from "@/src/navigation";
 import { fonts, useTheme } from "@/src/theme";
 
@@ -18,6 +19,7 @@ const TABS = [
 export default function TabsLayout() {
   const { user, ready } = useAuth();
   const { colors } = useTheme();
+  useReminderSync();
   if (ready && !user) return <Redirect href="/landing" />;
 
   if (usesNativeTabs)
