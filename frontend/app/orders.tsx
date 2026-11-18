@@ -19,7 +19,7 @@ export default function Orders() {
         <Chip label="Historial de compras" selected={tab === "history"} onPress={() => setTab("history")} testID="orders-tab-history" />
       </ScrollView>
       {q.isLoading ? <Loading /> : list.length === 0 ? (
-        <Empty icon="truck" title={tab === "active" ? "Sin pedidos en curso" : "Aún no hay compras anteriores"} text="Cuando hagas un pedido, podrás seguirlo aquí." action="Ir a kits" onAction={() => router.push("/(tabs)/kits")} testID="orders-empty" />
+        <Empty icon="truck" title={tab === "active" ? "Sin pedidos en curso" : "Aún no hay compras anteriores"} text="Cuando hagas un pedido, podrás seguirlo aquí." action="Ir a kits" onAction={() => router.push("/(tabs)/mykits")} testID="orders-empty" />
       ) : (
         list.map((o, i) => (
           <Row key={o.id} icon="package" tint={o.active ? "sage" : "sand"} title={`Pedido ${o.number}`} subtitle={`${fmtDateTime(o.created_at)} · ${o.items.length} artículo(s) · ${money(o.total)}`} right={<Badge label={o.status} tint={o.status === "Entregado" ? "sage" : o.status === "Cancelado" ? "coral" : "lavender"} />} onPress={() => router.push(`/order/${o.id}`)} testID={`order-row-${o.id}`} last={i === list.length - 1} />

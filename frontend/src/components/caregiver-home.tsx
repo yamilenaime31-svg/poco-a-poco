@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { TabScreen } from "@/src/components/tab-screen";
+import { TileGrid } from "@/src/components/tile-grid";
 import { SIGNALS, fmtDate, fmtDateTime, today } from "@/src/constants";
-import { Badge, Card, Chip, Empty, ErrorState, Ic, Loading, Row, Section, Txt } from "@/src/ui";
-import { radius, space, useTheme } from "@/src/theme";
+import { Badge, Card, Chip, Empty, ErrorState, Loading, Row, Section, Txt } from "@/src/ui";
+import { space } from "@/src/theme";
 
 export function CaregiverHome() {
   const router = useRouter();
   const { user } = useAuth();
-  const { colors } = useTheme();
   const q = useApi<any>(`/home?today=${today()}&role=caregiver`);
   const d = q.data?.role === "caregiver" ? q.data : undefined;
   const [pid, setPid] = useState<string | null>(null);
@@ -65,33 +65,22 @@ export function CaregiverHome() {
           </Section>
 
           <Section title={`Agenda compartida${sel ? ` · ${sel.patient_name}` : ""}`} action="Abrir" onAction={() => router.push({ pathname: "/(tabs)/agenda", params: { owner: sel?.patient_id } })} testID="caregiver-shared-agenda">
-            {!sel?.permissions?.events ? (
-              <Txt v="caption">{sel?.patient_name} no comparte su agenda contigo.</Txt>
-            ) : shared.length === 0 ? (
-              <Txt v="caption">Sin eventos próximos.</Txt>
+            {shared.length === 0 ? (
+              <Txt v="caption">{sel?.patient_name} aún no comparte eventos próximos contigo.</Txt>
             ) : (
               shared.map((e: any, i: number) => <Row key={e.id} icon="calendar" tint="sand" title={e.title} subtitle={`${fmtDate(e.date)}${e.time ? ` · ${e.time}` : ""}${e.location ? ` · ${e.location}` : ""}`} onPress={() => router.push({ pathname: "/event/[id]", params: { id: e.id } })} testID={`caregiver-event-${e.id}`} last={i === shared.length - 1} />)
             )}
           </Section>
 
           <Section title="Acompañar">
-            <View style={styles.grid}>
-              {[
+            <TileGrid tiles={[
                 { label: "Crear un kit", icon: "gift", onPress: () => router.push({ pathname: "/kit-builder", params: { for_name: sel?.patient_name, for_user_id: sel?.patient_id } }) },
                 { label: "Gastos compartidos", icon: "wallet", onPress: () => router.push({ pathname: "/records/[kind]", params: { kind: "expenses", owner_id: sel?.patient_id } }) },
                 { label: "Traslados", icon: "car", onPress: () => router.push({ pathname: "/records/[kind]", params: { kind: "transfers", owner_id: sel?.patient_id } }) },
                 { label: "Mi propia agenda", icon: "calendar-heart", onPress: () => router.push("/(tabs)/agenda") },
                 { label: "Personas vinculadas", icon: "users", onPress: () => router.push("/network") },
                 { label: "Solicitudes", icon: "inbox", onPress: () => router.push("/signals") },
-              ].map((a) => (
-                <Pressable key={a.label} onPress={a.onPress} testID={`caregiver-action-${a.label}`} style={({ pressed }) => [styles.tile, { backgroundColor: colors.surfaceSecondary, opacity: pressed ? 0.8 : 1 }]}>
-                  <Ic name={a.icon} size={20} />
-                  <Txt v="medium" style={{ fontSize: 14 }}>
-                    {a.label}
-                  </Txt>
-                </Pressable>
-              ))}
-            </View>
+              ].map((a, i) => ({ ...a, key: a.label, tint: ["sage", "butter", "sky", "lavender", "coral", "sage"][i], testID: `caregiver-action-${a.label}` }))} />
           </Section>
 
           {d.own_events.length > 0 ? (
@@ -107,6 +96,4 @@ export function CaregiverHome() {
 
 const styles = StyleSheet.create({
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  tile: { width: "48.6%", borderRadius: radius.md, padding: space.lg, gap: space.md, minHeight: 92 },
 });

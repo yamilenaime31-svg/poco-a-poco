@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
+import { ShareWith, joinNames } from "@/src/components/share-with";
 import { KINDS, isDate, isTime } from "@/src/constants";
 import { DateField, SingleChoice } from "@/src/form";
 import { useToast } from "@/src/toast";
@@ -36,6 +37,7 @@ export default function RecordForm() {
 
   // People who can take a task: me + active links in either direction.
   const ownerId = existing.data?.owner_id || owner_id || user?.id;
+  const isOwner = ownerId === user?.id;
   const people: { id: string; name: string }[] = [{ id: user!.id, name: "Yo" }];
   (net.data?.as_patient || []).filter((l: any) => l.status === "active").forEach((l: any) => people.push({ id: l.caregiver_id, name: l.caregiver_name }));
   (net.data?.as_caregiver || []).filter((l: any) => l.status === "active" && l.patient_id === ownerId).forEach((l: any) => people.push({ id: l.patient_id, name: l.patient_name }));
@@ -57,12 +59,14 @@ export default function RecordForm() {
       body[f.key] = f.key === "amount" ? Number(v[f.key]) : v[f.key];
     });
     if (kind === "tasks") body.assignee_name = people.find((p) => p.id === v.assignee_id)?.name || "";
+    if (isOwner) body.shared_with = v.shared_with || [];
     setSaving(true);
     try {
       if (id) await api(`/records/${kind}/${id}`, { method: "PUT", body });
       else await api(`/records/${kind}`, { method: "POST", body: { ...body, owner_id: owner_id || undefined } });
       invalidate();
-      toast.show(id ? "Cambios guardados" : "Guardado");
+      const sharedNames = people.filter((p) => (body.shared_with || []).includes(p.id)).map((p) => p.name);
+      toast.show(sharedNames.length ? `Guardado y compartido con ${joinNames(sharedNames)}` : id ? "Cambios guardados" : "Guardado. Solo tú puedes verlo");
       router.back();
     } catch (err: any) {
       toast.show(err.message, "error");
@@ -140,6 +144,7 @@ export default function RecordForm() {
               />
             );
           })}
+          {isOwner ? <ShareWith value={v.shared_with || []} onChange={set("shared_with")} testID="record-share" /> : <Txt v="caption">Esto pertenece al espacio de otra persona; ella decide con quién se comparte.</Txt>}
         </>
       )}
     </Screen>

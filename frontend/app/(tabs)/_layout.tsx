@@ -10,8 +10,9 @@ import { fonts, useTheme } from "@/src/theme";
 const TABS = [
   { name: "index", label: "Inicio", icon: "house", sf: "house.fill" },
   { name: "agenda", label: "Agenda", icon: "calendar", sf: "calendar" },
-  { name: "kits", label: "Kits", icon: "package", sf: "shippingbox" },
-  { name: "profile", label: "Perfil", icon: "user-round", sf: "person.crop.circle" },
+  { name: "mykits", label: "Kits", icon: "package", sf: "shippingbox" },
+  { name: "organiza", label: "Organiza", icon: "layout-grid", sf: "square.grid.2x2" },
+  { name: "me", label: "Perfil", icon: "user-round", sf: "person.crop.circle" },
 ] as const;
 
 export default function TabsLayout() {
@@ -39,7 +40,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: { backgroundColor: colors.surfaceSecondary, borderTopColor: colors.border, ...(Platform.OS === "web" ? { height: 64 } : {}) },
         tabBarItemStyle: { alignSelf: "center" },
-        tabBarLabelStyle: { fontFamily: fonts.bodyMedium, fontSize: 12 },
+        tabBarLabelStyle: { fontFamily: fonts.bodyMedium, fontSize: 11 },
       }}
     >
       {TABS.map((t) => (
@@ -49,7 +50,7 @@ export default function TabsLayout() {
           options={{
             title: t.label,
             tabBarButtonTestID: `tab-${t.name}`,
-            tabBarIcon: ({ color, focused }) => <Lucide name={t.icon as any} size={22} color={color} style={{ opacity: focused ? 1 : 0.8 }} />,
+            tabBarIcon: ({ color, focused }) => <Lucide name={t.icon as any} size={22} color={color} style={{ opacity: focused ? 1 : 0.75 }} />,
           }}
         />
       ))}

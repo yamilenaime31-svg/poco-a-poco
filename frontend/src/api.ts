@@ -38,14 +38,21 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
     const d = (data as any)?.detail;
-    throw new Error(typeof d === "string" ? d : Array.isArray(d) ? "Revisa los campos marcados." : "Algo no salió como esperábamos. Intenta de nuevo.");
+    const err: any = new Error(typeof d === "string" ? d : Array.isArray(d) ? "Revisa los campos marcados." : "Algo no salió como esperábamos. Intenta de nuevo.");
+    err.status = r.status;
+    throw err;
   }
   return data as T;
 }
 
 /** GET helper with cache + refetch whenever the screen regains focus. */
 export function useApi<T = any>(path: string | null) {
-  const q = useQuery<T>({ queryKey: [path], queryFn: () => api<T>(path as string), enabled: !!path });
+  const q = useQuery<T>({
+    queryKey: [path],
+    queryFn: () => api<T>(path as string),
+    enabled: !!path,
+    retry: (n, e: any) => !(e?.status >= 400 && e?.status < 500) && n < 2,
+  });
   const { refetch } = q;
   useFocusEffect(
     useCallback(() => {

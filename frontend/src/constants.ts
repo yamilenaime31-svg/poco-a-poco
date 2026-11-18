@@ -127,14 +127,18 @@ export const KINDS: Record<string, KindDef> = {
 
 export const SIGNALS = [
   { type: "compania", label: "Necesito compañía", icon: "users", tint: "sage" },
+  { type: "solo", label: "Quiero estar a solas", icon: "leaf", tint: "lavender" },
+  { type: "descanso", label: "Quiero descansar", icon: "moon", tint: "sky" },
+  { type: "venir", label: "¿Puedes venir?", icon: "door-open", tint: "coral" },
+  { type: "ayuda", label: "Necesito ayuda", icon: "life-buoy", tint: "butter" },
   { type: "traslado", label: "Necesito un traslado", icon: "car", tint: "lavender" },
   { type: "comida", label: "Algo de comer", icon: "utensils", tint: "coral" },
-  { type: "descanso", label: "Quiero descansar", icon: "moon", tint: "lavender" },
   { type: "hablar", label: "Quiero hablar", icon: "message-circle", tint: "sage" },
-  { type: "compras", label: "Ayuda con compras", icon: "shopping-basket", tint: "coral" },
-  { type: "llamada", label: "Llámame", icon: "phone", tint: "sage" },
-  { type: "espacio", label: "Necesito espacio", icon: "leaf", tint: "lavender" },
+  { type: "compras", label: "Ayuda con compras", icon: "shopping-basket", tint: "butter" },
+  { type: "llamada", label: "Llámame", icon: "phone", tint: "sky" },
 ] as const;
+export const DEFAULT_FAV_SIGNALS = ["compania", "solo", "descanso", "venir", "ayuda"];
+export const MOODS = ["Tranquilo/a", "Con energía", "Cansado/a", "Con sueño", "Estresado/a", "Animado/a", "Incómodo/a", "Triste", "Necesito compañía", "Quiero descansar"];
 
 export const URGENCY = ["Cuando puedas", "Hoy", "Ahora"];
 export const QUICK_REPLIES = ["Voy para allá", "Lo resuelvo hoy", "Te llamo en un momento", "Entendido, aquí estoy"];
@@ -155,15 +159,31 @@ export const KIT_SIZES = [
 
 export const CATEGORIES = [
   { label: "Comodidad", icon: "armchair", tint: "sage" },
-  { label: "Entretenimiento", icon: "book-open", tint: "lavender" },
-  { label: "Cuidado personal", icon: "sparkles", tint: "coral" },
-  { label: "Apariencia e identidad", icon: "shirt", tint: "lavender" },
-  { label: "Hidratación y snacks", icon: "cup-soda", tint: "sage" },
-  { label: "Organización", icon: "folder", tint: "coral" },
-  { label: "Detalles", icon: "gift", tint: "sage" },
+  { label: "Identidad y estilo", icon: "sparkles", tint: "lavender" },
+  { label: "Entretenimiento", icon: "book-open", tint: "sky" },
+  { label: "Organización", icon: "folder", tint: "butter" },
+  { label: "Antojos y preferencias", icon: "cup-soda", tint: "coral" },
+  { label: "Cuidado personal", icon: "hand-heart", tint: "sage" },
+  { label: "Detalles", icon: "gift", tint: "butter" },
 ];
 
+export const IDENTITY = {
+  explore: ["Sí", "Tal vez", "No por ahora"],
+  accessories: ["Pañuelos", "Gorros", "Bandas", "Pelucas", "Accesorios para el cabello", "Aretes", "Lentes", "Arreglo personal", "Ninguno"],
+  styles: ["Minimalista", "Clásico", "Divertido", "Deportivo", "Artesanal", "Colorido", "Elegante"],
+  comfort: ["Telas suaves", "Sin costuras", "Ligero", "Ajustable", "Fácil de poner"],
+  avoid: ["Pelucas", "Maquillaje", "Aromas fuertes", "Colores brillantes"],
+  budget: [
+    { label: "Sin límite", v: 0 },
+    { label: "Hasta $300", v: 300 },
+    { label: "Hasta $600", v: 600 },
+    { label: "Hasta $1,000", v: 1000 },
+  ],
+};
+
 export function tintOf(colors: ThemeColors, tint?: string) {
+  if (tint === "butter") return { bg: colors.butterSoft, fg: colors.onSurface, accent: colors.butter };
+  if (tint === "sky") return { bg: colors.skySoft, fg: colors.onSurface, accent: colors.sky };
   if (tint === "lavender") return { bg: colors.lavenderSoft, fg: colors.onSurface, accent: colors.lavender };
   if (tint === "coral") return { bg: colors.coralSoft, fg: colors.onSurface, accent: colors.coral };
   if (tint === "sand") return { bg: colors.sand, fg: colors.onSurface, accent: colors.borderStrong };
@@ -188,16 +208,10 @@ export const ASK_WAYS = ["Señales rápidas", "Mensajes", "Llamadas", "Prefiero 
 export const CAREGIVER_SUPPORT = ["Traslados", "Comidas", "Compras", "Compañía", "Trámites", "Gastos", "Tareas del hogar", "Organizar la agenda"];
 export const RELATIONS = ["Pareja", "Madre o padre", "Hijo/a", "Hermano/a", "Amistad", "Cuidador/a", "Otro"];
 
+// Visibility is decided item by item ("Compartir con…"); these are the only person-level permissions.
 export const SHARE_KEYS: { key: string; label: string }[] = [
-  { key: "events", label: "Agenda" },
-  { key: "tasks", label: "Pendientes" },
-  { key: "transfers", label: "Traslados" },
-  { key: "expenses", label: "Gastos y pagos" },
-  { key: "treatments", label: "Tratamientos y ciclos" },
-  { key: "medications", label: "Medicamentos registrados" },
-  { key: "journal", label: "Registro cotidiano" },
   { key: "signals", label: "Recibe mis señales rápidas" },
-  { key: "edit", label: "Puede agregar y editar" },
+  { key: "edit", label: "Puede agregar cosas en mi espacio y editar lo compartido" },
 ];
 
 // ---------------------------------------------------------------- formatting

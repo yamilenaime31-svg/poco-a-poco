@@ -5,7 +5,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 
 import { api } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { ASK_WAYS, CAREGIVER_SUPPORT, NEEDS, PATIENT_TASTES, RELATIONS, SHARE_KEYS } from "@/src/constants";
+import { ASK_WAYS, CAREGIVER_SUPPORT, IDENTITY, NEEDS, PATIENT_TASTES, RELATIONS, SHARE_KEYS } from "@/src/constants";
 import { DateField, MultiChoice, SingleChoice } from "@/src/form";
 import { useToast } from "@/src/toast";
 import { Btn, Card, Field, Ic, ProgressBar, Row, Screen, SwitchRow, Txt } from "@/src/ui";
@@ -21,7 +21,7 @@ export default function Onboarding() {
   const toast = useToast();
   const { colors } = useTheme();
   const isPatient = user?.role !== "caregiver";
-  const steps = isPatient ? ["treatment", "tastes", "needs", "companions", "privacy", "done"] : ["about", "companions", "privacy", "done"];
+  const steps = isPatient ? ["treatment", "tastes", "identity", "needs", "companions", "privacy", "done"] : ["about", "tastes", "identity", "companions", "privacy", "done"];
   const editing = params.edit === "1";
   const [i, setI] = useState(Math.max(0, steps.indexOf(params.step || "")));
   const step = steps[i];
@@ -30,6 +30,8 @@ export default function Onboarding() {
   const [tastes, setTastes] = useState<Record<string, any>>({ activities: [], objects: [], comfort: [], colors: [], styles: [], dislikes: [], ...(p.tastes || {}) });
   const [needs, setNeeds] = useState<Record<string, any>>({ support: [], ask: [], note: "", ...(p.needs || {}) });
   const [about, setAbout] = useState<Record<string, any>>({ relation: "", support: [], ...(p.about || {}) });
+  const [identity, setIdentity] = useState<Record<string, any>>({ explore: "", accessories: [], styles: [], comfort: [], avoid: [], ...(p.identity || {}) });
+  const [budget, setBudget] = useState<number>(p.kit_prefs?.budget || 0);
   const [share, setShare] = useState<Record<string, boolean>>({ events: true, tasks: true, transfers: true, expenses: false, treatments: false, medications: false, journal: false, edit: true, ...(p.privacy?.share || {}) });
   const [inv, setInv] = useState({ name: "", email: "", relation: "" });
   const [code, setCode] = useState("");
@@ -46,6 +48,7 @@ export default function Onboarding() {
       }
     }
     if (step === "tastes") await updateMe({ profile: { tastes } });
+    if (step === "identity") await updateMe({ profile: { identity, kit_prefs: { budget } } });
     if (step === "needs") await updateMe({ profile: { needs } });
     if (step === "about") await updateMe({ profile: { about } });
     if (step === "privacy") await updateMe({ profile: { privacy: { share } } });
@@ -136,6 +139,20 @@ export default function Onboarding() {
             <MultiChoice label="¿Qué artículos o cosas no te gustan?" options={PATIENT_TASTES.dislikes} value={tastes.dislikes} onChange={(v) => setTastes({ ...tastes, dislikes: v })} testID="taste-dislike" allowCustom />
           </>
         )}
+        {step === "identity" && (
+          <>
+            <Txt v="h1">Tu estilo, a tu manera.</Txt>
+            <Txt v="caption" style={{ marginTop: space.xs, marginBottom: space.xl }}>
+              Los cambios cotidianos pueden mover cómo te ves y te sientes. Aquí decides qué quieres explorar, y qué no. Todo es opcional.
+            </Txt>
+            <SingleChoice label="¿Quieres ver opciones relacionadas con tu apariencia?" options={IDENTITY.explore} value={identity.explore} onChange={(v) => setIdentity({ ...identity, explore: v })} testID="identity-explore" />
+            <MultiChoice label="Accesorios que usas o te gustan" options={IDENTITY.accessories} value={identity.accessories} onChange={(v) => setIdentity({ ...identity, accessories: v.filter((x) => x !== "Ninguno" || v.length === 1) })} testID="identity-acc" allowCustom />
+            <MultiChoice label="Estilos que van contigo" options={IDENTITY.styles} value={identity.styles} onChange={(v) => setIdentity({ ...identity, styles: v })} testID="identity-style" />
+            <MultiChoice label="Lo que te resulta cómodo" options={IDENTITY.comfort} value={identity.comfort} onChange={(v) => setIdentity({ ...identity, comfort: v })} testID="identity-comfort" />
+            <MultiChoice label="Prefiero no ver" options={IDENTITY.avoid} value={identity.avoid} onChange={(v) => setIdentity({ ...identity, avoid: v })} testID="identity-avoid" allowCustom />
+            <SingleChoice label="Presupuesto por artículo en recomendaciones (opcional)" options={IDENTITY.budget.map((b) => b.label)} value={IDENTITY.budget.find((b) => b.v === budget)?.label} onChange={(v) => setBudget(IDENTITY.budget.find((b) => b.label === v)?.v || 0)} testID="identity-budget" />
+          </>
+        )}
         {step === "needs" && (
           <>
             <Txt v="h1">¿En qué te vendría bien apoyo?</Txt>
@@ -202,7 +219,7 @@ export default function Onboarding() {
           <>
             <Txt v="h1">Privacidad, a tu modo.</Txt>
             <Txt v="caption" style={{ marginTop: space.xs, marginBottom: space.xl }}>
-              {isPatient ? "Esto es lo que verán por defecto tus nuevos acompañantes. Puedes ajustarlo por persona." : "Solo verás lo que cada persona decida compartir contigo."}
+              {isPatient ? "Todo lo que registres es privado por defecto: tú eliges, elemento por elemento, con quién compartirlo. Aquí defines lo básico para cada nuevo acompañante." : "Solo verás lo que cada persona decida compartir contigo."}
             </Txt>
             {isPatient ? (
               SHARE_KEYS.map((s) => <SwitchRow key={s.key} label={s.label} value={!!share[s.key]} onValueChange={(v) => setShare({ ...share, [s.key]: v })} testID={`privacy-${s.key}-switch`} />)
@@ -223,6 +240,7 @@ export default function Onboarding() {
               Tu espacio está listo.
             </Txt>
             <Txt style={{ marginTop: space.md }}>Todo lo que elegiste se puede cambiar cuando quieras desde tu perfil. Un día a la vez, a tu modo.</Txt>
+            <Btn label="Crear mi avatar (opcional)" variant="secondary" icon="smile" onPress={() => router.push("/avatar")} testID="onboarding-avatar-button" style={{ marginTop: space.xl, alignSelf: "flex-start" }} />
           </View>
         )}
       </Animated.View>

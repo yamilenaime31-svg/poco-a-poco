@@ -3,6 +3,7 @@ import { Share, View } from "react-native";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
+import { Avatar } from "@/src/components/avatar";
 import { RELATIONS, SHARE_KEYS } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
 import { useToast } from "@/src/toast";
@@ -27,7 +28,12 @@ function LinkCard({ l, asPatient }: { l: any; asPatient: boolean }) {
   };
   return (
     <Card style={{ marginBottom: space.md }} testID={`link-card-${l.id}`}>
-      <Row icon="user-round" tint={asPatient ? "lavender" : "sage"} title={name || "Invitación"} subtitle={[l.relation, l.caregiver_email && asPatient ? l.caregiver_email : null].filter(Boolean).join(" · ")} right={<Badge label={statusLabel} tint={l.status === "active" ? "sage" : "coral"} />} last />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+        <Avatar avatar={asPatient ? l.caregiver_avatar : l.patient_avatar} name={name} size={48} testID={`link-avatar-${l.id}`} />
+        <View style={{ flex: 1 }}>
+          <Row title={name || "Invitación"} subtitle={[l.relation, l.caregiver_email && asPatient ? l.caregiver_email : null].filter(Boolean).join(" · ")} right={<Badge label={statusLabel} tint={l.status === "active" ? "sage" : "coral"} />} last />
+        </View>
+      </View>
       {canAccept ? (
         <View style={{ flexDirection: "row", gap: space.sm }}>
           <Btn label="Rechazar" variant="ghost" small onPress={() => act(`/network/${l.id}`, "DELETE", undefined, "Solicitud rechazada")} testID={`link-decline-${l.id}`} style={{ flex: 1 }} />
@@ -49,7 +55,7 @@ function LinkCard({ l, asPatient }: { l: any; asPatient: boolean }) {
       ) : null}
       {!asPatient && l.status === "active" && user ? (
         <Txt v="caption" style={{ marginTop: space.sm }}>
-          Comparte contigo: {SHARE_KEYS.filter((s) => s.key !== "edit" && l.permissions?.[s.key]).map((s) => s.label).join(", ") || "solo señales"}
+          Solo ves lo que {l.patient_name} decida compartir contigo, elemento por elemento.{l.permissions?.signals === false ? "" : " Recibes sus señales rápidas."}
         </Txt>
       ) : null}
     </Card>

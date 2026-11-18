@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 2 tested at 390x844. Backend: 36/36 pytest pass (27 regression tests, with 1 updated for per-item sharing, plus 9 new iteration-2 tests). Sharing, invites, organize parse/commit with the real gpt-5.4 model, recommendations, reorder and kits-shared all work. Frontend: 17 of 18 flows work end to end. One bug: a custom signal made in Personalizar is saved but never shows on Home. Two smaller UX issues: an invalid or used invite shows a blank screen for about 9s, and every visit to /link creates a new invite. No deprecated Expo packages found (expo-camera CameraView is used for scanning).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/kits/{kid}", "issue": "kit_fields() fills every field it is not sent with a default, so a partial body (for example {shared_with:[...]}) wipes the kit: name becomes 'Mi kit', items become [] and size becomes Mediano. The current frontend always sends the full kit, so users are not affected today, but the endpoint is fragile (server.py:740-779)."},
+      {"endpoint": "POST /api/invites", "issue": "There is no reuse or limit, so active 48h tokens pile up. This combines with the frontend issue where every visit to /link creates a new invite."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Signal editor 'Crear y guardar'", "issue": "Stale closure: the onPress calls setIds([...ids, c.type]) and then save(), but save reads the old `ids`. The custom signal is stored in settings.custom_signals but is NOT added to settings.signal_favorites, so it never appears on Home. Verified: signal_favorites stayed [compania, solo, descanso, venir, traslado] while the custom 'TEST_Té caliente' was saved. Fix: build next=[...ids, c.type] and pass it to save(). Reference: src/components/home-patient.tsx:46-49,74-79", "testID": "signal-custom-create", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Opening a used, expired or invalid invite (/invite?token=)", "issue": "useApi uses the React Query default of 3 retries with backoff, even for 410 responses. The screen shows only the title for about 9s before 'Invitación no disponible' appears. Set retry:false for 4xx responses (src/api.ts:47-48).", "affected_testIDs": ["invite-screen", "invite-error"]},
+      {"flow": "/link", "issue": "The useEffect creates a new invite on every visit (link.tsx:38-40) instead of reusing a still-active invite from GET /invites, so active tokens pile up.", "affected_testIDs": ["link-qr-card", "link-invites"]}
+    ],
+    "design_issues": [
+      {"screen": "Perfil (me)", "issues": ["The role badge ('Paciente'/'Acompañante', testID profile-role-badge) is left-aligned while the avatar and name above it are centered."]},
+      {"screen": "Organiza", "issues": ["The text in organiza-input stays in the box after 'Confirmar y guardar', which invites a duplicate submit. Clear it after a successful commit."]},
+      {"screen": "Kits - Recomendados", "issues": ["Every template under 'Kits que podrías personalizar' shows the same reason ('Mencionaste que disfrutas escuchar música.'), which looks repetitive."]},
+      {"screen": "Network (caregiver)", "issues": ["Copy issue: the patient card says 'Comparte contigo: solo señales' even though the patient shares events, tasks and expenses with this caregiver item by item. The text should reflect per-item sharing."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_api.py", "/app/backend/tests/test_amodo_iter2.py", "/app/test_reports/pytest/pytest_results_iter2.xml"],
+  "action_items": [
+    "Fix the custom signal stale closure in home-patient.tsx so 'Crear y guardar' adds the new type to signal_favorites (pass the computed ids into save).",
+    "Disable React Query retries for 4xx errors, or at least for the /invites/{token} preview, so invalid invites show the error right away.",
+    "Make /link reuse an existing active invite (from GET /invites) instead of creating one on every mount. Create a new one only when 'Crear invitación para otra persona' is tapped.",
+    "Optional: make PUT /api/kits/{kid} a partial update (only set the fields that are sent), or validate that it receives a full body.",
+    "Minor UI: center the profile role badge, clear the Organiza input after commit, vary the reasons on recommended kit templates, update the caregiver network card copy for per-item sharing.",
+    "Optional: split server.py (1312 lines) into modules (auth, records, network/invites, shop, organize, recommendations)."
+  ],
+  "critical_code_review_comments": [
+    "Server-side sharing is applied correctly in list_records, load_record, home and kits-shared. valid_share drops ids that are not active caregivers.",
+    "Invites are single-use with a 48h expiry, and used, expired or cancelled tokens return 410. Accepting while a link already exists overwrites its relation if one is passed.",
+    "organize/commit inserts events first so a transfer's linked_event_id resolves correctly. Verified: the transfer was linked to the new event and the unchecked expense was not saved.",
+    "server.py is over 700 lines and should be split."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_api.py (replaced the old section-permission 403 assertion with a per-item shared_with filter assertion)", "/app/backend/tests/test_amodo_iter2.py (new)"],
+  "success_rate": {"backend": "100% (36/36)", "frontend": "94% (17/18 flows; custom signal creation fails)"},
+  "seed_data_creation": "No seed data. Cleaned up afterwards by id: TEST_Inv user, its link and invites, the organize records (event, task, transfer), the mood journal entry, TEST_Kit iter2, its order, the sent signal and the /link invite. Restored demo signal_favorites, custom_signals, reco.dismissed and the avatar (removed; none existed before). The demo patient's role is 'patient' and the caregiver's role is 'caregiver'. Leftover notifications from the tests were not deleted.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login state does not survive a new browser_automation session, so log in through the UI at /login each time. The server date is 2026-11-18, so the seeded demo events are now in the past and the caregiver's 'Agenda compartida' is empty; create TEST events for today or later. Not tested: native Share, the /scan camera, manual code/paste link on /link, cancelling invites in the UI, review rewrite/discard, the onboarding identity step, and the 'Ya lo tengo' / 'Ver' reco buttons in the UI (the owned/dismiss API is covered by pytest). Do not partially PUT seeded kits: it wipes them.",
+  "rca_of_issue": "Custom signal: in home-patient.tsx the 'Crear y guardar' handler calls setIds(...) and then save(...) in the same tick, and save() reads `ids` from the render closure, which does not include the new type yet. Reproduce: Inicio > Personalizar > type a label > 'Crear y guardar' > the Home signals do not include it, and GET /api/me shows it only in custom_signals."
+}

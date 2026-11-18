@@ -17,10 +17,28 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 ## Implemented (2026-06)
 - All flows above end-to-end; tested by testing agent (iteration 1: backend 27/27 after fixes, frontend flows pass; role-switch crash fixed).
 
+## Iteration 2 (2026-11)
+- Warm cream palette (#FFF9F0 + pastel green/lavender/peach/butter/sky), radii 20–28, soft shadows
+- 5 tabs: Inicio, Agenda, Kits (mykits), Organiza, Perfil (me)
+- Customizable inclusive SVG avatar (/avatar), shown in Home header, Profile, network cards
+- Home redesign: Mi día card, mood chips, circular favorite signals (customizable, confirm before send), Próximo, Pendientes, Organiza grid, Mi kit
+- Organiza: "¿Qué hay de nuevo?" real AI (gpt-5.4 via Emergent key) → editable review → confirm → saved to right sections (transfer linked to event); nothing saved without confirmation
+- Per-item privacy: records & kits `shared_with`, private by default, enforced server-side; "Compartir con…" control in forms, kit builder and review
+- QR/link invitations (48h, single-use, cancelable, confirmation screen), scan with camera permission flow, manual code
+- "Identidad y estilo" category + 8 new products; onboarding identity step (explore, accessories, styles, comfort, avoid, budget)
+- Explainable recommendations engine (/api/recommendations) with dismiss / already-own / reset; reorder section; shared kits for caregivers
+- Testing iteration 2: 36 backend tests pass; frontend flows pass; custom signal fix, 4xx no-retry, invite reuse applied after
+
 ## Backlog
-- P1: Real email delivery for password reset & invitations (Resend)
-- P1: Product photo uploads (object storage) + admin catalog editing
-- P1: Real payments (Stripe/Mercado Pago) when ready
-- P2: Native date/time pickers, calendar month view
-- P2: Split server.py into modules; stricter request models
-- P2: Placeholders on network inputs
+- P1: Use a personal photo instead of avatar (needs object storage)
+- P1: Real email delivery (Resend), real payments
+- P2: Kit PUT partial update safety, varied reasons for suggested kits, split server.py
+- P2: Product photo uploads
+
+## Iteration 3 (2026-11) — UX/UI refinement
+- Desaturated palette (cream #FAF6F0, surfaces #FFFEFC, soft pastels), radii 12/16/22, tighter typography & section spacing
+- Shared compact 2-col TileGrid (src/components/tile-grid.tsx) for Home/Organiza/Kits categories/Caregiver actions; auto-stacks icon above label when tiles < 150px
+- Home: compact Mi día card; MoodCard (10 feelings, multi-select, Ver más, custom note, editable, saved in journal moods[]/mood_note); smaller signals with 3-line labels
+- Mis kits: compact "Armar nuevo kit", 3 equal quick tiles, 2x3 category grid
+- Avatar editor: icon category tabs + illustrated mini-avatar thumbnails (zoomed crops) that update preview live
+- Testing iteration 3: 20/21 passed; tile overflow at 360–375px fixed after

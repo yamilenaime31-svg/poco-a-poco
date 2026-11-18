@@ -6,6 +6,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { ProductCard } from "@/src/components/product-card";
+import { ShareWith } from "@/src/components/share-with";
 import { CATEGORIES, KIT_CONTEXTS, KIT_SIZES, money } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Chip, ChipRow, Field, Ic, Loading, ProductImage, ProgressBar, Screen, Txt } from "@/src/ui";
@@ -15,7 +16,7 @@ type Item = { product_id: string; options: Record<string, string> };
 const STEPS = ["Para quién", "Contexto", "Tamaño", "Categorías", "Artículos", "Vista previa"];
 
 export default function KitBuilder() {
-  const params = useLocalSearchParams<{ id?: string; template?: string; context?: string; for_name?: string; for_user_id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; template?: string; context?: string; for_name?: string; for_user_id?: string; add?: string }>();
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();
@@ -30,7 +31,8 @@ export default function KitBuilder() {
   const [context, setContext] = useState(params.context || "");
   const [size, setSize] = useState("Mediano");
   const [cats, setCats] = useState<string[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Item[]>(params.add ? [{ product_id: params.add, options: {} }] : []);
+  const [shared, setShared] = useState<string[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
@@ -46,6 +48,7 @@ export default function KitBuilder() {
     setItems(k.items.map((i: any) => ({ product_id: i.product_id, options: i.options || {} })));
     setName(k.template ? `${k.name} (mío)` : k.name);
     setNote(k.note || "");
+    setShared(k.shared_with || []);
     if (k.for_name) {
       setForWho("other");
       setForName(k.for_name);
@@ -71,7 +74,7 @@ export default function KitBuilder() {
 
   const save = async () => {
     setSaving(true);
-    const body = { name: name.trim() || `Kit · ${context}`, context, size, categories: cats, items, note, for_name: forWho === "other" ? forName.trim() : "", for_user_id: forWho === "other" ? forUserId || null : null };
+    const body = { name: name.trim() || `Kit · ${context}`, context, size, categories: cats, items, note, for_name: forWho === "other" ? forName.trim() : "", for_user_id: forWho === "other" ? forUserId || null : null, shared_with: shared };
     try {
       const k = params.id ? await api(`/kits/${params.id}`, { method: "PUT", body }) : await api("/kits", { method: "POST", body });
       invalidate();
@@ -263,6 +266,7 @@ export default function KitBuilder() {
               </Txt>
             </View>
             <Field label="Nombre del kit" value={name} onChangeText={setName} placeholder={`Kit · ${context}`} testID="kit-name-input" />
+            {user?.role !== "caregiver" ? <ShareWith value={shared} onChange={setShared} testID="kit-share" /> : null}
             <Field label="Nota o dedicatoria (opcional)" value={note} onChangeText={setNote} multiline testID="kit-note-input" />
           </>
         )}

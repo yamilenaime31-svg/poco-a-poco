@@ -118,7 +118,9 @@ class TestRecords:
             requests.put(f"{BASE}/network/{link['id']}/permissions", headers=H(ptok), json={"events": True, "expenses": False, "edit": True})
             r = requests.get(f"{BASE}/records/events", headers=H(ctok), params={"owner_id": pu["id"]})
             assert r.status_code == 200
-            assert requests.get(f"{BASE}/records/expenses", headers=H(ctok), params={"owner_id": pu["id"]}).status_code == 403
+            # iteration 2: section perms replaced by per-item shared_with -> list returns 200, filtered to shared items only
+            rx = requests.get(f"{BASE}/records/expenses", headers=H(ctok), params={"owner_id": pu["id"]})
+            assert rx.status_code == 200 and all(cu["id"] in (x.get("shared_with") or []) for x in rx.json())
             r = requests.post(f"{BASE}/records/events", headers=H(ctok), json={"title": "TEST_cg_event", "date": TODAY, "owner_id": pu["id"]})
             assert r.status_code == 200 and r.json()["owner_id"] == pu["id"]
             eid = r.json()["id"]

@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 3 UI refinement, tested on the frontend only with Playwright on the Expo web build at 390x844 and 320x640, plus extra checks at 360, 375 and 414. Almost everything works: login, the mood card (multi-select, Ver más with 10 options, adding and editing a note, saved after reload), Home and Organiza tiles in 2 equal full-width columns that navigate correctly, the signal confirm sheet, Organiza AI parse to the review screen, Mis kits (new-kit card, the 3 equal quick tiles, 6 categories in 2x3), the avatar editor (9 icon tabs, illustrated thumbnails, live preview, saved after reload), and regression checks of agenda, record forms, kit builder and caregiver home. No page errors. No horizontal page overflow and no mid-word breaks at 320 or 390. One layout bug: at 360 and 375 wide (common phone widths), the 'Entretenimiento' label runs past the right edge of its tile, and 'Medicamentos' touches its tile edge at 360. On native this can turn into the mid-word split the user complained about. No deprecated Expo packages found (no expo-av, expo-barcode-scanner or expo-background-fetch).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TileGrid (kits categories / home organize)", "issue": "Between 360 and about 389 wide the icon sits beside the label (stacked only when width < 360). At 360 the text of kits-cat-Entretenimiento ends at x=186 but the tile ends at x=176, so the text overflows by 10px. At 375 it overflows by 2px. home-organize-Medicamentos goes 1px past its tile at 360. At 390 Entretenimiento has only 5px of right padding. On native iOS/Android a single word wider than its box breaks by character, so 'Entretenimie/nto' and 'Medicam/entos' can come back. Reference: /app/frontend/src/components/tile-grid.tsx:13", "testID": "kits-cat-Entretenimiento", "priority": "HIGH"},
+      {"component": "Avatar editor tab strip", "issue": "The default tab is 'hair' (Cabello), but the horizontal tab ScrollView starts at Rostro, so the selected Cabello tab is hidden on first open at 390 (only Rostro to Boca are visible). Users see the Cabello panel with no visible active tab. Reference: /app/frontend/app/avatar.tsx:36", "testID": "avatar-group-hair", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Mood check-in race", "issue": "When there is no journal for today, persist() POSTs a new journal. If the user taps two chips quickly before the refetch brings back journal.id, two journal records can be created for the same date. Also, local state is not rolled back when a save fails. Reference: /app/frontend/src/components/mood-card.tsx:29-46", "affected_testIDs": ["home-mood-card"]}
+    ],
+    "design_issues": [
+      {"screen": "Caregiver home", "issues": ["The 'Acompañar' grid still uses the old large tiles (about 110px tall, icon above text). It is not the compact TileGrid, so it is inconsistent with the refined patient screens (caregiver-home.tsx:75)."]},
+      {"screen": "Home", "issues": ["Signal circles are still 56px, the same size as the confirm-sheet icon. If they were meant to be visibly smaller, they could be about 48px (home-patient.tsx:250).", "The 'Lo guardamos solo para ti' toast overlaps the header avatar for a moment (cosmetic)."]},
+      {"screen": "Mis kits", "issues": ["Every 'Kits que podrías personalizar' row shows the same reason, 'Mencionaste que disfrutas escuchar música.' (carried over from iteration 2)."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/tests/split_check.js"],
+  "action_items": [
+    "TileGrid: avoid labels overflowing between 360 and 400 wide. For example, stack when width < 400, or measure the tile width instead of the window, or lower the label fontSize or the icon/padding on narrow screens. Check 'Entretenimiento' and 'Medicamentos' at 360 and 375.",
+    "Avatar editor: open on the first tab (Rostro), or scroll the tab strip so the selected tab is visible on mount.",
+    "MoodCard: make sure only one journal is created per day, either by upserting by date in the backend or by chaining saves and reusing the id returned by the first POST. Roll back optimistic state on error.",
+    "Optional: move the caregiver home 'Acompañar' grid to the compact TileGrid for consistency."
+  ],
+  "critical_code_review_comments": [
+    "mood-card.tsx: no debounce or ordering on toggle(), so overlapping PUTs can arrive out of order and leave the server with an older moods array.",
+    "tile-grid.tsx: the 'stacked' threshold is based on window width, not on how wide the label needs to be. Long single-word labels (Entretenimiento) need about 105px but get about 78-90px between 360 and 389.",
+    "avatar.tsx: colour swatches use the hex code as accessibilityLabel (e.g. 'Color de piel #FBE3CF'), which is not useful for screen readers."
+  ],
+  "updated_files": ["/app/tests/split_check.js (new test helper, no app code changed)"],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "95% (20 of 21 checks passed; failed: TileGrid label overflow at 360-375)"},
+  "seed_data_creation": "Created one journal record for 2026-11-18 (moods and TEST_ note) through the UI, then deleted it by id. Saved an avatar on the demo patient, then removed it with 'Quitar' to restore the original null avatar. Organiza parse was not committed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login state does not carry over between browser_automation sessions, so log in through /login each time. Server and browser date is 2026-11-18. /app/tests/split_check.js is an evaluate helper: pass it a CSS selector and it returns words broken across lines (split), overflowing children and document overflow. Load it with open('/app/tests/split_check.js').read() inside browser_automation. Check widths 360 and 375 as well as 320 and 390, because the TileGrid layout switches at 360. Demo patient started with no journal for today and no avatar."
+}

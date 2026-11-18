@@ -35,9 +35,9 @@ export function Ic({ name, size = 20, color }: { name: string; size?: number; co
 
 const VARIANTS: Record<string, TextStyle & { fontSize: number; lineHeight: number }> = {
   display: { fontFamily: fonts.displayBold, fontSize: 34, lineHeight: 40, letterSpacing: -0.8 },
-  h1: { fontFamily: fonts.display, fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
-  h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 },
-  title: { fontFamily: fonts.displayMedium, fontSize: 16, lineHeight: 22 },
+  h1: { fontFamily: fonts.display, fontSize: 25, lineHeight: 31, letterSpacing: -0.5 },
+  h2: { fontFamily: fonts.display, fontSize: 18, lineHeight: 24, letterSpacing: -0.3 },
+  title: { fontFamily: fonts.displayMedium, fontSize: 15, lineHeight: 21 },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   medium: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 22 },
   caption: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
@@ -273,7 +273,7 @@ export function Card({ children, style, tint, testID, onPress }: { children: Rea
 
 export function Section({ title, action, onAction, children, testID, style }: { title: string; action?: string; onAction?: () => void; children?: React.ReactNode; testID?: string; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[{ marginTop: space.xxl }, style]} testID={testID}>
+    <View style={[{ marginTop: space.xl }, style]} testID={testID}>
       <View style={styles.sectionHead}>
         <Txt v="label">{title}</Txt>
         {action ? (
@@ -467,10 +467,10 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: space.lg, paddingBottom: space.md, borderBottomWidth: StyleSheet.hairlineWidth },
   headerRow: { flexDirection: "row", alignItems: "center", minHeight: 44 },
   footer: { paddingHorizontal: space.xl, paddingTop: space.lg, borderTopWidth: StyleSheet.hairlineWidth, gap: space.sm },
-  card: { borderRadius: radius.lg, padding: space.lg },
-  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.md },
+  card: { borderRadius: radius.lg, padding: space.lg, shadowColor: "#8A6A3F", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.sm, minHeight: 28 },
   row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 14, minHeight: 56 },
-  rowIcon: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   empty: { alignItems: "center", paddingVertical: space.xxl, paddingHorizontal: space.lg },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", marginBottom: space.md },
   badge: { paddingHorizontal: 10, height: 24, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },

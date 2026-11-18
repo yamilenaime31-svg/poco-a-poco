@@ -9,14 +9,20 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.pocoapoco.xicj0l"
+      "bundleIdentifier": "com.emergent.pocoapoco.xicj0l",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Escanea el QR para unirte a una red de apoyo"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#F5F5F2"
       },
-      "package": "com.emergent.pocoapoco.xicj0l"
+      "package": "com.emergent.pocoapoco.xicj0l",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -39,7 +45,13 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-status-bar",
-      "@react-native-vector-icons/lucide"
+      "@react-native-vector-icons/lucide",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Escanea el QR para unirte a una red de apoyo"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

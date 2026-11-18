@@ -266,17 +266,32 @@ async def resolve_owner(me: dict, owner_id: Optional[str], kind: str, write=Fals
     if not owner_id or owner_id == me["id"]:
         return me["id"]
     link = await active_link(owner_id, me["id"])
-    if not link or not link["permissions"].get(kind):
+    if not link:
         raise HTTPException(403, "No tienes permiso para ver esta información")
     if write and not link["permissions"].get("edit"):
         raise HTTPException(403, "Esta persona no te ha dado permiso para editar")
     return owner_id
 
 
+async def valid_share(owner_id: str, ids) -> list[str]:
+    """Only people with an active link to the owner can receive an item."""
+    if not isinstance(ids, list) or not ids:
+        return []
+    allowed = {link["caregiver_id"] async for link in db.links.find({"patient_id": owner_id, "status": "active"})}
+    return [i for i in dict.fromkeys(ids) if i in allowed]
+
+
+async def notify_shared(owner: dict, ids: list[str], title: str):
+    for cid in ids:
+        await notify(cid, f"{display_name(owner)} compartió algo contigo", title, "records")
+
+
 async def enrich_link(link: dict) -> dict:
     link = clean(link)
     p = await db.users.find_one({"id": link["patient_id"]})
     c = await db.users.find_one({"id": link["caregiver_id"]}) if link.get("caregiver_id") else None
+    link["patient_avatar"] = (p or {}).get("profile", {}).get("avatar")
+    link["caregiver_avatar"] = (c or {}).get("profile", {}).get("avatar")
     link["patient_name"] = display_name(p) if p else ""
     link["caregiver_name"] = display_name(c) if c else (link.get("caregiver_name") or link.get("caregiver_email"))
     return link
@@ -393,6 +408,8 @@ async def list_records(kind: str, owner_id: Optional[str] = None, assigned: Opti
         q = {"kind": kind, "assignee_id": user["id"]}
     else:
         q = {"kind": kind, "owner_id": await resolve_owner(user, owner_id, kind)}
+        if q["owner_id"] != user["id"]:
+            q["shared_with"] = user["id"]
     items = [clean(r) async for r in db.records.find(q).limit(500)]
     if kind in ("events", "transfers", "tasks"):
         items.sort(key=sort_key)
@@ -415,6 +432,8 @@ async def load_record(kind: str, rid: str, user: dict, write=False) -> dict:
     if rec["owner_id"] != user["id"]:
         if not (kind == "tasks" and rec.get("assignee_id") == user["id"]):
             await resolve_owner(user, rec["owner_id"], kind, write)
+            if user["id"] not in (rec.get("shared_with") or []):
+                raise HTTPException(403, "Esta información no se compartió contigo")
     return rec
 
 
@@ -443,10 +462,16 @@ async def create_record(kind: str, body: dict = Body(...), user=Depends(current_
     owner = await resolve_owner(user, body.get("owner_id"), kind, write=True)
     rec = {k: v for k, v in body.items() if k not in PROTECTED}
     rec.update({"id": uid(), "kind": kind, "owner_id": owner, "created_by": user["id"], "created_at": now_iso()})
+    rec["shared_with"] = await valid_share(owner, body.get("shared_with")) if owner == user["id"] else [user["id"]]
     if kind == "tasks":
         rec.setdefault("done", False)
         await check_assignee(rec.get("assignee_id"), owner, user)
+        a = rec.get("assignee_id")
+        if a and a != owner and a not in rec["shared_with"]:
+            rec["shared_with"].append(a)
     await db.records.insert_one(rec)
+    if owner == user["id"]:
+        await notify_shared(user, [i for i in rec["shared_with"] if i != rec.get("assignee_id")], rec.get("title") or rec.get("name") or "")
     if owner != user["id"]:
         await notify(owner, "Nuevo en tu espacio", f"{display_name(user)} agregó: {rec.get('title') or rec.get('name') or 'un registro'}", "records")
     if kind == "tasks" and rec.get("assignee_id") and rec["assignee_id"] != user["id"]:
@@ -460,6 +485,15 @@ async def update_record(kind: str, rid: str, body: dict = Body(...), user=Depend
     s = {k: v for k, v in body.items() if k not in PROTECTED}
     if kind == "tasks" and "assignee_id" in s:
         await check_assignee(s["assignee_id"], rec["owner_id"], user)
+    if "shared_with" in s:
+        if rec["owner_id"] != user["id"]:
+            s.pop("shared_with")
+        else:
+            s["shared_with"] = await valid_share(rec["owner_id"], s["shared_with"])
+            a = s.get("assignee_id", rec.get("assignee_id"))
+            if kind == "tasks" and a and a != rec["owner_id"] and a not in s["shared_with"]:
+                s["shared_with"].append(a)
+            await notify_shared(user, [i for i in s["shared_with"] if i not in (rec.get("shared_with") or [])], rec.get("title") or rec.get("name") or "")
     s["updated_at"] = now_iso()
     await db.records.update_one({"id": rid}, {"$set": s})
     if kind == "tasks" and s.get("done") and rec["owner_id"] != user["id"]:
@@ -566,7 +600,51 @@ P = [
 ]
 
 
+C, I, E, O, A, CP, D = "Comodidad", "Identidad y estilo", "Entretenimiento", "Organización", "Antojos y preferencias", "Cuidado personal", "Detalles"
+# id, name, category, subcategory, price, tags, colors, text personalization, description
+P = [
+    ("p1", "Cobija de punto suave", C, "", 489, ["Cobija", "Calidez", "Ropa suave", "comodidad", "llevar", "casa", "Descansar"], ["Arena", "Salvia", "Lavanda", "Gris"], True, "Cobija ligera de algodón tejido, para salas frías o tardes en casa."),
+    ("p2", "Almohada compacta de viaje", C, "", 329, ["Almohada", "comodidad", "llevar", "Descansar"], ["Arena", "Gris", "Salvia"], False, "Soporte suave con funda lavable para traslados o sesiones largas."),
+    ("p3", "Calcetines tibios antiderrapantes", C, "", 149, ["Calidez", "Ropa suave", "comodidad", "llevar"], ["Arena", "Durazno", "Gris"], False, "Calcetines suaves con suela antiderrapante."),
+    ("p4", "Antifaz de algodón", C, "", 179, ["Descansar", "Luz tenue", "Silencio", "descanso", "llevar"], ["Salvia", "Lavanda", "Negro"], True, "Para descansar con luz, donde estés."),
+    ("p5", "Libreta de notas amodo", O, "", 199, ["Escribir", "Cuaderno", "organización", "preparación", "personal"], ["Salvia", "Lavanda", "Durazno"], True, "Tapa suave para preguntas, ideas o lo que quieras anotar."),
+    ("p6", "Organizador de documentos", O, "", 259, ["organización", "preparación", "papeles"], ["Arena", "Gris"], True, "Carpeta con separadores para estudios, citas y papeles importantes."),
+    ("p7", "Pastillero semanal", O, "", 169, ["organización", "preparación"], ["Salvia", "Gris"], False, "Organizador por días. Úsalo siempre según las indicaciones de tu equipo médico."),
+    ("p8", "Bolsa tote amodo", O, "", 349, ["llevar", "organización", "preparación"], ["Arena", "Negro", "Salvia"], True, "Bolsa amplia para llevar tus cosas a cada cita."),
+    ("p9", "Libro de crucigramas", E, "", 159, ["Jugar", "Leer", "entretenimiento", "llevar"], [], False, "Pasatiempos para ratos de espera."),
+    ("p10", "Set de lápices de color", E, "", 219, ["Dibujar", "entretenimiento", "personal"], [], False, "24 colores con estuche de tela."),
+    ("p11", "Kit para tejer principiante", E, "", 389, ["Tejer", "entretenimiento", "casa"], ["Salvia", "Durazno", "Lavanda"], False, "Agujas, estambre suave y una guía sencilla."),
+    ("p12", "Audífonos con cable", E, "", 299, ["Escuchar música", "Música", "Audífonos", "Ver películas o series", "Silencio", "entretenimiento", "llevar"], ["Negro", "Arena"], False, "Para música, series o un rato de silencio."),
+    ("p13", "Baraja de cartas ilustrada", E, "", 129, ["Jugar", "Conversar", "entretenimiento"], [], False, "Para jugar solo o acompañado."),
+    ("p14", "Novela de bolsillo (selección)", E, "", 239, ["Leer", "Libro", "entretenimiento", "llevar"], [], False, "Elegimos una novela según los géneros que te gustan."),
+    ("p15", "Gorro de algodón sin costuras", I, "Gorros", 249, ["Gorros", "Gorro o pañoleta", "Ropa suave", "Calidez", "estilo"], ["Arena", "Gris", "Salvia", "Negro"], False, "Suave y ligero. Elige lo que va contigo."),
+    ("p16", "Pañuelo estampado", I, "Pañuelos", 289, ["Pañuelos", "Gorro o pañoleta", "estilo"], ["Salvia", "Lavanda", "Durazno", "Mantequilla"], False, "Tela ligera y transpirable, con varias formas de anudarse."),
+    ("p17", "Bálsamo labial sin aroma", CP, "", 99, ["Crema", "cuidado", "llevar"], [], False, "Hidratación sencilla, fórmula sin fragancia."),
+    ("p18", "Crema de manos sin fragancia", CP, "", 179, ["Crema", "cuidado", "casa"], [], False, "Textura ligera, pensada para piel sensible."),
+    ("p19", "Cepillo de dientes extra suave", CP, "", 89, ["cuidado"], ["Salvia", "Lavanda"], False, "Cerdas extra suaves."),
+    ("p20", "Termo de acero 500 ml", A, "", 329, ["Botella de agua", "llevar"], ["Salvia", "Arena", "Negro", "Durazno"], True, "Mantiene tus bebidas frías o calientes."),
+    ("p21", "Caja de tés suaves", A, "", 189, ["Calidez", "casa", "descanso"], [], False, "Infusiones de manzanilla, menta y jengibre."),
+    ("p22", "Snacks surtidos", A, "", 159, ["Snacks", "llevar", "dulce"], [], False, "Galletas, frutos secos y paletas de sabores neutros."),
+    ("p23", "Tarjeta escrita a mano", D, "", 59, ["regalo", "personal"], [], True, "Escribe un mensaje y lo incluimos en el kit."),
+    ("p24", "Vela de soya sin aroma", D, "", 199, ["Luz tenue", "descanso", "casa"], ["Arena", "Salvia"], False, "Luz cálida para tu espacio."),
+    ("p25", "Banda elástica de algodón", I, "Bandas", 149, ["Bandas", "Accesorios para el cabello", "estilo"], ["Salvia", "Lavanda", "Durazno", "Negro"], False, "Cómoda y ajustable. Tu estilo, a tu manera."),
+    ("p26", "Peluca de fibra ligera (asesoría incluida)", I, "Pelucas", 1890, ["Pelucas", "peluca", "estilo"], ["Castaño", "Negro", "Rubio", "Gris"], False, "Una opción más para explorar. Te acompañamos a elegir largo y color, sin prisa."),
+    ("p27", "Lápiz y plantillas para cejas", I, "Accesorios para cejas", 229, ["Cejas", "Arreglo personal", "maquillaje", "estilo"], ["Castaño", "Negro", "Gris"], False, "Opciones para expresarte; úsalas solo si te late."),
+    ("p28", "Pinzas y broches para el cabello", I, "Accesorios para el cabello", 119, ["Accesorios para el cabello", "estilo"], ["Dorado", "Plateado", "Carey"], False, "Detalles pequeños para cualquier largo de cabello."),
+    ("p29", "Aretes ligeros de acero", I, "Accesorios personales", 259, ["Aretes", "estilo", "personal"], ["Dorado", "Plateado"], False, "Ligeros e hipoalergénicos."),
+    ("p30", "Espejo de bolsillo y peine suave", I, "Arreglo personal", 139, ["Arreglo personal", "llevar", "estilo"], ["Salvia", "Lavanda"], True, "Para un momento contigo, donde estés."),
+    ("p31", "Libreta de dibujo de bolsillo", E, "", 179, ["Dibujar", "Escribir", "entretenimiento", "llevar", "personal"], ["Salvia", "Mantequilla"], True, "Papel grueso para bocetos, listas o ideas."),
+    ("p32", "Gorro tejido grueso", I, "Gorros", 299, ["Gorros", "Gorro o pañoleta", "Calidez", "estilo", "casa"], ["Mantequilla", "Gris", "Salvia"], False, "Tejido a mano. Opciones para sentirte más tú."),
+]
+
+
 async def seed_products():
+    for pid, name, cat, sub, price, tags, colors, txt, desc in P:
+        await db.products.update_one({"id": pid}, {"$set": {"id": pid, "name": name, "category": cat, "subcategory": sub, "price": price, "tags": tags,
+                                                             "colors": colors, "personalize_text": txt, "description": desc}, "$setOnInsert": {"image": None}}, upsert=True)
+
+
+async def _old_seed_products():
     for pid, name, cat, price, tags, colors, txt, desc in P:
         await db.products.update_one({"id": pid}, {"$set": {"id": pid, "name": name, "category": cat, "price": price, "tags": tags,
                                                              "colors": colors, "personalize_text": txt, "description": desc, "image": None}}, upsert=True)
@@ -582,6 +660,10 @@ TEMPLATES = [
      "items": ["p2", "p3", "p4", "p5", "p8", "p12", "p17", "p19", "p20", "p14"], "description": "Lo práctico y lo propio, para estancias más largas."},
     {"id": "t4", "name": "Un detalle para alguien", "context": "Regalo para alguien", "size": "Pequeño",
      "items": ["p23", "p1", "p21", "p13"], "description": "Para acompañar a distancia."},
+    {"id": "t5", "name": "Tu estilo, a tu manera", "context": "Descanso en casa", "size": "Mediano",
+     "items": ["p16", "p15", "p25", "p28", "p29", "p30"], "description": "Opciones para explorar diferentes formas de expresarte."},
+    {"id": "t6", "name": "Rato creativo", "context": "Sesión de tratamiento", "size": "Pequeño",
+     "items": ["p31", "p10", "p12", "p20"], "description": "Para dibujar, escuchar música y pasar el rato a tu modo."},
 ]
 
 
@@ -649,7 +731,7 @@ async def get_kit(kid: str, user=Depends(current_user)):
     t = next((t for t in TEMPLATES if t["id"] == kid), None)
     if t:
         return await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]})
-    k = await db.kits.find_one({"id": kid, "owner_id": user["id"]})
+    k = await db.kits.find_one({"id": kid, "$or": [{"owner_id": user["id"]}, {"shared_with": user["id"]}]})
     if not k:
         raise HTTPException(404, "Kit no encontrado")
     return await kit_view(k)
@@ -671,14 +753,27 @@ def kit_fields(body: dict) -> dict:
 
 @api.post("/kits")
 async def create_kit(body: dict = Body(...), user=Depends(current_user)):
-    kit = {"id": uid(), "owner_id": user["id"], "created_at": now_iso(), **kit_fields(body)}
+    kit = {"id": uid(), "owner_id": user["id"], "created_at": now_iso(), **kit_fields(body), "shared_with": await valid_share(user["id"], body.get("shared_with"))}
     await db.kits.insert_one(kit)
+    await notify_shared(user, kit["shared_with"], f"Kit: {kit['name']}")
     return await kit_view(kit)
+
+
+@api.get("/kits-shared")
+async def shared_kits(user=Depends(current_user)):
+    out = []
+    async for k in db.kits.find({"shared_with": user["id"]}):
+        o = await db.users.find_one({"id": k["owner_id"]})
+        out.append({**(await kit_view(k)), "owner_name": display_name(o) if o else ""})
+    return out
 
 
 @api.put("/kits/{kid}")
 async def update_kit(kid: str, body: dict = Body(...), user=Depends(current_user)):
-    res = await db.kits.update_one({"id": kid, "owner_id": user["id"]}, {"$set": kit_fields(body)})
+    s = kit_fields(body)
+    if "shared_with" in body:
+        s["shared_with"] = await valid_share(user["id"], body.get("shared_with"))
+    res = await db.kits.update_one({"id": kid, "owner_id": user["id"]}, {"$set": s})
     if not res.matched_count:
         raise HTTPException(404, "Kit no encontrado")
     return await kit_view(await db.kits.find_one({"id": kid}))
@@ -844,9 +939,8 @@ async def home(today: str = Query(...), user=Depends(current_user)):
         tasks = [clean(t) async for t in db.records.find({"kind": "tasks", "assignee_id": user["id"], "done": False}).limit(10)]
         shared = []
         for link in links:
-            if link["permissions"].get("events"):
-                async for e in db.records.find({"kind": "events", "owner_id": link["patient_id"], "date": {"$gte": today}}):
-                    shared.append({**clean(e), "owner_name": link["patient_name"]})
+            async for e in db.records.find({"kind": "events", "owner_id": link["patient_id"], "shared_with": user["id"], "date": {"$gte": today}}):
+                shared.append({**clean(e), "owner_name": link["patient_name"]})
         shared.sort(key=sort_key)
         own = [clean(e) async for e in db.records.find({"kind": "events", "owner_id": user["id"], "date": {"$gte": today}})]
         own.sort(key=sort_key)
@@ -918,6 +1012,285 @@ async def seed_demo():
                                  "responses": [], "recipients": 1, "created_at": now_iso()})
 
 
+# ---------------------------------------------------------------- invitations (QR / link)
+@api.post("/invites")
+async def create_invite(user=Depends(current_user)):
+    inv = {"token": secrets.token_urlsafe(18), "patient_id": user["id"], "status": "active", "created_at": now_iso(),
+           "expires_at": (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()}
+    await db.invites.insert_one(inv)
+    return clean(inv)
+
+
+@api.get("/invites")
+async def my_invites(user=Depends(current_user)):
+    return [clean(i) async for i in db.invites.find({"patient_id": user["id"], "status": "active", "expires_at": {"$gt": now_iso()}}).sort("created_at", -1)]
+
+
+@api.delete("/invites/{token}")
+async def cancel_invite(token: str, user=Depends(current_user)):
+    await db.invites.update_one({"token": token, "patient_id": user["id"]}, {"$set": {"status": "cancelled"}})
+    return {"ok": True}
+
+
+async def usable_invite(token: str) -> dict:
+    inv = await db.invites.find_one({"token": token})
+    if not inv or inv["status"] != "active" or inv["expires_at"] < now_iso():
+        raise HTTPException(410, "Esta invitación ya no está disponible. Pide una nueva.")
+    return inv
+
+
+@api.get("/invites/{token}")
+async def preview_invite(token: str, user=Depends(current_user)):
+    inv = await usable_invite(token)
+    p = await db.users.find_one({"id": inv["patient_id"]})
+    return {"patient_name": display_name(p), "patient_avatar": p.get("profile", {}).get("avatar"), "expires_at": inv["expires_at"], "own": p["id"] == user["id"]}
+
+
+@api.post("/invites/{token}/accept")
+async def accept_invite(token: str, relation: str = Body("", embed=True), user=Depends(current_user)):
+    inv = await usable_invite(token)
+    if inv["patient_id"] == user["id"]:
+        raise HTTPException(400, "Esta es tu propia invitación")
+    patient = await db.users.find_one({"id": inv["patient_id"]})
+    existing = await db.links.find_one({"patient_id": patient["id"], "caregiver_id": user["id"]})
+    if existing:
+        await db.links.update_one({"id": existing["id"]}, {"$set": {"status": "active", "relation": relation or existing.get("relation", "")}})
+        link_id = existing["id"]
+    else:
+        link_id = uid()
+        await db.links.insert_one({"id": link_id, "patient_id": patient["id"], "caregiver_id": user["id"], "caregiver_email": user["email"], "relation": relation,
+                                   "status": "active", "permissions": {"edit": True, "signals": True}, "created_at": now_iso()})
+    await db.invites.update_one({"token": token}, {"$set": {"status": "used", "used_by": user["id"]}})
+    await notify(patient["id"], "Nueva persona en tu red", f"{display_name(user)} aceptó tu invitación. Por ahora no ve nada hasta que compartas algo.", "network", "/network")
+    return await enrich_link(await db.links.find_one({"id": link_id}))
+
+
+# ---------------------------------------------------------------- organize with AI ("¿Qué hay de nuevo?")
+DAYS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+CAT_KIND = {"event": "events", "transfer": "transfers", "task": "tasks", "expense": "expenses", "medication": "medications", "treatment": "treatments"}
+ORG_PROMPT = """Eres un asistente que SOLO convierte texto en una lista de elementos para organizar. Responde ÚNICAMENTE JSON válido, sin texto extra:
+{"items":[{"category":"event|transfer|task|expense|medication|treatment","title":"","date":"YYYY-MM-DD o vacío","time":"HH:MM o vacío","responsible":"","location":"","amount":null,"notes":"","event_type":"Cita médica|Sesión de tratamiento|Estudio|Actividad personal|Otro","related_to":null,"questions":[]}]}
+Reglas: no inventes fechas, horas, responsables, montos ni datos médicos. Si algo no se dijo, déjalo vacío y agrega en "questions" una pregunta breve en español solo si es necesaria (ej. "¿A qué hora será el traslado?").
+Convierte días relativos usando el calendario dado. "related_to" es el índice (0..n) del evento con el que se relaciona (ej. un traslado a una consulta). Medicamentos: solo los datos dichos. Títulos breves en español."""
+
+
+def _date_or_empty(v) -> str:
+    v = str(v or "").strip()
+    try:
+        datetime.strptime(v, "%Y-%m-%d")
+        return v
+    except ValueError:
+        return ""
+
+
+def _time_or_empty(v) -> str:
+    v = str(v or "").strip()
+    try:
+        return datetime.strptime(v, "%H:%M").strftime("%H:%M")
+    except ValueError:
+        return ""
+
+
+def clean_items(raw) -> list[dict]:
+    out = []
+    for it in raw if isinstance(raw, list) else []:
+        if not isinstance(it, dict) or it.get("category") not in CAT_KIND or not str(it.get("title", "")).strip():
+            continue
+        try:
+            amount = float(it["amount"]) if it.get("amount") not in (None, "") else None
+        except (TypeError, ValueError):
+            amount = None
+        rel = it.get("related_to")
+        out.append({"category": it["category"], "title": str(it["title"]).strip()[:120], "date": _date_or_empty(it.get("date")), "time": _time_or_empty(it.get("time")),
+                    "responsible": str(it.get("responsible") or "")[:80], "location": str(it.get("location") or "")[:120], "amount": amount,
+                    "notes": str(it.get("notes") or "")[:400], "event_type": str(it.get("event_type") or ""),
+                    "related_to": rel if isinstance(rel, int) else None, "questions": [str(q)[:140] for q in (it.get("questions") or [])][:3]})
+    return out
+
+
+@api.post("/organize/parse")
+async def organize_parse(text: str = Body(..., embed=True), today: str = Body(..., embed=True), user=Depends(current_user)):
+    from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage
+    import json
+    import re
+    text = text.strip()[:2000]
+    if len(text) < 3:
+        raise HTTPException(422, "Escribe un poco más para poder ayudarte")
+    base = datetime.strptime(_date_or_empty(today) or datetime.now(timezone.utc).date().isoformat(), "%Y-%m-%d")
+    cal = ", ".join(f"{DAYS_ES[(base + timedelta(days=i)).weekday()]} {(base + timedelta(days=i)).date().isoformat()}" for i in range(14))
+    # Only the text and a calendar are sent: no name, email or stored records.
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"org-{uid()}", system_message=ORG_PROMPT).with_model("openai", "gpt-5.4")
+    out = ""
+    try:
+        async for ev in chat.stream_message(UserMessage(text=f"Hoy es {cal.split(',')[0]}. Calendario: {cal}.\nTexto: {text}")):
+            if isinstance(ev, TextDelta):
+                out += ev.content
+            elif isinstance(ev, StreamDone):
+                break
+        m = re.search(r"\{.*\}", out, re.S)
+        data = json.loads(m.group(0)) if m else {}
+    except Exception as exc:
+        logger.error("organize_parse: %s", exc)
+        raise HTTPException(503, "No pudimos interpretar el texto ahora. Intenta de nuevo en un momento.")
+    items = clean_items(data.get("items"))
+    return {"items": items, "engine": "ai"}
+
+
+@api.post("/organize/commit")
+async def organize_commit(items: list = Body(..., embed=True), shared_with: list = Body([], embed=True), user=Depends(current_user)):
+    items = clean_items(items)
+    if not items:
+        raise HTTPException(422, "No hay elementos para guardar")
+    shared = await valid_share(user["id"], shared_with)
+    ids: dict[int, str] = {}
+    counts: dict[str, int] = {}
+    order = sorted(range(len(items)), key=lambda i: items[i]["category"] != "event")
+    for i in order:
+        it = items[i]
+        kind = CAT_KIND[it["category"]]
+        base = {"id": uid(), "kind": kind, "owner_id": user["id"], "created_by": user["id"], "created_at": now_iso(), "shared_with": shared, "source": "organiza"}
+        t, d, tm, who, loc, notes = it["title"], it["date"], it["time"], it["responsible"], it["location"], it["notes"]
+        if kind == "events":
+            rec = {"title": t, "type": it["event_type"] if it["event_type"] in ("Cita médica", "Sesión de tratamiento", "Estudio", "Actividad personal") else "Otro", "date": d, "time": tm, "location": loc, "notes": notes}
+        elif kind == "transfers":
+            rel = it["related_to"]
+            rec = {"title": t, "date": d, "time": tm, "driver": who, "destination": loc, "notes": notes, "mode": "Acompañante lleva" if who else "",
+                   "linked_event_id": ids.get(rel) if rel is not None else None}
+        elif kind == "tasks":
+            rec = {"title": t, "date": d, "notes": " · ".join(x for x in [notes, f"Responsable: {who}" if who else ""] if x), "done": False}
+        elif kind == "expenses":
+            rec = {"title": t, "amount": it["amount"] or 0, "date": d, "paid_by": who, "status": "Pendiente", "notes": notes}
+        elif kind == "medications":
+            rec = {"name": t, "schedule": tm, "notes": notes}
+        else:
+            rec = {"name": t, "date": d, "notes": notes}
+        await db.records.insert_one({**base, **rec})
+        ids[i] = base["id"]
+        counts[kind] = counts.get(kind, 0) + 1
+    await notify_shared(user, shared, f"{len(items)} elemento(s) de tu organización")
+    return {"created": counts, "total": len(items)}
+
+
+# ---------------------------------------------------------------- recommendations
+STAGES = {"Por comenzar": ("antes", ["organización", "preparación", "personal"]), "En curso": ("durante", ["entretenimiento", "comodidad", "llevar"]),
+          "En pausa": ("en pausa", ["descanso", "casa", "personal"]), "Finalizado": ("después", ["descanso", "casa", "personal"])}
+DISLIKE_TAGS = {"Aromas fuertes": "aroma", "Dulces": "dulce", "Colores brillantes": "brillante", "Texturas ásperas": "áspero", "Pelucas": "peluca", "Maquillaje": "maquillaje"}
+
+
+async def score_products(user: dict, today: str) -> tuple[list, str]:
+    pr = user.get("profile", {})
+    tastes, ident, needs = pr.get("tastes", {}) or {}, pr.get("identity", {}) or {}, pr.get("needs", {}) or {}
+    reco = pr.get("reco", {}) or {}
+    skip = set(reco.get("dismissed", [])) | set(reco.get("owned", []))
+    excluded = {DISLIKE_TAGS.get(x, x.lower()) for x in (tastes.get("dislikes") or []) + (ident.get("avoid") or [])}
+    budget = (pr.get("kit_prefs") or {}).get("budget")
+    explore = ident.get("explore") in ("Sí", "Tal vez") or bool(ident.get("accessories"))
+    fav_ids = [f["product_id"] async for f in db.favorites.find({"user_id": user["id"]})]
+    fav_cats: dict[str, int] = {}
+    async for p in db.products.find({"id": {"$in": fav_ids}}):
+        fav_cats[p["category"]] = fav_cats.get(p["category"], 0) + 1
+    kit_cats: set[str] = set()
+    async for k in db.kits.find({"owner_id": user["id"]}):
+        for it in k.get("items", []):
+            pp = await db.products.find_one({"id": it["product_id"]})
+            if pp:
+                kit_cats.add(pp["category"])
+    nxt = None
+    async for e in db.records.find({"kind": "events", "owner_id": user["id"], "date": {"$gte": today}, "type": {"$in": ["Sesión de tratamiento", "Cita médica", "Estudio"]}}).sort("date", 1).limit(1):
+        nxt = e
+    tr = await db.records.find_one({"kind": "treatments", "owner_id": user["id"], "status": {"$in": list(STAGES)}})
+    stage = STAGES.get((tr or {}).get("status") or (pr.get("treatment") or {}).get("status") or "")
+    out = []
+    async for p in db.products.find({}):
+        tags = set(p["tags"])
+        if p["id"] in skip or tags & excluded or (budget and p["price"] > budget) or (p["category"] == "Identidad y estilo" and not explore):
+            continue
+        score, why = 0, []
+        for a in tastes.get("activities") or []:
+            if a in tags:
+                score += 3; why.append(f"Mencionaste que disfrutas {a.lower()}.")
+        for c in tastes.get("comfort") or []:
+            if c in tags:
+                score += 2; why.append(f"Elegiste «{c.lower()}» como algo que te hace sentir cómodo/a.")
+        for o in tastes.get("objects") or []:
+            if o in tags:
+                score += 2; why.append(f"Dijiste que sueles llevar {o.lower()} contigo.")
+        for x in ident.get("accessories") or []:
+            if x in tags:
+                score += 3; why.append(f"Indicaste que te gusta usar {x.lower()}.")
+        if p["category"] == "Identidad y estilo" and ident.get("explore") == "Sí":
+            score += 1; why.append("Dijiste que quieres explorar opciones de estilo.")
+        if fav_cats.get(p["category"]):
+            score += 2; why.append(f"Sueles guardar artículos de {p['category'].lower()}.")
+        if p["category"] in kit_cats:
+            score += 1; why.append(f"Has incluido {p['category'].lower()} en tus kits.")
+        if "Organizar papeles" in (needs.get("support") or []) and "organización" in tags:
+            score += 2; why.append("Mencionaste que te vendría bien apoyo para organizar papeles.")
+        if nxt and "llevar" in tags:
+            score += 2; why.append(f"Es fácil de llevar a tu {nxt.get('title', 'cita').lower()} del {nxt['date']}.")
+        if stage and tags & set(stage[1]):
+            score += 1; why.append(f"Orientativo para la etapa «{stage[0]}» que registraste (no es una recomendación médica).")
+        if p["id"] in fav_ids:
+            score -= 1
+        out.append((score, why, p))
+    out.sort(key=lambda x: -x[0])
+    headline = "Preparamos algunas ideas para tu próxima cita." if nxt else "Ideas según lo que nos contaste."
+    return out, headline
+
+
+@api.get("/recommendations")
+async def recommendations(today: str = Query(...), user=Depends(current_user)):
+    scored, headline = await score_products(user, today)
+    personal = [(s, w, p) for s, w, p in scored if s > 0][:8]
+    general = [p for s, w, p in scored if s <= 0][: max(0, 4 - len(personal))]
+    items = [{**clean(p), "reasons": w[:2]} for s, w, p in personal] + [{**clean(p), "reasons": ["Una opción para empezar. Cuéntanos tus gustos para ideas más tuyas."], "general": True} for p in general]
+    by_id = {p["id"]: (s, w) for s, w, p in scored}
+    kits = []
+    for t in TEMPLATES:
+        pts = [by_id[x] for x in t["items"] if x in by_id]
+        s = sum(x[0] for x in pts)
+        why = next((w[0] for sc, w in sorted(pts, key=lambda x: -x[0]) if w), "Un punto de partida que puedes cambiar por completo.")
+        kits.append((s, {**(await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]})), "reason": why}))
+    kits.sort(key=lambda x: -x[0])
+    return {"headline": headline if personal else "Para empezar, algunas ideas generales.", "personalized": bool(personal), "products": items, "kits": [k for _, k in kits]}
+
+
+@api.post("/recommendations/feedback")
+async def reco_feedback(product_id: str = Body(..., embed=True), action: str = Body(..., embed=True), user=Depends(current_user)):
+    field = {"dismiss": "profile.reco.dismissed", "owned": "profile.reco.owned"}.get(action)
+    if action == "reset":
+        await db.users.update_one({"id": user["id"]}, {"$set": {"profile.reco": {}}})
+    elif field:
+        await db.users.update_one({"id": user["id"]}, {"$addToSet": {field: product_id}})
+    else:
+        raise HTTPException(422, "Acción no válida")
+    return {"ok": True}
+
+
+@api.get("/reorder")
+async def reorder(user=Depends(current_user)):
+    """Kits previously ordered, so they can be reused (never auto-purchased)."""
+    seen, out = set(), []
+    async for o in db.orders.find({"user_id": user["id"]}).sort("created_at", -1):
+        for it in o["items"]:
+            if it["type"] == "kit" and it["ref_id"] not in seen:
+                seen.add(it["ref_id"])
+                out.append({"ref_id": it["ref_id"], "name": it["name"], "detail": it.get("detail", ""), "price": it["price"], "ordered_at": o["created_at"]})
+    return out[:6]
+
+
+async def migrate_sharing():
+    if await db.meta.find_one({"key": "sharing_v2"}):
+        return
+    await db.records.update_many({"shared_with": {"$exists": False}}, {"$set": {"shared_with": []}})
+    p = await db.users.find_one({"email": "demo@amodo.app"})
+    c = await db.users.find_one({"email": "acompanante@amodo.app"})
+    if p and c:
+        await db.records.update_many({"owner_id": p["id"], "kind": {"$in": ["events", "tasks", "transfers"]}, "title": {"$ne": "Café con Lu"}}, {"$set": {"shared_with": [c["id"]]}})
+        await db.records.update_many({"owner_id": p["id"], "kind": "expenses", "shared": True}, {"$set": {"shared_with": [c["id"]]}})
+    await db.meta.insert_one({"key": "sharing_v2", "at": now_iso()})
+
+
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -928,6 +1301,7 @@ async def startup():
     app.state.index_task = asyncio.create_task(ensure_indexes())
     await seed_products()
     await seed_demo()
+    await migrate_sharing()
 
 
 @app.on_event("shutdown")
