@@ -40,7 +40,7 @@ export default function AdminCosting() {
           <Grid>
             <Metric label="Precio de venta" value={money(r.net_price)} />
             <Metric label="Costo de artículos" value={money(r.items_cost)} testID="admin-cost-items" />
-            <Metric label="Empaque, armado e incidencias" value={money(r.fixed_costs)} />
+            <Metric label="Empaque, armado, envío e incidencias" value={money(r.fixed_costs)} />
             <Metric label="Costo directo estimado" value={money(r.direct_cost)} testID="admin-cost-direct" />
             <Metric label="Margen bruto" value={money(r.gross_margin)} testID="admin-cost-margin" />
             <Metric label="Margen %" value={`${r.gross_margin_pct}%`} testID="admin-cost-margin-pct" />

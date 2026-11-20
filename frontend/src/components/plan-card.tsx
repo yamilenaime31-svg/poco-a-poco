@@ -1,33 +1,65 @@
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
-import { fmtDate } from "@/src/constants";
-import { Ic, Txt } from "@/src/ui";
+import { fmtDate, money } from "@/src/constants";
+import { Btn, Ic, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
-/** Profile entry point: current plan and active benefits. */
+const credits = (p: any) => p.benefits.filter((b: any) => b.kind === "credit").reduce((a: number, b: any) => a + (b.remaining || 0), 0);
+const discount = (p: any) => Math.max(0, ...p.benefits.filter((b: any) => b.kind === "kit_discount_pct").map((b: any) => b.value));
+
+/** "Mi plan AMODO": large profile card that states the active access (Gratis / Plus / Institucional) and its actions. */
 export function PlanCard() {
   const router = useRouter();
   const { colors } = useTheme();
   const q = useApi<any>("/me/plan");
   const p = q.data;
+  if (!p) return null;
+  const inst = p.access === "institutional";
+  const title = inst ? (p.plus_by_institution ? "AMODO Plus — proporcionado por tu institución" : "Acceso institucional") : p.name;
+  const sub = inst ? `Tu acceso es proporcionado por ${p.institution}` : p.tier === "plus" ? "Membresía activa (demostración, sin cobro)" : "Estás utilizando la versión gratuita";
+  const facts = [
+    p.tier === "plus" && !inst ? `${money(p.prices.plus_price)}/mes · ilustrativo` : null,
+    p.until ? `${p.tier === "plus" && !inst ? "Vence" : "Vigente hasta"} el ${fmtDate(p.until)} · sin renovación automática` : null,
+    credits(p) ? `Créditos para kits: ${money(credits(p))}` : null,
+    discount(p) ? `Descuento en kits: ${discount(p)}%` : p.tier === "plus" ? `Descuento Plus en kits: ${p.prices.plus_kit_discount_pct}%` : null,
+  ].filter(Boolean) as string[];
+  const go = (h: string) => () => router.push(h as any);
   return (
-    <Pressable onPress={() => router.push("/plan")} testID="profile-plan-card" style={({ pressed }) => [styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.9 : 1 }]}>
-      <View style={[styles.icon, { backgroundColor: colors.sageSoft }]}><Ic name="sparkles" size={18} /></View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt v="label">Mi plan y beneficios</Txt>
-        <Txt v="title" testID="profile-plan-name">{p?.name || "…"}</Txt>
-        <Txt v="caption" numberOfLines={2}>
-          {p ? (p.benefits.length ? `${p.benefits.length} beneficio(s) activo(s)` : "Sin beneficios adicionales") + (p.until ? ` · vigente hasta ${fmtDate(p.until)}` : "") : ""}
-        </Txt>
+    <View style={[styles.card, { backgroundColor: p.tier === "plus" || inst ? colors.sageSoft : colors.surfaceSecondary, borderColor: colors.border }]} testID="profile-plan-card">
+      <Txt v="label">Mi plan AMODO</Txt>
+      <Txt v="h2" style={{ marginTop: 4 }} testID="profile-plan-name">{title}</Txt>
+      <Txt v="caption" color={colors.onSurface} testID="profile-plan-sub">{sub}</Txt>
+      {facts.map((f) => (
+        <View key={f} style={styles.li}><Ic name="check" size={14} /><Txt v="caption" color={colors.onSurface} style={{ flex: 1 }}>{f}</Txt></View>
+      ))}
+      <View style={styles.btns}>
+        <Btn label="Ver mis beneficios" small onPress={go("/benefits")} testID="plan-card-benefits" style={styles.btn} />
+        {inst ? (
+          <>
+            <Btn label="Mi institución" small variant="secondary" onPress={go("/benefits")} testID="plan-card-institution" style={styles.btn} />
+            <Btn label="Ingresar otro código" small variant="ghost" onPress={go("/redeem")} testID="plan-card-code" style={styles.btn} />
+          </>
+        ) : p.tier === "plus" ? (
+          <>
+            <Btn label="Administrar membresía" small variant="secondary" onPress={go("/plan")} testID="plan-card-manage" style={styles.btn} />
+            <Btn label="Consultar descuentos" small variant="ghost" onPress={go("/benefits")} testID="plan-card-discounts" style={styles.btn} />
+          </>
+        ) : (
+          <>
+            <Btn label="Conocer AMODO Plus" small variant="secondary" onPress={go("/plan")} testID="plan-card-plus" style={styles.btn} />
+            <Btn label="Tengo un código" small variant="ghost" onPress={go("/redeem")} testID="plan-card-code" style={styles.btn} />
+          </>
+        )}
       </View>
-      <Ic name="chevron-right" size={18} color={colors.muted} />
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, marginTop: space.xl },
-  icon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  card: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, padding: space.lg, marginTop: space.xl },
+  li: { flexDirection: "row", gap: 6, marginTop: 6 },
+  btns: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.md },
+  btn: { flexGrow: 1, minWidth: 140 },
 });

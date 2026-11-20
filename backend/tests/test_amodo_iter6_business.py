@@ -123,13 +123,13 @@ class TestCheckout:
         requests.post(f"{BASE}/cart", headers=H(fresh), json={"type": "kit", "ref_id": S["kit"], "qty": 1})
         q = requests.get(f"{BASE}/checkout/quote", params={"shipping": "Estándar"}, headers=H(fresh)).json()
         assert q["kits"] == 574 and len(q["discounts"]) == 1 and q["discounts"][0]["amount"] == 86.1, q  # iter7 decimals
-        assert q["credit"] == 150 and q["shipping"] == 99 and abs(q["total"] - (574 - 86.1 - 150 + 99)) < 0.01
+        assert q["credit"] == 150 and q["shipping"] == 0 and abs(q["total"] - (574 - 86.1 - 150)) < 0.01  # iter8: shipping included
         before = {p: prod(admin, p).get("stock_reserved", 0) for p in ["p34", "p35", "p4", "p38"]}
         o = requests.post(f"{BASE}/orders/checkout", headers=H(fresh), json=ADDR)
         assert o.status_code == 200, o.text
         o = o.json()
         S["order1"] = o["id"]
-        assert o["status"] == "Pendiente de confirmación" and abs(o["total"] - 436.9) < 0.01 and o["credit"] == 150
+        assert o["status"] == "Pendiente de confirmación" and abs(o["total"] - 337.9) < 0.01 and o["credit"] == 150
         for p, n in before.items():
             assert prod(admin, p)["stock_reserved"] == n + 1
         p = requests.get(f"{BASE}/me/plan", headers=H(fresh)).json()
@@ -150,10 +150,10 @@ class TestCheckout:
         assert requests.post(f"{BASE}/benefits/activate", headers=H(fresh), json={"code": code}).status_code == 200
         requests.post(f"{BASE}/cart", headers=H(fresh), json={"type": "product", "ref_id": "p5", "qty": 1})
         q = requests.get(f"{BASE}/checkout/quote", params={"shipping": "Estándar"}, headers=H(fresh)).json()
-        assert q["items_total"] == 0 and q["total"] == 99, q
+        assert q["items_total"] == 0 and q["total"] == 0, q  # iter8: shipping included
         o = requests.post(f"{BASE}/orders/checkout", headers=H(fresh), json=ADDR).json()
         S["order2"] = o["id"]
-        assert o["total"] == 99
+        assert o["total"] == 0
 
     def test_admin_enviado_and_cancel(self, admin, fresh):
         b = prod(admin, "p34")
@@ -191,7 +191,7 @@ class TestAdmin:
 
     def test_costing(self, admin):
         r = requests.post(f"{BASE}/admin/costing", headers=H(admin), json={"size": "Chico", "item_costs": [35, 35, 35, 35]}).json()
-        assert r["direct_cost"] == 180 and r["gross_margin"] == 119 and r["gross_margin_pct"] == 39.8
+        assert r["direct_cost"] == 265 and r["gross_margin"] == 34 and r["gross_margin_pct"] == 11.4  # iter8: +85 shipping in fixed costs
 
     def test_product_update_and_restore(self, admin):
         orig = prod(admin, "p33")

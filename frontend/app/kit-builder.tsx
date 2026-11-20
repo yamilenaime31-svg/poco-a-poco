@@ -177,7 +177,7 @@ export default function KitBuilder() {
                   <View style={[styles.iconWrap, { backgroundColor: colors.sageSoft, width: 34 + i * 8, height: 34 + i * 8 }]}><Ic name="package" size={16 + i * 3} /></View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt v="title">{s.label}</Txt>
-                    <Txt v="caption">{s.text} incluidos</Txt>
+                    <Txt v="caption">{s.text} · envío incluido</Txt>
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
                     <Txt v="caption">Desde</Txt>
@@ -263,10 +263,10 @@ export default function KitBuilder() {
                 <Row2 l="Subtotal" r={money(total)} bold testID="kit-subtotal" />
                 {quote?.breakdown?.discounts?.length ? quote.breakdown.discounts.map((d: any) => <Row2 key={d.label} l={d.label} r={`−${money(d.amount)}`} />) : <Row2 l="Descuento" r={money(0)} />}
                 {quote?.breakdown?.credit ? <Row2 l="Crédito institucional" r={`−${money(quote.breakdown.credit)}`} /> : null}
-                <Row2 l="Envío" r="Por calcular" />
-                <Row2 l="Total de artículos" r={quote ? money(quote.breakdown.items_total) : "…"} bold testID="kit-items-total" />
+                <Row2 l="Envío estándar" r="Incluido" />
+                <Row2 l="Total" r={quote ? money(quote.breakdown.items_total) : "…"} bold testID="kit-items-total" />
               </View>
-              <Txt v="caption" style={{ marginTop: space.sm }}>Aún no es el total final: el envío se calcula al continuar. {quote?.breakdown?.rule} Precios ilustrativos con IVA incluido.</Txt>
+              <Txt v="caption" style={{ marginTop: space.sm }}>{quote?.breakdown?.rule} Precios ilustrativos con IVA y envío estándar incluidos, sin cargos adicionales.</Txt>
             </View>
             <Field label="Nombre del kit" value={name} onChangeText={setName} placeholder={`Kit · ${ctxLabel}`} testID="kit-name-input" />
             {user?.role !== "caregiver" ? <ShareWith value={shared} onChange={setShared} testID="kit-share" /> : null}

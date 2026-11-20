@@ -16,10 +16,10 @@ DEFAULT_SIZES = [
     {"id": "Grande", "label": "Kit grande", "max": 10, "base": 799, "text": "Hasta 10 artículos"},
 ]
 SIZE_ALIAS = {"Pequeño": "Chico"}
-DEFAULT_COSTS = {"packaging": 20, "assembly": 12, "labels": 0, "protection": 0, "storage": 0, "logistics": 0, "incidents": 8,
+DEFAULT_COSTS = {"packaging": 20, "assembly": 12, "labels": 0, "protection": 0, "storage": 0, "logistics": 0, "shipping": 85, "incidents": 8,
                  "payment_fee_pct": 3.5, "tax_pct": 16, "min_margin_pct": 30}
 DEFAULT_PLANS = {"plus_price": 79, "plus_kit_discount_pct": 10, "stacking": "best", "max_discount_pct": 25,
-                 "shipping": {"Estándar": 99, "Express": 179, "Recoger en punto AMODO": 0}}
+                 "shipping": {"Estándar": 0, "Recoger en punto AMODO": 0}}  # shipping is included in kit prices
 # New illustrative items for the "kit chico" example (included vs premium).
 EXTRA = [
     ("p33", "Pañuelo básico de algodón", "Identidad y estilo", "Pañuelos", 189, ["Pañuelos", "Gorro o pañoleta", "estilo"], "Algodón ligero, fácil de anudar.", "incluido", 0, 30),
@@ -135,8 +135,14 @@ async def plan_view(user: dict) -> dict:
     source = "Institucional" if inst_plus and not demo_plus else "Demostración" if demo_plus else ""
     until = max([x for x in [p.get("until") if demo_plus else None, inst_plus["until"] if inst_plus else None] if x], default=None)
     history = [clean(h) async for h in db.benefit_history.find({"user_id": user["id"]}).sort("at", -1).limit(30)]
-    return {"tier": tier, "name": "AMODO Plus" if tier == "plus" else "AMODO Gratis", "source": source, "until": until,
-            "benefits": bens, "history": history, "prices": await setting("plans", DEFAULT_PLANS)}
+    expired = [clean(b) async for b in db.benefits.find({"user_id": user["id"], "until": {"$lt": today}}).sort("until", -1).limit(20)]
+    if p.get("tier") == "plus" and not demo_plus and p.get("until"):
+        expired.insert(0, {"id": "plus-demo", "kind": "plus_demo", "institution": "", "until": p["until"]})
+    institution = (inst_plus or next(iter(bens), None) or {}).get("institution") or ""
+    access = "institutional" if bens and (inst_plus or not demo_plus) else "plus" if demo_plus else "free"
+    return {"tier": tier, "access": access, "name": "AMODO Plus" if tier == "plus" else "AMODO Gratis", "source": source, "until": until,
+            "institution": institution, "plus_by_institution": bool(inst_plus) and not demo_plus,
+            "benefits": bens, "expired": expired, "history": history, "prices": await setting("plans", DEFAULT_PLANS)}
 
 
 @api.get("/me/plan")
@@ -282,7 +288,7 @@ async def breakdown(user: dict, kit_subtotal: int, other_subtotal: int, shipping
     total_goods = round(goods - credit, 2)
     rule = "Se aplica solo el mayor descuento disponible; no se combinan." if cfg["stacking"] == "best" else f"Los descuentos se suman hasta un máximo de {cfg['max_discount_pct']}%."
     return {"kits": kit_subtotal, "others": other_subtotal, "discounts": discounts, "credit_available": credit_avail, "credit": credit,
-            "items_total": total_goods, "shipping": shipping, "total": None if shipping is None else total_goods + shipping,
+            "items_total": total_goods, "shipping": 0, "shipping_included": True, "total": total_goods,
             "plan": plan["name"], "rule": rule, "tax_note": "Precios ilustrativos con IVA incluido.", "demo": True}
 
 
@@ -302,9 +308,8 @@ async def kit_quote(size: str = Body(..., embed=True), items: list = Body(..., e
 @api.get("/checkout/quote")
 async def checkout_quote(shipping: str = "Estándar", user=Depends(current_user)):
     cart = await cart_view(user["id"])
-    cfg = await setting("plans", DEFAULT_PLANS)
     kits = sum(i["subtotal"] for i in cart["items"] if i["type"] == "kit")
-    return await breakdown(user, kits, cart["subtotal"] - kits, cfg["shipping"].get(shipping, 99))
+    return await breakdown(user, kits, cart["subtotal"] - kits, 0)
 
 
 async def order_lines_stock(cart: dict) -> dict[str, int]:
@@ -407,7 +412,7 @@ def cost_of(p: dict) -> float:
 
 
 def kit_costing(price: float, item_costs: list[float], c: dict, discount: float = 0) -> dict:
-    fixed = c["packaging"] + c["assembly"] + c["labels"] + c["protection"] + c["storage"] + c["logistics"] + c["incidents"]
+    fixed = c["packaging"] + c["assembly"] + c["labels"] + c["protection"] + c["storage"] + c["logistics"] + c.get("shipping", 0) + c["incidents"]
     items = sum(item_costs)
     direct = items + fixed
     net_price = price - discount

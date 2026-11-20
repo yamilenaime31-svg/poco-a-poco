@@ -716,6 +716,11 @@ async def kit_view(kit: dict) -> dict:
     return kit
 
 
+def find_template(kid: str):
+    from knowledge import guided_template
+    return next((t for t in TEMPLATES if t["id"] == kid), None) or guided_template(kid)
+
+
 @api.get("/kits/suggested")
 async def suggested_kits():
     return [await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]}) for t in TEMPLATES]
@@ -745,7 +750,7 @@ async def my_kits(user=Depends(current_user)):
 
 @api.get("/kits/{kid}")
 async def get_kit(kid: str, user=Depends(current_user)):
-    t = next((t for t in TEMPLATES if t["id"] == kid), None)
+    t = find_template(kid)
     if t:
         return await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]})
     k = await db.kits.find_one({"id": kid, "$or": [{"owner_id": user["id"]}, {"shared_with": user["id"]}]})
@@ -828,7 +833,7 @@ async def cart_view(user_id: str) -> dict:
         if c["type"] == "kit":
             k = await db.kits.find_one({"id": c["ref_id"], "owner_id": user_id})
             if not k:
-                t = next((t for t in TEMPLATES if t["id"] == c["ref_id"]), None)
+                t = find_template(c["ref_id"])
                 k = {**t, "items": [{"product_id": x, "options": {}} for x in t["items"]]} if t else None
             if not k:
                 continue
@@ -912,6 +917,8 @@ class CheckoutIn(BaseModel):
 @api.post("/orders/checkout")
 async def checkout(body: CheckoutIn, user=Depends(current_user)):
     from business import place_order
+    if body.shipping not in ("Estándar", "Recoger en punto AMODO"):
+        raise HTTPException(422, "Opción de envío no válida")
     return order_view(await place_order(user, body.model_dump(), body.shipping))
 
 

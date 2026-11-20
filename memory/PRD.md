@@ -62,3 +62,8 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Plans: GET/POST /api/me/plan (Gratis / Plus demo 30 días sin cargo); institutional codes POST /api/benefits/validate|activate (server validation, expiry, usage limit atomic, unique activation, budget, history)
 - Checkout: GET /api/checkout/quote (best-discount or sum-with-cap rule, credit, shipping, no negatives); orders status flow Pendiente de confirmación→Confirmado→En preparación→Enviado→Entregado/Cancelado; stock reserved on order, discounted when shipped, released on cancel; repeat order, duplicate kit
 - Admin (demo@amodo.app is_admin): /admin overview+alerts, products edit, inventory moves, costing simulator (POST /api/admin/costing), suppliers (demo), codes, orders status, settings (sizes, costs, plans)
+
+## Iteration 9 (Jun 2026) — Kits según guías confiables
+- knowledge.py: 13 temas (añadidos hormigueo, sueño, memoria/concentración, estrés) con consejos generales parafraseados, precauciones y fuentes (NCI español/inglés, ACS, MedlinePlus); cada tema tiene un kit curado (id `g-<tema>`).
+- GET /api/guided-kits (todos los usuarios; con Plus se priorizan por tratamiento registrado / temas elegidos). Kits `g-*` funcionan en /kits/{id}, carrito y checkout (server.find_template).
+- Frontend: sección "Según guías confiables" en Mis kits, pantalla /guides, caja de guía y fuentes en detalle de kit (src/components/guide-info.tsx).

@@ -62,7 +62,7 @@ export default function Redeem() {
   };
 
   return (
-    <Screen title="Activa tu acceso institucional" subtitle="Ingresa el código que te proporcionó tu hospital o institución" testID="redeem-screen">
+    <Screen title="Activa tus beneficios" subtitle="Ingresa el código que te proporcionó tu hospital, asociación o institución" testID="redeem-screen">
       <Field label="Código de acceso" value={code} onChangeText={(v) => { setCode(v.toUpperCase()); setInfo(null); setError(""); }} autoCapitalize="characters" placeholder="Ej. HOSPITAL-DEMO" error={error} testID="redeem-input" />
       {!info ? <Btn label="Validar código" loading={busy} disabled={code.trim().length < 3} onPress={validate} testID="redeem-validate" /> : (
         <>

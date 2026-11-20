@@ -6,6 +6,7 @@ import { useAuth } from "@/src/auth";
 import { TabScreen } from "@/src/components/tab-screen";
 import { RecoCard, NeedsPrompt } from "@/src/components/reco-card";
 import { TileGrid } from "@/src/components/tile-grid";
+import { GuideCard } from "@/src/components/guide-info";
 import { CATEGORIES, money, tintOf, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Ic, IconBtn, Loading, ProductImage, Row, Section, Txt } from "@/src/ui";
@@ -20,6 +21,7 @@ export default function MyKits() {
   const favs = useApi<any[]>("/favorites");
   const reco = useApi<any>(`/recommendations?today=${today()}`);
   const again = useApi<any[]>("/reorder");
+  const guided = useApi<any>("/guided-kits");
   const shared = useApi<any[]>(user?.role === "caregiver" ? "/kits-shared" : null);
   const cart = useApi<any>("/cart");
 
@@ -77,6 +79,15 @@ export default function MyKits() {
             ))}
             <Pressable onPress={() => feedback("", "reset", "Volvimos a mostrar todas las sugerencias")} testID="reco-reset" style={{ marginTop: space.sm }}><Txt v="caption" style={{ textDecorationLine: "underline" }}>Ver otras opciones de nuevo</Txt></Pressable>
           </>
+        )}
+      </Section>
+
+      <Section title="Según guías confiables" action="Ver todas" onAction={() => router.push("/guides")} testID="kits-guides">
+        <Txt v="caption" style={{ marginBottom: space.md }}>Kits de comodidad basados en información general del NCI, la American Cancer Society y MedlinePlus.</Txt>
+        {guided.isLoading ? <Loading /> : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl }} contentContainerStyle={{ gap: space.md, paddingHorizontal: space.xl }}>
+            {(guided.data?.kits || []).slice(0, 4).map((k: any) => <GuideCard key={k.id} k={k} compact />)}
+          </ScrollView>
         )}
       </Section>
 

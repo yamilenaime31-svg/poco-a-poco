@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 8 (shipping included, plan card, /benefits, choose-plan/redeem copy, admin shipping cost). Backend: new suite test_amodo_iter8_shipping_plans.py gave 14/15 passing. The one failure: the backend still accepts a 4-digit zip. I updated the old iter6/iter7 shipping and costing assertions, and iter6 (29/29) now passes; the earlier iter7 run passed everything except that shipping line. Frontend (390 and 320 px): everything requested works. Free Chico kit is $299 ($419 with p34 premium). Kit summary and checkout show 'Envío estándar Incluido', only the Estándar and Recoger options appear (both 'Incluido'), and there is no 'por calcular' or 'Express' anywhere. The 5-digit zip check shows the México message. A demo order of 2 kits had total $718, equal to the items total. Plus demo kit shows −$29.90 and $269.10. The CONVENIO-A card shows 'AMODO Plus — proporcionado por tu institución' and Hospital de ejemplo A. The CONVENIO-C card shows 'Acceso institucional' and $300 credit. The plan card appears for acompanante@amodo.app and a TEST_ caregiver. /benefits sections are correct for free/plus/institutional/expired, and the free user sees no fake benefits. choose-plan and redeem copy match the spec, with the price taken from settings. Admin 'Envío estimado (lo absorbe AMODO)' saves, persists and feeds 'Empaque, armado, envío e incidencias' (20+12+100+8=140). Overview alerts appear. No horizontal overflow at 390 or 320. No deprecated Expo packages detected. Remaining issues are minor consistency and validation problems.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/orders/checkout", "issue": "CheckoutIn.zip is Field(min_length=4). '1234' (and non-numeric zips) are accepted with 200. The 5-digit México check exists only in the frontend. server.py:906"},
+      {"endpoint": "GET /api/checkout/quote, POST /api/orders/checkout", "issue": "The shipping option is not validated. Any string (e.g. 'Express') is accepted and stored in order.address.shipping, and the order screen then shows 'Envío (Express)'. Restrict it to 'Estándar' | 'Recoger en punto AMODO'."},
+      {"endpoint": "Seed data / acompanante@amodo.app", "issue": "The seeded caregiver account currently has role 'patient' (roles ['caregiver','patient']). Someone switched its mode (not this run). The legacy test_amodo_api.py::test_home_caregiver fails because of this. I did not change it, per the data rules."},
+      {"endpoint": "GET /api/admin/overview (business)", "issue": "With shipping 85 absorbed, the alerts say the most expensive included combinations leave Chico at -33.4%, Mediano at -3.2% and Grande at 9.5% margin (minimum 30%). The alerts work correctly, but pricing or item classification needs a business review."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "benefits.tsx Beneficios comerciales activos", "issue": "For an institution-provided Plus user (CONVENIO-A), the backend applies the 10% Plus kit discount (verified via /kits/quote: −$29.90). The profile card also says 'Descuento Plus en kits: 10%', but /benefits hides it because of the `plus && !p.plus_by_institution` condition (benefits.tsx:45). The section therefore looks empty.", "testID": "benefits-active", "priority": "medium"},
+      {"component": "benefits.tsx duplication", "issue": "Institutional benefits (e.g. CONVENIO-C $300 credit) are listed twice: under 'Beneficios comerciales activos' and again under 'Beneficios institucionales'.", "testID": "benefits-institutional", "priority": "low"},
+      {"component": "plan-card.tsx credits label", "issue": "'Créditos para kits: $300' is shown for a general credit (scope not 'kits'; benefits shows 'para artículos'). The label should depend on the credit's scope. plan-card.tsx:25", "testID": "profile-plan-card", "priority": "low"},
+      {"component": "benefits.tsx Plan actual", "issue": "CONVENIO-C (credit only) shows 'Sin vencimiento' even though the credit expires on 31 dic.", "testID": "benefits-plan", "priority": "low"},
+      {"component": "plan-card-institution", "issue": "'Mi institución' goes to /benefits, the same destination as 'Ver mis beneficios'.", "testID": "plan-card-institution", "priority": "low"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Checkout", "issues": ["The zip error text renders inside the narrow C.P. column and wraps to about 5 lines at 390px. Show it full width under the City/C.P. row."]},
+      {"screen": "Admin settings", "issues": ["The 2-line label 'Envío estimado (lo absorbe AMODO)' pushes its input lower than the neighbouring 'Reserva incidencias' input, so the grid looks misaligned."]},
+      {"screen": "Profile / Benefits", "issues": ["The 'Mi plan AMODO' card sits below Privacidad/Accesibilidad/Ayuda. Consider moving it near the top since it is the key card.", "Dates have no year (e.g. 'Venció el dom 1 jun' for a 2025 date), which is ambiguous for expired or long-term benefits."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter8_shipping_plans.py", "/app/backend/tests/ui_setup_iter8.py", "/app/backend/tests/ui_expire_iter8.py", "/app/test_reports/pytest/pytest_iter8.xml"],
+  "action_items": [
+    "server.py CheckoutIn: zip pattern r'^\\d{5}$' and shipping Literal['Estándar','Recoger en punto AMODO'].",
+    "benefits.tsx: show the Plus kit discount for plus_by_institution users too (or stop applying it in breakdown()). Keep the card, /benefits and the quote consistent.",
+    "benefits.tsx: do not repeat institutional benefits in both sections. Fix `last` to use the filtered list length (line 47).",
+    "plan-card.tsx: label credits by scope ('Crédito para artículos' vs 'para kits').",
+    "Business review: absorbed shipping (85) makes the most expensive included kit combinations unprofitable (see admin alerts).",
+    "Legacy tests test_amodo_api.py (iteration-1 pricing 149+prices, Express 179, 'Confirmado') and test_amodo_iter4_planner.py (treatment parse now Plus-gated) are obsolete. Update them or retire them."
+  ],
+  "critical_code_review_comments": [
+    "business.py breakdown(): the `shipping` param is unused and shipping is hardcoded to 0. DEFAULT_PLANS.shipping is now dead config.",
+    "choose-plan.tsx:20 hardcodes a fallback of 79 while settings load. This is acceptable but it can flash a stale price.",
+    "server.py is 1343 lines. Consider splitting it."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter8_shipping_plans.py (new)", "/app/backend/tests/ui_setup_iter8.py (new)", "/app/backend/tests/ui_expire_iter8.py (new)", "/app/backend/tests/test_amodo_iter6_business.py (shipping 0, costing +85 assertions)", "/app/backend/tests/test_amodo_iter7_plans.py (shipping-included total)"],
+  "success_rate": {"backend": "93% (14/15 iter8)", "frontend": "100% of requested flows; minor consistency issues"},
+  "seed_data_creation": "TEST_ users test_ui8_*@amodo.app (free, plus, CONVENIO-A, CONVENIO-C, caregiver, fresh). The free user's demo Plus was set to expired via mongo (own data). One UI demo order was placed and then cancelled to release stock. Admin costs shipping was set to 100 and restored to 85, and min_margin was set to 95 and restored to the original via the API.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0. Use ui_setup_iter8.py to create plan-specific users (it sets onboarding_done). Profile route is /me, benefits is /benefits. Kit-builder 'Sugeridos' filter hides p33/p4; use p37, p5, p6, p7 (included) and the 'kit-filter-Identidad y estilo' filter for p34. acompanante@amodo.app currently has active role 'patient'.",
+  "rca_of_issue": "Zip: server-side Pydantic only enforces min_length=4. Benefits inconsistency: benefits.tsx:45 excludes plus_by_institution while business.breakdown() applies the Plus % for any tier=='plus'."
+}

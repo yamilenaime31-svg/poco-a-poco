@@ -106,7 +106,7 @@ class TestPricing:
         k = requests.post(f"{BASE}/kits", headers=H(t), json={"name": "TEST_ B", "size": "Chico", "items": [{"product_id": "p34"}]}).json()
         requests.post(f"{BASE}/cart", headers=H(t), json={"type": "kit", "ref_id": k["id"], "qty": 1})
         c = requests.get(f"{BASE}/checkout/quote", params={"shipping": "Estándar"}, headers=H(t)).json()
-        assert c["discounts"][0]["amount"] == 41.9 and c["items_total"] == 377.1 and abs(c["total"] - 476.1) < 0.01, c
+        assert c["discounts"][0]["amount"] == 41.9 and c["items_total"] == 377.1 and abs(c["total"] - 377.1) < 0.01, c  # iter8: shipping included
         clear_cart(t)
 
     def test_convenio_d_kits_only(self):

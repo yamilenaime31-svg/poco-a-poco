@@ -91,7 +91,7 @@ export default function OrderDetail() {
             ) : null}
             <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.md }}>
               <Txt v="caption">Envío ({o.address.shipping})</Txt>
-              <Txt v="caption">{o.shipping_cost ? money(o.shipping_cost) : "Gratis"}</Txt>
+              <Txt v="caption">{o.shipping_cost ? money(o.shipping_cost) : "Incluido"}</Txt>
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.sm }}>
               <Txt v="title">Total</Txt>

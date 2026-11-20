@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 9: guided kits from trusted sources (NCI/ACS/MedlinePlus). Backend 12/12 pytest passed: GET /api/guided-kits returns 13 g-<need> kits with guide{label,tips,precaution,sources(https cancer.gov/cancer.org/medlineplus.gov),reviewed}; free users get no for_you; Plus user with Cirugía treatment gets for_you on related kits (g-recovery tagged, g-cold not), tagged kits sorted first, declared need ('sleep') shows 'Elegiste este tema' and sorts first; GET /api/kits/g-sleep returns template+guide; unknown g-* -> 404; POST /api/cart kit g-memory adds correct name/price ($299) and /api/checkout/quote totals it; t1 template, /kits/suggested and /recommendations regression OK. Frontend (390x844) all flows pass: Mis kits 'Según guías confiables' (kits-guides) shows 4 compact guide cards (Plus: g-sleep first with badge), 'Ver todas' -> /guides (guides-screen, 13 cards; free note shown only for free demo user), guide-toggle-g-memory expands/collapses tips + precaution + source link (opens cancer.gov in new tab), guide-open-g-memory -> /kit/g-memory with kit-guide-info, Personalizar -> /kit-builder?template=g-memory prefilled '4 de 4 artículos · completo $299', Al carrito from /kit/g-sleep -> /cart shows 'Noches más tranquilas $339'. No page errors. No deprecated Expo packages detected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/cart", "issue": "Pre-existing: accepts non-existent kit/product ref_id (e.g. 'g-bogus') with 200 and stores an orphan cart doc that cart_view silently skips. Validate ref_id via find_template/db.kits/db.products and return 404."},
+      {"endpoint": "GET /api/guided-kits (caregiver)", "issue": "for_you uses the caller's own treatments/declared needs; a caregiver never sees kits tied to the linked patient's treatments. Product decision — consider using linked patient's treatments for caregivers on Plus."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Mis kits - Según guías confiables (compact GuideCard)", "issues": ["4 thumbnails of 52px + gaps (226px) exceed 208px inner width of the 240px card, so images wrap to 2 rows and cards get tall (~331px). Use 44px thumbs or flexWrap: 'nowrap' with slice(0,3)+'+N'.", "Long badge 'Relacionado con tu tratamiento registrado' wraps to 2 lines in compact card; consider shorter label e.g. 'Por tu tratamiento'."]},
+      {"screen": "GuideInfo (guides + kit detail)", "issues": ["Review date shown raw as '(2026-06)'; format in Spanish e.g. 'junio de 2026'.", "Source link Pressable minHeight 32 (hitSlop 6 brings it ~44) — acceptable but borderline."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter9_guided_kits.py", "/app/backend/tests/ui_setup_iter9.py", "/app/test_reports/pytest/pytest_iter9.xml"],
+  "action_items": [
+    "Optional: validate ref_id in POST /api/cart (404 for unknown kit/product).",
+    "Optional: compact guide card thumbnails wrap to 2 rows on Mis kits; reduce thumb size or count.",
+    "Optional: format guide 'reviewed' date in Spanish.",
+    "Content review: g-nausea and g-sleep kits include 'Vela de soya sin aroma' (open flame) for people who may be drowsy/fatigued — consider a safety note or swapping for a non-flame light."
+  ],
+  "critical_code_review_comments": [
+    "knowledge.py guided_kits computes kit_view for all 13 kits on every request (multiple product lookups each); fine at this size but could cache product lookups.",
+    "REVIEWED='2026-06' is hardcoded constant applied to all guides; per-guide review dates would be more accurate.",
+    "server.py is 1350 lines (>700) — pre-existing, consider splitting."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter9_guided_kits.py", "/app/backend/tests/ui_setup_iter9.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_ users via /auth/register (pytest free + plus users; UI user test_ui9_7f887d@amodo.app / Demo1234 = Plus demo + Quimioterapia treatment + declared need 'sleep'). All cart items added were removed (one orphan g-bogus cart doc deleted by user_id+ref_id). Demo accounts untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Guided kits feature fully passes. Plus activation for tests: POST /api/me/plan {action:'plus'}. Treatments: POST /api/records/treatments {name, treatment_type, status:'En curso'}. Declared needs: PUT /api/recommendations/needs {needs:[...]} (Plus only). demo@amodo.app is currently on free plan.",
+  "rca_of_issue": ""
+}

@@ -15,35 +15,81 @@ def fmt_es(d: str) -> str:
     x = datetime.strptime(d, "%Y-%m-%d")
     return f"{x.day} de {MONTHS[x.month - 1]}"
 CHEMO, RADIO, IMMUNO, SURG, TARGET, HORMONE = TREATMENT_TYPES[:6]
+NCI_ES = "Instituto Nacional del Cáncer (NCI, en español)"
+NCI = "Instituto Nacional del Cáncer (NCI)"
+ACS = "American Cancer Society"
+ES = "https://www.cancer.gov/espanol/cancer/tratamiento/efectos-secundarios/"
+# Each need: general tips paraphrased from the cited public sources, the catalogue items that fit them (comfort only, never treatment),
+# and a precaution. Reviewed by the AMODO team; it is general information, never a diagnosis or clinical recommendation.
 KB = [
     {"id": "nausea", "label": "Náuseas o malestar", "treatments": [CHEMO, RADIO, IMMUNO, TARGET], "tags": ["Descansar", "Silencio", "Luz tenue", "Audífonos"],
-     "exclude_categories": ["Antojos y preferencias"],
+     "exclude_categories": ["Antojos y preferencias"], "kit": ["p2", "p4", "p12", "p1"], "kit_name": "Días de malestar",
+     "tips": ["Descansar en un lugar tranquilo y con poca luz puede ayudar a algunas personas.", "Hay quienes prefieren evitar olores fuertes; por eso solo incluimos artículos sin aroma.",
+              "Distraerse con música o una serie es una opción que el NCI menciona."],
      "precaution": "No sugerimos alimentos, dulces ni suplementos para las náuseas. Tu equipo médico es quien orienta sobre su manejo.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/nausea"},
-                 {"name": "American Cancer Society", "url": "https://www.cancer.org/cancer/managing-cancer/side-effects/eating-problems/nausea-and-vomiting.html"}]},
+     "sources": [{"name": NCI_ES, "url": ES + "nauseas-vomitos"},
+                 {"name": ACS, "url": "https://www.cancer.org/cancer/managing-cancer/side-effects/eating-problems/nausea-and-vomiting.html"}]},
     {"id": "fatigue", "label": "Cansancio", "treatments": TREATMENT_TYPES[:6], "tags": ["Descansar", "Almohada", "descanso", "Cobija"],
+     "kit": ["p1", "p2", "p4", "p5"], "kit_name": "Para recargar energía",
+     "tips": ["Planear ratos de descanso a lo largo del día y siestas cortas.", "Anotar a qué hora del día tienes más energía para organizar tus actividades.",
+              "Pedir ayuda con tareas de casa o traslados cuando lo necesites."],
      "precaution": "El cansancio tiene muchas causas; coméntalo con tu equipo si cambia o aumenta.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/fatigue"},
-                 {"name": "MedlinePlus", "url": "https://medlineplus.gov/ency/patientinstructions/000817.htm"}]},
+     "sources": [{"name": NCI_ES, "url": ES + "fatiga"}, {"name": "MedlinePlus", "url": "https://medlineplus.gov/ency/patientinstructions/000817.htm"}]},
     {"id": "cold", "label": "Sensibilidad al frío", "treatments": [CHEMO], "tags": ["Calidez", "Cobija", "Ropa suave"],
+     "kit": ["p1", "p3", "p32", "p20"], "kit_name": "Calidez a la mano",
+     "tips": ["Con algunas quimioterapias se recomienda abrigar manos y pies y evitar tocar cosas muy frías.", "Llevar bebidas tibias en un termo puede ser práctico; pregunta a tu equipo si debes evitar las frías."],
      "precaution": "Algunas quimioterapias pueden causar sensibilidad al frío; tu equipo puede orientarte sobre qué evitar.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/nerve-problems"}]},
+     "sources": [{"name": NCI_ES, "url": ES + "problemas-nervios"}]},
+    {"id": "neuropathy", "label": "Hormigueo en manos o pies", "treatments": [CHEMO, TARGET], "tags": ["Calidez", "Ropa suave"],
+     "kit": ["p3", "p1", "p15"], "kit_name": "Cuidar manos y pies",
+     "tips": ["El NCI sugiere proteger los pies con calcetines y calzado que sujete bien, y cuidar el riesgo de resbalones.", "Mantener manos y pies abrigados si el frío te molesta.",
+              "Avisar a tu equipo si notas hormigueo, adormecimiento o cambios al caminar."],
+     "precaution": "El hormigueo o adormecimiento debe comentarse con tu equipo médico; los artículos solo aportan comodidad.",
+     "sources": [{"name": NCI_ES, "url": ES + "problemas-nervios"}, {"name": NCI, "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/nerve-problems"}]},
     {"id": "mouth", "label": "Boca seca o sensible", "treatments": [CHEMO, RADIO], "tags": ["cuidado"], "exclude_categories": ["Antojos y preferencias"],
+     "kit": ["p19", "p17", "p20"], "kit_name": "Cuidado suave de la boca",
+     "tips": ["Usar un cepillo de dientes de cerdas suaves.", "Tener agua a la mano para dar sorbos durante el día.", "Mantener los labios hidratados."],
      "precaution": "Pregunta a tu equipo qué productos de cuidado bucal son adecuados para ti.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/mouth-throat"}]},
+     "sources": [{"name": NCI_ES, "url": ES + "boca-garganta"}]},
     {"id": "skin", "label": "Piel sensible", "treatments": [RADIO, TARGET, IMMUNO, CHEMO], "tags": ["Crema", "Ropa suave"],
+     "kit": ["p18", "p17", "p1"], "kit_name": "Piel cómoda",
+     "tips": ["Preferir telas suaves y ropa holgada.", "Elegir productos sin fragancia.", "Proteger la piel del sol según te indique tu equipo."],
      "precaution": "Durante la radioterapia, consulta antes de aplicar cualquier crema en la zona tratada.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/skin-nail-changes"}]},
+     "sources": [{"name": NCI_ES, "url": ES + "cambios-piel-unas"}]},
     {"id": "hair", "label": "Cambios en el cabello", "treatments": [CHEMO, RADIO], "tags": ["Gorros", "Pañuelos", "Gorro o pañoleta", "Bandas"],
+     "kit": ["p15", "p16", "p32", "p25"], "kit_name": "Opciones para cubrirte (si quieres)",
+     "tips": ["Gorros y pañuelos suaves pueden proteger el cuero cabelludo del sol y del frío.", "Algunas personas prefieren no cubrirse: cualquier opción es válida."],
      "precaution": "No todas las personas tienen cambios en el cabello; cubrirse es solo una opción más.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/hair-loss"}]},
+     "sources": [{"name": NCI_ES, "url": ES + "caida-pelo"}]},
+    {"id": "sleep", "label": "Dificultad para dormir", "treatments": TREATMENT_TYPES[:6], "tags": ["Luz tenue", "Silencio", "Descansar"],
+     "kit": ["p4", "p12", "p2", "p1"], "kit_name": "Noches más tranquilas",
+     "tips": ["Mantener el cuarto oscuro, silencioso y cómodo.", "Tener horarios regulares para dormir y despertar.", "Relajarte antes de dormir con música tranquila o lectura."],
+     "precaution": "Si dormir mal se vuelve frecuente, coméntalo con tu equipo médico.",
+     "sources": [{"name": NCI, "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/sleep-problems"}]},
+    {"id": "memory", "label": "Olvidos o dificultad para concentrarte", "treatments": [CHEMO, RADIO, HORMONE], "tags": ["organización", "Escribir"],
+     "kit": ["p5", "p6", "p7", "p31"], "kit_name": "Todo en su lugar",
+     "tips": ["Usar una libreta o agenda para anotar citas, preguntas y pendientes.", "Guardar los papeles importantes siempre en el mismo lugar.", "Hacer una cosa a la vez y pedir que te repitan lo importante."],
+     "precaution": "Usa el pastillero solo según las indicaciones de tu equipo médico.",
+     "sources": [{"name": NCI_ES, "url": ES + "memoria"}]},
+    {"id": "feelings", "label": "Estrés o preocupación", "treatments": TREATMENT_TYPES, "tags": ["Escribir", "Dibujar", "Tejer", "Escuchar música"],
+     "kit": ["p31", "p10", "p11", "p12", "p5"], "kit_name": "Un rato para ti",
+     "tips": ["Escribir lo que sientes o lo que te preocupa puede ayudar a ordenar ideas.", "Actividades creativas o relajantes, como dibujar, tejer o escuchar música.",
+              "Hablar con alguien de confianza o pedir apoyo a tu equipo."],
+     "precaution": "Si la preocupación o la tristeza no te dejan, pide apoyo a tu equipo; hay profesionales que pueden acompañarte.",
+     "sources": [{"name": NCI_ES, "url": "https://www.cancer.gov/espanol/cancer/sobrellevar/sentimientos"}]},
     {"id": "waiting", "label": "Tiempos de espera largos", "treatments": [CHEMO, IMMUNO, TARGET, RADIO], "tags": ["entretenimiento", "llevar"],
-     "precaution": "", "sources": [{"name": "American Cancer Society", "url": "https://www.cancer.org/cancer/managing-cancer/treatment-types/chemotherapy/what-to-expect.html"}]},
+     "kit": ["p8", "p9", "p12", "p14", "p20"], "kit_name": "Para la sala de espera",
+     "tips": ["Las sesiones pueden durar varias horas: llevar algo para entretenerte y ropa cómoda.", "Una bolsa con lo esencial facilita los traslados."],
+     "precaution": "", "sources": [{"name": ACS, "url": "https://www.cancer.org/cancer/managing-cancer/treatment-types/chemotherapy/what-to-expect.html"}]},
     {"id": "visits", "label": "Muchas citas y papeles", "treatments": TREATMENT_TYPES, "tags": ["organización", "papeles", "preparación"],
-     "precaution": "", "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/coping"}]},
+     "kit": ["p6", "p5", "p8", "p7"], "kit_name": "Citas organizadas",
+     "tips": ["Llevar tus preguntas anotadas a cada cita.", "Tener en una carpeta estudios, recetas y datos de contacto de tu equipo."],
+     "precaution": "", "sources": [{"name": NCI_ES, "url": "https://www.cancer.gov/espanol/cancer/sobrellevar"}]},
     {"id": "recovery", "label": "Recuperación en casa", "treatments": [SURG], "tags": ["Almohada", "casa", "Descansar", "descanso"],
+     "kit": ["p2", "p1", "p4", "p14"], "kit_name": "Recuperarte con calma",
+     "tips": ["Preparar un espacio cómodo en casa antes de la cirugía.", "Tener a la mano lo que vas a usar para moverte menos los primeros días."],
      "precaution": "Sigue las indicaciones de recuperación que te dio tu equipo.",
-     "sources": [{"name": "Instituto Nacional del Cáncer (NCI)", "url": "https://www.cancer.gov/about-cancer/treatment/types/surgery"}]},
+     "sources": [{"name": NCI, "url": "https://www.cancer.gov/about-cancer/treatment/types/surgery"}]},
 ]
 KB_BY_ID = {k["id"]: k for k in KB}
 
@@ -160,3 +206,31 @@ async def explain(pid: str, today: str = Query(...), user=Depends(current_user))
         if text:
             await db.reco_explain.insert_one({"user_id": user["id"], "product_id": pid, "day": today, "why": why, "text": text, "at": now_iso()})
     return {"text": text or (why[0] if why else "Una opción general para empezar."), "reasons": why, "details": details, "price_is_demo": True}
+
+
+def guided_template(kid: str):
+    """Kit template built from a knowledge-base guide: id `g-<need>`."""
+    k = KB_BY_ID.get(kid[2:]) if kid.startswith("g-") else None
+    if not k:
+        return None
+    n = len(k["kit"])
+    return {"id": kid, "name": k["kit_name"], "context": "Basado en guías", "size": "Pequeño" if n <= 4 else "Mediano", "items": k["kit"],
+            "description": k["tips"][0], "guide": {"need": k["id"], "label": k["label"], "tips": k["tips"], "precaution": k["precaution"], "sources": k["sources"], "reviewed": REVIEWED}}
+
+
+@api.get("/guided-kits")
+async def guided_kits(user=Depends(current_user)):
+    """Every guide is open to everyone (general information). With Plus, the ones related to the person's registered treatments/needs go first."""
+    from business import is_plus
+    from server import kit_view
+    plus = await is_plus(user)
+    types = set(await user_treatments(user["id"])) if plus else set()
+    declared = set((user.get("profile", {}) or {}).get("declared_needs") or []) if plus else set()
+    out = []
+    for k in KB:
+        t = guided_template("g-" + k["id"])
+        kv = await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]})
+        for_you = "Elegiste este tema" if k["id"] in declared else "Relacionado con tu tratamiento registrado" if set(k["treatments"]) & types else ""
+        out.append({**kv, "for_you": for_you})
+    out.sort(key=lambda x: (not x["for_you"].startswith("Elegiste"), not x["for_you"]))
+    return {"plus": plus, "reviewed": REVIEWED, "kits": out}

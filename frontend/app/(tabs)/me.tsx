@@ -104,7 +104,7 @@ export default function Me() {
           {g.items.map((it, i) => <Row key={it.title} icon={it.icon} tint={it.tint || "sand"} title={it.title} onPress={() => router.push(it.href)} testID={`profile-row-${it.title}`} last={i === g.items.length - 1} />)}
         </Section>
       ))}
-      {!isCg ? <PlanCard /> : null}
+      <PlanCard />
       {user?.is_admin ? (
         <Section title="Administración">
           <Row icon="shield" tint="sand" title="Panel de administración" subtitle="Catálogo, costos, inventario y códigos" onPress={() => router.push("/admin")} testID="profile-admin-row" last />

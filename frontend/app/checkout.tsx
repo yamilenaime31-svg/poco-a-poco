@@ -10,9 +10,8 @@ import { Btn, Card, Field, Ic, Section, Screen, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
 const SHIP = [
-  { label: "Estándar", cost: 99, text: "3 a 5 días hábiles" },
-  { label: "Express", cost: 179, text: "1 a 2 días hábiles" },
-  { label: "Recoger en punto AMODO", cost: 0, text: "Te avisamos cuando esté listo" },
+  { label: "Estándar", text: "3 a 5 días hábiles dentro de México" },
+  { label: "Recoger en punto AMODO", text: "Te avisamos cuando esté listo" },
 ];
 
 function Line({ l, r, bold }: { l: string; r: string; bold?: boolean }) {
@@ -44,7 +43,7 @@ export default function Checkout() {
     if (f.phone.replace(/\D/g, "").length < 7) e.phone = "Escribe un teléfono de contacto.";
     if (f.street.trim().length < 3) e.street = "Escribe la calle y número.";
     if (f.city.trim().length < 2) e.city = "Escribe la ciudad.";
-    if (!/^\d{4,6}$/.test(f.zip.trim())) e.zip = "Código postal no válido.";
+    if (!/^\d{5}$/.test(f.zip.trim())) e.zip = "Por ahora solo enviamos dentro de México: escribe un código postal de 5 dígitos.";
     setErrors(e);
     if (Object.keys(e).length) return;
     setBusy(true);
@@ -99,9 +98,10 @@ export default function Checkout() {
               <Txt v="medium">{s.label}</Txt>
               <Txt v="caption">{s.text}</Txt>
             </View>
-            <Txt v="medium">{s.cost ? money(s.cost) : "Gratis"}</Txt>
+            <Txt v="medium">Incluido</Txt>
           </Pressable>
         ))}
+        <Txt v="caption">El envío estándar ya está incluido en el precio de tus kits. Por ahora la cobertura es dentro de México.</Txt>
       </Section>
 
       <Section title="Pago">
@@ -127,7 +127,7 @@ export default function Checkout() {
           <View testID="checkout-breakdown">
             {b.discounts.map((d: any) => <Line key={d.label} l={d.label} r={`−${money(d.amount)}`} />)}
             {b.credit ? <Line l={`Crédito disponible (${money(b.credit_available)})`} r={`−${money(b.credit)}`} /> : null}
-            <Line l="Envío" r={b.shipping ? money(b.shipping) : "Gratis"} />
+            <Line l="Envío estándar" r="Incluido" />
             <Line l="Total" r={money(b.total)} bold />
             <Txt v="caption" style={{ marginTop: space.sm }}>Plan: {b.plan}. {b.rule} {b.tax_note} Sin cargos adicionales.</Txt>
           </View>

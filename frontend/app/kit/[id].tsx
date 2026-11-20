@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { api, invalidate, useApi } from "@/src/api";
 import { money } from "@/src/constants";
 import { useToast } from "@/src/toast";
+import { GuideInfo } from "@/src/components/guide-info";
 import { Badge, Btn, Card, ErrorState, Loading, ProductImage, Row, Screen, Sheet, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
@@ -79,7 +80,9 @@ export default function KitDetail() {
           <Txt v="h1" style={{ marginTop: space.md }} testID="kit-name">
             {k.name}
           </Txt>
-          {k.description || k.note ? <Txt style={{ marginTop: space.sm }}>{k.description || k.note}</Txt> : null}
+          {k.guide ? <Txt v="caption" style={{ marginTop: space.xs }}>Pensado para: {k.guide.label.toLowerCase()}</Txt> : null}
+          {k.guide ? <View style={{ marginTop: space.md }}><GuideInfo guide={k.guide} testID="kit-guide-info" /></View>
+            : k.description || k.note ? <Txt style={{ marginTop: space.sm }}>{k.description || k.note}</Txt> : null}
           <Txt v="label" style={{ marginTop: space.xl }}>
             {k.items.length} artículos
           </Txt>

@@ -7,7 +7,7 @@ import { useToast } from "@/src/toast";
 import { Btn, Chip, ChipRow, Loading, Section, Txt } from "@/src/ui";
 import { space } from "@/src/theme";
 
-const COSTS = [["packaging", "Empaque"], ["assembly", "Armado"], ["labels", "Etiquetas"], ["protection", "Material de protección"], ["storage", "Almacenamiento"], ["logistics", "Logística interna"], ["incidents", "Reserva incidencias"], ["payment_fee_pct", "Comisión de pago %"], ["tax_pct", "IVA %"], ["min_margin_pct", "Margen mínimo %"]];
+const COSTS = [["packaging", "Empaque"], ["assembly", "Armado"], ["labels", "Etiquetas"], ["protection", "Material de protección"], ["storage", "Almacenamiento"], ["logistics", "Logística interna"], ["shipping", "Envío estimado (lo absorbe AMODO)"], ["incidents", "Reserva incidencias"], ["payment_fee_pct", "Comisión de pago %"], ["tax_pct", "IVA %"], ["min_margin_pct", "Margen mínimo %"]];
 
 export default function AdminSettings() {
   const toast = useToast();
@@ -44,7 +44,7 @@ export default function AdminSettings() {
         <Btn label="Guardar tamaños" variant="secondary" onPress={() => save("sizes", sizes)} testID="admin-save-sizes" />
       </Section>
       <Section title="Costos de preparación y comisiones">
-        {[0, 2, 4, 6, 8].map((i) => (
+        {[0, 2, 4, 6, 8, 10].map((i) => (
           <View key={i} style={{ flexDirection: "row", gap: space.sm }}>
             {COSTS.slice(i, i + 2).map(([k, l]) => <NumField key={k} label={l} value={costs[k]} onChange={num(costs, setCosts, k)} testID={`admin-cost-${k}`} />)}
           </View>
