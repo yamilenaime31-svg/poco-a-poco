@@ -22,7 +22,7 @@ export default function MyKits() {
   const reco = useApi<any>(`/recommendations?today=${today()}`);
   const again = useApi<any[]>("/reorder");
   const guided = useApi<any>("/guided-kits");
-  const shared = useApi<any[]>(user?.role === "caregiver" ? "/kits-shared" : null);
+  const shared = useApi<any[]>("/kits-shared");
   const cart = useApi<any>("/cart");
 
   const feedback = async (id: string, action: string, msg: string) => {
@@ -100,8 +100,8 @@ export default function MyKits() {
       </Section>
 
       {(shared.data || []).length ? (
-        <Section title="Compartidos conmigo">
-          {shared.data!.map((k) => <Row key={k.id} icon="users" tint="lavender" title={k.name} subtitle={`De ${k.owner_name} · ${k.items.length} artículos`} onPress={() => router.push(`/kit/${k.id}`)} testID={`shared-kit-${k.id}`} />)}
+        <Section title="Regalos y compartidos" testID="kits-shared">
+          {shared.data!.map((k) => <Row key={k.id} icon={k.gift ? "gift" : "users"} tint={k.gift ? "coral" : "lavender"} title={k.name.replace(" · regalo", "")} subtitle={`${k.gift ? "Regalo de" : "De"} ${k.owner_name} · ${k.items.length} artículos${k.thanks ? " · agradecido" : ""}`} onPress={() => router.push(`/kit/${k.id}`)} testID={`shared-kit-${k.id}`} />)}
         </Section>
       ) : null}
 

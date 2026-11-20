@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 11 tested the gift-kit lifecycle features. Backend: 11/11 pytest passed. Covered: the cart detail 'Regalo para Lucia · «msg» · ...'; checkout shares the kit (kits-shared has gift:true and owner_name) and sends the patient 'Carlos te envió un kit'; the thanks endpoint returns 422 for messages not in the list or a missing message, and 404 for the sender, a stranger or a template; a valid thanks sets kit.thanks and sends the sender 'Lucia te dio las gracias' linking to /kit/<id>; repeat + checkout of a still-shared gift does not notify again; cancel removes access (absent from kits-shared, GET /kits/<id> returns 404 for the patient) and sends 'Un envío se canceló'; thanks after cancel returns 404; duplicate drops gift/for_user_id/thanks; re-ordering after a cancel notifies again. Frontend at 390x844, all passed. Patient: Mis kits 'Regalos y compartidos' shows 'Un rato para ti / Regalo de Carlos · 5 artículos' with no '· regalo' suffix. On /kit/<id>, the kit-thanks card shows chips kit-thanks-0..3; tapping 'Me encantó' shows kit-thanks-sent 'Le enviaste a Carlos: «Me encantó»', the chips disappear and a toast appears. After the caregiver cancels, the kits-shared section is gone and the 'Un envío se canceló' notification shows. Caregiver: /kit/<id> shows kit-thanks-received 'Lucia te dio las gracias «Me encantó»'; the cart line shows 'Regalo para Lucia · «TEST_ Descansa» · Kit chico · ...'. Only minor edge-case and UX issues were found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/orders/{id}/cancel (business.py set_order_status ~L385)", "issue": "Cancelling ANY order that contains the gift kit removes the patient's access and sends 'Un envío se canceló', even when another active order for the same gift still exists. Reproduced: order A → repeat → order B → cancel B. The patient lost the kit although A was still 'Pendiente de confirmación'. Fix: before pulling, check that no other non-cancelled order of the owner contains items.ref_id == kit id."},
+      {"endpoint": "POST /api/kits/{id}/thanks", "issue": "There is no dedupe. A second thanks overwrites kit.thanks and notifies the sender again (pytest saw 2 'te dio las gracias' notifications). The UI hides the chips after the first thanks, but the API, double taps (thank() has no busy guard) or stale screens can repeat it. Consider returning 409 if thanks already exists, or skipping the notification."},
+      {"endpoint": "POST /api/kits/{id}/duplicate", "issue": "gift/for_user_id/thanks are removed, but for_name and note ('TEST_ Para que descanses') are kept. The copy, a normal kit, still shows the 'Para Lucia' badge, a gift icon in Mis kits (icon chosen from for_name) and a 'Mensaje' card."},
+      {"endpoint": "Re-gift after cancel (place_order)", "issue": "When a cancelled gift is ordered again, the patient is notified again (correct), but the old kit.thanks is not reset. The patient sees 'Le enviaste...' and cannot thank for the new shipment. Consider clearing thanks when shared_with is pulled on cancel."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Old 'X te envió un kit' notification after the order was cancelled", "issue": "Tapping it opens /kit/<id>. The GET returns 404 and the screen shows the generic ErrorState 'No pudimos cargar esto · Puede ser la conexión', which is misleading. Show a specific 'Este envío se canceló' empty state on 404, or retarget the old notification.", "affected_testIDs": ["kit-detail-screen"]}
+    ],
+    "design_issues": [
+      {"screen": "/kit/<gift id> (patient)", "issues": ["The thanks chips (kit-thanks-0..3) are 36px tall, under the 44px minimum touch target.", "The 'Dar las gracias' card is placed ABOVE the 'Mensaje de Carlos' card, so the patient is asked to thank before reading the message. Consider moving kit-note above kit-thanks.", "The success toast 'Le avisamos a Carlos' overlaps the header title 'Kit recibido'.", "The patient still sees a 'Para Lucia' badge on their own received kit (known from iteration 10)."]},
+      {"screen": "/kit/<gift id> (caregiver)", "issues": ["The title still shows 'Un rato para ti · regalo', which is redundant with the 'Para Lucia' badge. Optional."]},
+      {"screen": "/cart", "issues": ["The gift line reads 'Noches más tranquilas · regalo' + 'Regalo para Lucia · «...»', so 'regalo' appears twice. Optional: remove the suffix from the name."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter11_gift_lifecycle.py", "/app/backend/tests/ui_setup_iter11.py", "/app/test_reports/pytest/pytest_iter11.xml"],
+  "action_items": [
+    "set_order_status (Cancelado): only remove the patient's access and notify when no other non-cancelled order of the sender still contains the same gift kit.",
+    "thank_gift: reject or ignore repeated thanks (409, or skip the notification). Add a busy/disabled guard in kit/[id].tsx thank().",
+    "duplicate_kit: also drop for_name and note, or at least for_name, from the copy.",
+    "On cancel, also $unset kit.thanks so a re-gift can be thanked again.",
+    "kit/[id].tsx: show a specific message on 404 for cancelled gifts instead of the generic connection error.",
+    "UX: thanks chips at least 44px tall; put the 'Mensaje de X' card above the thanks card."
+  ],
+  "critical_code_review_comments": [
+    "The thanks query correctly requires gift:true, for_user_id == user and shared_with containing user, so it is blocked after a cancel and for senders/strangers.",
+    "The repeat-order no-renotify logic works because place_order only notifies when for_user_id is not in shared_with.",
+    "The cancel notification links to /notifications rather than the order, which is fine. The admin status change to Cancelado uses the same path."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter11_gift_lifecycle.py", "/app/backend/tests/ui_setup_iter11.py"],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "100% of tested flows"},
+  "seed_data_creation": "Created TEST_ users from pytest and test_ui11_9817a4@amodo.app (patient) / test_ui11_f2ea2e@amodo.app (caregiver), all with password Demo1234. All their orders were cancelled, carts emptied and gift kits deleted. Demo accounts were not used or changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n0 (pytest.ini adds xdist args). Running ui_setup_iter11.py (PYTHONPATH=tests) creates a linked pair with an ACTIVE gift order plus a second gift in the caregiver's cart, and prints the tokens."
+}

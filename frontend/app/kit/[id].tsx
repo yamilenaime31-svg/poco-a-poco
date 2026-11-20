@@ -10,6 +10,8 @@ import { GuideInfo } from "@/src/components/guide-info";
 import { Badge, Btn, Card, Chip, ChipRow, ErrorState, Field, Loading, ProductImage, Row, Screen, Sheet, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
+const THANKS = ["¡Gracias!", "Me encantó", "Me hizo el día", "Gracias por acompañarme"];
+
 export default function KitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -28,6 +30,20 @@ export default function KitDetail() {
   const received = !!k && !k.template && k.owner_id !== user?.id;
   const target = to || patients[0]?.patient_id || "";
 
+  const [thanking, setThanking] = useState(false);
+  const thank = async (message: string) => {
+    if (thanking) return;
+    setThanking(true);
+    try {
+      await api(`/kits/${id}/thanks`, { method: "POST", body: { message } });
+      invalidate();
+      toast.show(`Le avisamos a ${k.from_name}`);
+    } catch (e: any) {
+      toast.show(e.message, "error");
+    } finally {
+      setThanking(false);
+    }
+  };
   const sendGift = async () => {
     setBusy(true);
     try {
@@ -119,6 +135,17 @@ export default function KitDetail() {
           {k.guide ? <Txt v="caption" style={{ marginTop: space.xs }}>Pensado para: {k.guide.label.toLowerCase()}</Txt> : null}
           {k.guide ? <View style={{ marginTop: space.md }}><GuideInfo guide={k.guide} testID="kit-guide-info" /></View>
             : !k.note && k.description ? <Txt style={{ marginTop: space.sm }}>{k.description}</Txt> : null}
+          {k.gift && received ? (
+            <Card style={{ marginTop: space.md }} testID="kit-thanks">
+              {k.thanks ? <Txt testID="kit-thanks-sent">Le enviaste a {k.from_name}: «{k.thanks.message}»</Txt> : (
+                <>
+                  <Txt v="label">Dar las gracias a {k.from_name}</Txt>
+                  <View style={{ marginTop: space.sm }}><ChipRow>{THANKS.map((t) => <Chip key={t} label={t} onPress={thanking ? undefined : () => thank(t)} testID={`kit-thanks-${THANKS.indexOf(t)}`} />)}</ChipRow></View>
+                </>
+              )}
+            </Card>
+          ) : null}
+          {k.gift && !received && k.thanks ? <Card style={{ marginTop: space.md }} testID="kit-thanks-received"><Txt v="label">{k.for_name} te dio las gracias</Txt><Txt style={{ marginTop: 4 }}>«{k.thanks.message}»</Txt></Card> : null}
           {k.note ? <Card style={{ marginTop: space.md }} testID="kit-note"><Txt v="label">{k.from_name ? `Mensaje de ${k.from_name}` : k.gift ? "Mensaje" : "Nota"}</Txt><Txt style={{ marginTop: 4 }}>{k.note}</Txt></Card> : null}
           <Txt v="label" style={{ marginTop: space.xl }}>
             {k.items.length} artículos

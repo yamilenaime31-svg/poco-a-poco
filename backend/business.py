@@ -356,7 +356,7 @@ async def place_order(user: dict, address: dict, shipping: str) -> dict:
     await notify(user["id"], "Pedido registrado", f"Tu pedido {order['number']} quedó pendiente de confirmación (demostración).", "order", f"/order/{order['id']}")
     for i in cart["items"]:
         k = await db.kits.find_one({"id": i["ref_id"], "gift": True}) if i["type"] == "kit" else None
-        if k and k.get("for_user_id"):
+        if k and k.get("for_user_id") and k["for_user_id"] not in (k.get("shared_with") or []):
             await db.kits.update_one({"id": k["id"]}, {"$addToSet": {"shared_with": k["for_user_id"]}})
             msg = f"«{k['note']}»" if k.get("note") else "Va en camino."
             await notify(k["for_user_id"], f"{display_name(user)} te envió un kit", f"{k['name'].replace(' · regalo', '')}. {msg}", "order", f"/kit/{k['id']}")
@@ -382,6 +382,14 @@ async def set_order_status(o: dict, status: str):
         if b:
             await db.benefits.update_one({"id": b["id"]}, {"$inc": {"remaining": min(o["credit"], b["value"] - b.get("remaining", 0))}})
             await db.benefit_history.insert_one({"id": uid(), "user_id": o["user_id"], "at": now_iso(), "text": f"Se devolvieron ${o['credit']} de crédito por cancelar el pedido {o['number']}."})
+    if status == "Cancelado":
+        for i in o.get("items", []):
+            k = await db.kits.find_one({"id": i["ref_id"], "gift": True}) if i["type"] == "kit" else None
+            other = await db.orders.find_one({"id": {"$ne": o["id"]}, "items.ref_id": i["ref_id"], "status": {"$nin": ["Cancelado"]}}) if k else None
+            if k and not other and k.get("for_user_id") in (k.get("shared_with") or []):
+                await db.kits.update_one({"id": k["id"]}, {"$pull": {"shared_with": k["for_user_id"]}})
+                sender = await db.users.find_one({"id": o["user_id"]})
+                await notify(k["for_user_id"], "Un envío se canceló", f"El kit «{k['name'].replace(' · regalo', '')}» que te preparó {display_name(sender) if sender else 'alguien de tu red'} ya no se enviará.", "order", "/notifications")
     await db.orders.update_one({"id": o["id"]}, {"$set": {"status": status, "cancelled": status == "Cancelado"}, "$push": {"history": {"status": status, "at": now_iso()}}})
     await notify(o["user_id"], "Tu pedido cambió de estado", f"{o['number']}: {status}.", "order", f"/order/{o['id']}")
 
@@ -401,7 +409,7 @@ async def duplicate_kit(kid: str, user=Depends(current_user)):
     k = await db.kits.find_one({"id": kid, "owner_id": user["id"]})
     if not k:
         raise HTTPException(404, "Kit no encontrado")
-    new = {**clean(k), "id": uid(), "name": f"{k['name']} (copia)", "created_at": now_iso(), "updated_at": now_iso(), "shared_with": []}
+    new = {**{x: v for x, v in clean(k).items() if x not in ("gift", "for_user_id", "thanks", "for_name", "note", "guide")}, "id": uid(), "name": f"{k['name']} (copia)", "created_at": now_iso(), "updated_at": now_iso(), "shared_with": []}
     await db.kits.insert_one(new)
     return {"id": new["id"]}
 
@@ -615,3 +623,21 @@ async def report(today: str, user=Depends(require_plus)):
     lines += ["", "MEDICAMENTOS REGISTRADOS"] + ([f"- {m.get('name', '')} {m.get('dose', '')} · {m.get('times') or m.get('schedule') or ''}" for m in meds] or ["- Ninguno"])
     lines += ["", "Generado por ti desde AMODO. No sustituye las indicaciones de tu equipo médico."]
     return {"text": "\n".join(lines), "count": len(items)}
+
+
+THANKS = ["¡Gracias!", "Me encantó", "Me hizo el día", "Gracias por acompañarme"]
+
+
+@api.post("/kits/{kid}/thanks")
+async def thank_gift(kid: str, message: str = Body(..., embed=True), user=Depends(current_user)):
+    """The person who received a gift kit sends a quick thank-you to whoever sent it."""
+    if message not in THANKS:
+        raise HTTPException(422, "Mensaje no válido")
+    k = await db.kits.find_one({"id": kid, "gift": True, "for_user_id": user["id"], "shared_with": user["id"]})
+    if not k:
+        raise HTTPException(404, "Kit no encontrado")
+    if k.get("thanks"):
+        raise HTTPException(409, "Ya enviaste tu agradecimiento")
+    await db.kits.update_one({"id": kid}, {"$set": {"thanks": {"message": message, "at": now_iso()}}})
+    await notify(k["owner_id"], f"{display_name(user)} te dio las gracias", f"«{message}» · por el kit {k['name'].replace(' · regalo', '')}", "network", f"/kit/{kid}")
+    return {"ok": True, "thanks": message}

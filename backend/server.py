@@ -842,7 +842,8 @@ async def cart_view(user_id: str) -> dict:
             if not k:
                 continue
             kv = await kit_view(k)
-            c.update({"name": kv["name"], "price": kv["total"], "detail": f"{kv['size_label']} · {len(kv['items'])} artículos" + (f" · incluye ${kv['supplements']} en suplementos" if kv["supplements"] else ""),
+            gift = f"Regalo para {k.get('for_name') or 'alguien'}" + (f" · «{k['note']}»" if k.get("note") else "") + " · " if k.get("gift") else ""
+            c.update({"name": kv["name"], "price": kv["total"], "gift": bool(k.get("gift")), "detail": gift + f"{kv['size_label']} · {len(kv['items'])} artículos" + (f" · incluye ${kv['supplements']} en suplementos" if kv["supplements"] else ""),
                       "category": "Kit", "product_ids": [i["product_id"] for i in kv["items"]], "image_product": kv["items"][0]["product"] if kv["items"] else None})
         else:
             p = await db.products.find_one({"id": c["ref_id"]})

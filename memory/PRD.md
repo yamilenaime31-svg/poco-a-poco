@@ -72,3 +72,10 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - /api/guided-kits prioriza para acompañantes (por vínculos activos, no por rol) los temas del tratamiento que el paciente compartió con ellos ("Para <nombre>"); requiere Plus del acompañante o del paciente.
 - POST /api/kits/{kid}/gift {patient_id, message}: kit regalo (gift:true) al carrito; al pagar, se comparte con el paciente y se le notifica con el mensaje. El paciente ve "Kit recibido" + "Mensaje de <nombre>".
 - Tarjetas de guía: fotos en una fila (máx. 4 + "+N"), etiquetas cortas.
+
+## Iteration 11 (Jun 2026) — Regalos: cancelación, carrito y agradecimiento
+- Al cancelar un pedido con kit regalo: se quita el kit al paciente (shared_with) y se le avisa. Re-pedir no vuelve a notificar si ya lo tenía. Duplicar quita datos de regalo.
+- Carrito: detalle "Regalo para X · «mensaje»".
+- POST /api/kits/{kid}/thanks {message ∈ 4 frases}: el paciente agradece; notifica al remitente; kit.thanks visible para ambos.
+- Mis kits: sección "Regalos y compartidos" para cualquier usuario.
+- Iter 11 fixes: cancel keeps access if another active order has the gift; thanks once (409); duplicate strips for_name/note/guide.
