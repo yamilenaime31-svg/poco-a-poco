@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 7 (plans / institutional codes / Plus gates / decimals) tested end-to-end. Backend: new tests/test_amodo_iter7_plans.py 14/14 pass; iter6 regression 29/29 pass after updating 3 assertions to the new spec (message 'Este código ya no está vigente.', 15% discount now 86.1 decimals, totals 436.9). Frontend (390 + 320px): kit-builder footer OK (no kit-back-button, 'Precio total', kit-total '$299 MXN'/'$419 MXN' single line h=21px, kit-next-button 120x52 fully in view, count 'X de 4 artículos · te quedan Y'); 'Otro' with empty kit-context-other-input continues to step 4; UI register -> /choose-plan (Gratis first, $79 MXN/mes, code card) -> Comenzar gratis -> /onboarding; Elegir Plus -> tier plus (Demostración, +30 días); Ingresar código -> /redeem?onboarding=1 texts OK, invalid + expired messages exact, input auto-uppercases, CONVENIO-C info + activate -> /onboarding, plan Gratis + credit 300; redeem-continue-free -> /onboarding plan_chosen true. PlusGate: free -> ta-plus-gate, report gate (no report-generate), reco-needs-plus-gate in Mis kits, 'Conocer Plus' -> /plan, why sheet basic text + 'Explicación básica. Con AMODO Plus...' note; Plus -> report-generate -> report-text + share, no gates, NeedsPrompt save persists, expanded LLM explanation. CONVENIO-B UI: summary '−$41.90 MXN', 'Total de artículos $377.10 MXN', checkout total $476.10 MXN. CONVENIO-D credit 299 scope kits applies only to kits (API). Plan card/plan screen show Gratis / Plus / Institucional. Regression: demo login -> tabs, agenda/organiza load, admin codes list shows 'Activado por', Kit financiado chips, Save button now reachable (iter6 bug fixed); caregiver admin 403. No deprecated Expo packages detected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/recommendations (server.py:1244-1245 score_products)", "issue": "Treatment-stage boost ('Orientativo para la etapa «antes» que registraste') still applies to FREE users, while the spec/PlusGate copy says treatment-context recommendations are Plus-only. context_for() is gated, but the older stage boost is not."},
+      {"endpoint": "breakdown() business.py:272", "issue": "With 'best' stacking and a tie (Plus 10% vs CONVENIO-B 10%), label shows 'Descuento AMODO Plus en kits (10%)' instead of the institution discount. Amount is correct; attribution may confuse (Plus here comes from the institution)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "login.tsx:25", "issue": "After login, a registered user who has not chosen a plan (plan_chosen false, onboarding_done false) is sent directly to /onboarding, skipping /choose-plan. Should route via '/' (index) or check plan_chosen.", "testID": "login-submit-button", "priority": "MEDIUM"},
+      {"component": "redeem.tsx:68", "issue": "'Continuar con AMODO Gratis' has no try/catch or loading state and does not call auth refresh(); API failure becomes unhandled promise rejection.", "testID": "redeem-continue-free", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "kit-builder", "issues": ["No step-back control: with 'Atrás' removed, header-back-button exits the whole builder (router.back) and progress is lost; only step 5 has 'Editar kit'. Consider header back = previous step.", "At 320px kit-count truncates to '1 de 4 artículos · te q…' (numberOfLines=1)."]},
+      {"screen": "choose-plan / redeem / report headers", "issues": ["Header title 'Elige cómo quieres comenzar' truncated at 320px; subtitles truncated at 390px ('Tu i…', 'tu hos…').", "choose-plan shows header back button right after registration (goes back to register/landing while logged in)."]},
+      {"screen": "report", "issues": ["Report text uses raw ISO dates (2026-11-20) in Spanish UI; rest of app uses 'vie 31 dic' format."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter7_plans.py", "/app/backend/tests/test_amodo_iter6_business.py", "/app/test_reports/pytest/iter7_plans.xml"],
+  "action_items": [
+    "login.tsx: after login route to '/' (or check !plan_chosen -> /choose-plan) so unchosen-plan users see choose-plan.",
+    "server.py score_products: gate the treatment-stage boost/reason behind is_plus (or document it as an essential free feature and adjust PlusGate copy).",
+    "kit-builder: make header back go to the previous step when step > 0 (no Atrás button in footer now).",
+    "redeem.tsx continue-free: add try/catch, loading and refresh().",
+    "Optional: discount label tie-break prefers institutional label; allow 2-line header titles on small screens."
+  ],
+  "critical_code_review_comments": [
+    "choose-plan.tsx defines Card component inside render (re-created every render) — minor.",
+    "redeem activate does not call useAuth().refresh(); auth context plan_chosen stays stale until reload (harmless because onboarding follows).",
+    "admin /admin/codes exposes 'activated_by' user names to admin only — OK, but confirm this matches the privacy note shown to patients ('La institución no recibe tu información')."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter6_business.py (assertions updated to iter7 spec)", "/app/backend/tests/test_amodo_iter7_plans.py (new)"],
+  "success_rate": {"backend": "100% (43/43)", "frontend": "~95% (all requested flows pass; login->choose-plan routing bug)"},
+  "seed_data_creation": "Only TEST_ users registered (test_*@amodo.app) with TEST_ kits; carts cleaned. Codes CONVENIO-A/B/C/D and HOSPITAL-DEMO usage counters incremented by test activations. demo@amodo.app untouched (free, no benefits).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Env var EXPO_PUBLIC_BACKEND_URL. Run pytest with -n 0. To reach /choose-plan in UI with an API-registered user: login, then page.goto('/') (login.tsx itself skips choose-plan). Kit builder steps animate: wait for kit-builder-step-N + ~600ms before clicking chips. Size testID kit-size-Chico, product kit-product-p34. Free user Mis kits shows reco-needs-plus-gate only if a treatment record exists (POST /api/treatments/plan with name 'Quimioterapia').",
+  "rca_of_issue": "Login skip of choose-plan: login.tsx:25 router.replace(r.user.onboarding_done ? '/(tabs)' : '/onboarding') ignores plan_chosen; index.tsx has the correct logic."
+}

@@ -97,11 +97,29 @@ async def seed_business():
              "benefits": {"plus_months": 1, "kit_discount_pct": 10, "credit": 0}, "valid_from": "2024-01-01", "valid_until": "2024-12-31",
              "max_uses": 50, "uses": 0, "budget": 5000, "budget_used": 0, "status": "activo", "demo": True, "conditions": "Código vencido de ejemplo."},
         ])
+    y = now().year
+    for code, inst, typ, ben in [("CONVENIO-A", "Hospital de ejemplo A", "Hospital", {"plus_months": 3}),
+                                 ("CONVENIO-B", "Clínica de ejemplo B", "Clínica", {"plus_months": 6, "kit_discount_pct": 10}),
+                                 ("CONVENIO-C", "Fundación de ejemplo C", "Fundación", {"credit": 300}),
+                                 ("CONVENIO-D", "Aseguradora de ejemplo D", "Aseguradora", {"funded_kit": "Chico"})]:
+        await db.codes.update_one({"code": code}, {"$setOnInsert": {"id": uid(), "code": code, "institution": inst, "institution_type": typ,
+                                   "benefits": {"plus_months": 0, "kit_discount_pct": 0, "credit": 0, "funded_kit": None, **ben}, "valid_from": f"{y}-01-01",
+                                   "valid_until": f"{y + 1}-12-31", "max_uses": 200, "uses": 0, "budget": None, "budget_used": 0, "status": "activo", "demo": True,
+                                   "conditions": "Convenio de ejemplo para el prototipo; no representa un acuerdo real."}}, upsert=True)
     if not await db.users.find_one({"is_admin": True}):
         await db.users.update_one({"email": "demo@amodo.app"}, {"$set": {"is_admin": True}})
 
 
 # ---------------------------------------------------------------- plans & benefits
+async def is_plus(user: dict) -> bool:
+    return (await plan_view(user))["tier"] == "plus"
+
+
+async def require_plus(user=Depends(current_user)):
+    """Plus-only conveniences (never safety info or essential reminders)."""
+    if not await is_plus(user):
+        raise HTTPException(403, "Esta herramienta es parte de AMODO Plus.")
+    return user
 async def active_benefits(user_id: str) -> list[dict]:
     today = now().date().isoformat()
     return [clean(b) async for b in db.benefits.find({"user_id": user_id, "until": {"$gte": today}, "status": "activo"})]
@@ -131,10 +149,10 @@ async def change_plan(action: str = Body(..., embed=True), user=Depends(current_
     """Demo only: Plus activates without any charge and can be cancelled any time."""
     if action == "plus":
         until = (now() + timedelta(days=30)).date().isoformat()
-        await db.users.update_one({"id": user["id"]}, {"$set": {"plan": {"tier": "plus", "source": "demo", "since": now_iso(), "until": until}}})
+        await db.users.update_one({"id": user["id"]}, {"$set": {"plan": {"tier": "plus", "source": "demo", "since": now_iso(), "until": until}, "plan_chosen": True}})
         await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": "Activaste AMODO Plus (demostración, sin cargo)."})
     elif action == "free":
-        await db.users.update_one({"id": user["id"]}, {"$set": {"plan": {"tier": "free"}}})
+        await db.users.update_one({"id": user["id"]}, {"$set": {"plan": {"tier": "free"}, "plan_chosen": True}})
         await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": "Volviste a AMODO Gratis."})
     else:
         raise HTTPException(422, "Opción no válida")
@@ -143,11 +161,11 @@ async def change_plan(action: str = Body(..., embed=True), user=Depends(current_
 
 def code_problem(c: Optional[dict], today: str) -> Optional[str]:
     if not c:
-        return "No encontramos ese código. Revisa que esté bien escrito."
+        return "No pudimos encontrar este código. Revísalo e inténtalo nuevamente."
     if c.get("status") != "activo":
         return "Este código ya no está activo."
     if today < c.get("valid_from", "") or today > c.get("valid_until", "9999"):
-        return "Este código está vencido o aún no está vigente."
+        return "Este código ya no está vigente."
     if c.get("uses", 0) >= c.get("max_uses", 0):
         return "Este código alcanzó su límite de usos."
     if c.get("budget") is not None and c.get("budget_used", 0) + (c["benefits"].get("credit") or 0) > c["budget"]:
@@ -163,6 +181,10 @@ def describe(b: dict) -> list[str]:
         out.append(f"{b['kit_discount_pct']}% de descuento en kits")
     if b.get("credit"):
         out.append(f"Un crédito de ${b['credit']} para artículos")
+    if b.get("funded_kit"):
+        out.append(f"Un {b['funded_kit'].lower()} financiado por la institución" if b["funded_kit"] != "Chico" else "Un kit chico financiado por la institución")
+    if not out:
+        out.append("Acceso a AMODO Gratis acompañado por tu institución")
     return out
 
 
@@ -203,8 +225,12 @@ async def activate_code(code: str = Body(..., embed=True), user=Depends(current_
         docs.append({**base, "id": uid(), "kind": "kit_discount_pct", "value": b["kit_discount_pct"], "until": until})
     if b.get("credit"):
         docs.append({**base, "id": uid(), "kind": "credit", "value": b["credit"], "remaining": b["credit"], "until": until})
+    if b.get("funded_kit"):
+        s = (await get_sizes()).get(b["funded_kit"]) or (await get_sizes())["Chico"]
+        docs.append({**base, "id": uid(), "kind": "credit", "scope": "kits", "label": f"{s['label']} financiado", "value": s["base"], "remaining": s["base"], "until": until})
     if docs:
         await db.benefits.insert_many(docs)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"plan_chosen": True}})
     await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": f"Activaste el código de {c['institution']}: {', '.join(describe(b))}."})
     return await plan_view(user)
 
@@ -244,12 +270,16 @@ async def breakdown(user: dict, kit_subtotal: int, other_subtotal: int, shipping
             label = " + ".join(lbl for lbl, _ in pcts)
         else:  # "best": only the single best discount applies, never duplicated
             label, pct = max(pcts, key=lambda x: x[1])
-        discounts.append({"label": f"{label} ({pct}%)", "amount": round(kit_subtotal * pct / 100)})
+        discounts.append({"label": f"{label} ({pct}%)", "amount": round(kit_subtotal * pct / 100, 2)})
     disc = sum(d["amount"] for d in discounts)
-    credit_avail = sum(b.get("remaining", 0) for b in plan["benefits"] if b["kind"] == "credit")
+    credits = [b for b in plan["benefits"] if b["kind"] == "credit"]
+    kit_left = max(0, kit_subtotal - disc)
     goods = max(0, kit_subtotal + other_subtotal - disc)
-    credit = min(credit_avail, goods)
-    total_goods = goods - credit
+    kit_credit = min(sum(b.get("remaining", 0) for b in credits if b.get("scope") == "kits"), kit_left)  # funded kits apply to kits only
+    any_credit = min(sum(b.get("remaining", 0) for b in credits if b.get("scope") != "kits"), goods - kit_credit)
+    credit_avail = sum(b.get("remaining", 0) for b in credits)
+    credit = round(kit_credit + any_credit, 2)
+    total_goods = round(goods - credit, 2)
     rule = "Se aplica solo el mayor descuento disponible; no se combinan." if cfg["stacking"] == "best" else f"Los descuentos se suman hasta un máximo de {cfg['max_discount_pct']}%."
     return {"kits": kit_subtotal, "others": other_subtotal, "discounts": discounts, "credit_available": credit_avail, "credit": credit,
             "items_total": total_goods, "shipping": shipping, "total": None if shipping is None else total_goods + shipping,
@@ -303,7 +333,7 @@ async def place_order(user: dict, address: dict, shipping: str) -> dict:
         await db.products.update_one({"id": p}, {"$inc": {"stock_reserved": n}})
         await db.inventory.insert_one({"id": uid(), "product_id": p, "type": "reserva", "qty": n, "note": "Reserva por pedido (simulado)", "simulated": True, "at": now_iso()})
     left = q["credit"]
-    async for b in db.benefits.find({"user_id": user["id"], "kind": "credit", "status": "activo", "remaining": {"$gt": 0}}):
+    async for b in db.benefits.find({"user_id": user["id"], "kind": "credit", "status": "activo", "remaining": {"$gt": 0}}).sort("scope", -1):
         if left <= 0:
             break
         use = min(left, b["remaining"])
@@ -521,7 +551,9 @@ async def admin_settings(key: str, value=Body(..., embed=True), admin=Depends(ad
 async def admin_codes(admin=Depends(admin_user)):
     out = []
     async for c in db.codes.find({}).sort("valid_until", -1):
-        out.append({**clean(c), "activations": await db.code_activations.count_documents({"code_id": c["id"]})})
+        ids = [a["user_id"] async for a in db.code_activations.find({"code_id": c["id"]})]
+        names = [u.get("name", "") async for u in db.users.find({"id": {"$in": ids}})]
+        out.append({**clean(c), "activations": len(ids), "activated_by": names[:20]})
     return out
 
 
@@ -532,7 +564,8 @@ async def admin_save_code(body: dict = Body(...), admin=Depends(admin_user)):
         raise HTTPException(422, "Escribe el código y la institución")
     b = body.get("benefits") or {}
     doc = {"code": code, "institution": str(body["institution"])[:120], "institution_type": body.get("institution_type") or "Hospital",
-           "benefits": {"plus_months": int(b.get("plus_months") or 0), "kit_discount_pct": min(100, int(b.get("kit_discount_pct") or 0)), "credit": int(b.get("credit") or 0)},
+           "benefits": {"plus_months": int(b.get("plus_months") or 0), "kit_discount_pct": min(100, int(b.get("kit_discount_pct") or 0)), "credit": int(b.get("credit") or 0),
+                        "funded_kit": b.get("funded_kit") if b.get("funded_kit") in ("Chico", "Mediano", "Grande") else None},
            "valid_from": body.get("valid_from") or now().date().isoformat(), "valid_until": body.get("valid_until") or (now() + timedelta(days=365)).date().isoformat(),
            "max_uses": int(body.get("max_uses") or 1), "budget": int(body["budget"]) if body.get("budget") not in (None, "") else None,
            "status": body.get("status") if body.get("status") in ("activo", "pausado") else "activo", "conditions": str(body.get("conditions", ""))[:400]}
@@ -556,3 +589,17 @@ async def admin_order_status(oid: str, status: str = Body(..., embed=True), admi
         raise HTTPException(404, "Pedido no encontrado")
     await set_order_status(o, status)
     return clean(await db.orders.find_one({"id": oid}))
+
+
+@api.get("/report")
+async def report(today: str, user=Depends(require_plus)):
+    """Plus: exportable personal summary (next 30 days). Only the person's own data."""
+    from planner import agenda_items
+    end = (datetime.strptime(today, "%Y-%m-%d") + timedelta(days=30)).date().isoformat()
+    items = [i for i in await agenda_items(user, user["id"], today, end) if i["source"] != "doses"]
+    meds = [m async for m in db.records.find({"kind": "medications", "owner_id": user["id"], "active": {"$ne": False}})]
+    lines = [f"AMODO · Resumen personal ({today} a {end})", "", "AGENDA"]
+    lines += [f"- {i['date']} {i['time'] or ''} · {i['title']} ({i['type']})" for i in items] or ["- Sin eventos"]
+    lines += ["", "MEDICAMENTOS REGISTRADOS"] + ([f"- {m.get('name', '')} {m.get('dose', '')} · {m.get('times') or m.get('schedule') or ''}" for m in meds] or ["- Ninguno"])
+    lines += ["", "Generado por ti desde AMODO. No sustituye las indicaciones de tu equipo médico."]
+    return {"text": "\n".join(lines), "count": len(items)}

@@ -7,6 +7,7 @@ export type User = {
   id: string;
   email: string;
   is_admin?: boolean;
+  plan_chosen?: boolean;
   name: string;
   preferred_name: string;
   role: "patient" | "caregiver";

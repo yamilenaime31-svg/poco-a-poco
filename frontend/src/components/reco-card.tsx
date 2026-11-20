@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { api, invalidate, useApi } from "@/src/api";
 import { DEMO_PRICE, money, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
+import { PlusGate } from "@/src/components/plus-gate";
 import { Btn, Chip, ChipRow, Ic, Loading, ProductImage, Sheet, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
@@ -60,6 +61,7 @@ function WhySheet({ p, onClose }: { p: any; onClose: () => void }) {
               ))}
             </View>
           ))}
+          {q.data && q.data.plus === false ? <Txt v="caption" style={{ marginTop: space.sm }} testID="reco-why-basic">Explicación básica. Con AMODO Plus verás una explicación ampliada.</Txt> : null}
           <Txt v="caption" style={{ marginTop: space.sm }}>Solo sugerimos artículos del catálogo. No afirmamos que prevengan o alivien síntomas. El precio es de ejemplo.</Txt>
         </>
       )}
@@ -75,6 +77,8 @@ export function NeedsPrompt() {
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<string[] | null>(null);
   if (!q.data?.needs?.length) return null;
+  if (!q.data.plus)
+    return <PlusGate title="Ideas según tu tratamiento" text="Con Plus, las sugerencias pueden considerar tu tratamiento, tu próxima cita y las necesidades que elijas, con explicaciones ampliadas. Las sugerencias por tus gustos siguen disponibles." testID="reco-needs-plus-gate">{null}</PlusGate>;
   const names = (q.data.treatments as string[]).filter((x) => x !== "Otro").join(", ").toLowerCase() || "tu tratamiento";
   const chosen = sel ?? q.data.needs.filter((n: any) => n.selected).map((n: any) => n.id);
   const save = async (ids: string[]) => {

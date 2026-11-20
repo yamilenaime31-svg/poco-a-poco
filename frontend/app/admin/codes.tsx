@@ -39,7 +39,8 @@ export default function AdminCodes() {
               <Badge label={expired ? "Vencido" : c.status} tint={expired || c.status !== "activo" ? "coral" : "sage"} />
             </View>
             <Txt v="caption">{c.institution} · {c.institution_type}</Txt>
-            <Txt v="caption">Plus {c.benefits.plus_months} mes(es) · {c.benefits.kit_discount_pct}% en kits · crédito {money(c.benefits.credit)}</Txt>
+            <Txt v="caption">Plus {c.benefits.plus_months} mes(es) · {c.benefits.kit_discount_pct}% en kits · crédito {money(c.benefits.credit)}{c.benefits.funded_kit ? ` · kit ${c.benefits.funded_kit.toLowerCase()} financiado` : ""}</Txt>
+            {c.activated_by?.length ? <Txt v="caption" numberOfLines={2}>Activado por: {c.activated_by.join(", ")}</Txt> : null}
             <Txt v="caption">{fmtDate(c.valid_from)} – {fmtDate(c.valid_until)} · usos {c.uses}/{c.max_uses} · activaciones {c.activations}</Txt>
             {c.budget != null ? <Txt v="caption">Presupuesto: {money(c.budget_used)} de {money(c.budget)}</Txt> : null}
           </Card>
@@ -56,6 +57,9 @@ export default function AdminCodes() {
               <NumField label="% en kits" value={e.benefits.kit_discount_pct} onChange={setB("kit_discount_pct")} testID="admin-code-pct" />
               <NumField label="Crédito $" value={e.benefits.credit} onChange={setB("credit")} testID="admin-code-credit" />
             </View>
+            <Txt v="label" style={{ marginBottom: space.sm }}>Kit financiado</Txt>
+            <ChipRow>{[["", "Ninguno"], ["Chico", "Kit chico"], ["Mediano", "Kit mediano"], ["Grande", "Kit grande"]].map(([k, l]) => <Chip key={k} label={l} selected={(e.benefits.funded_kit || "") === k} onPress={() => setB("funded_kit")(k)} testID={`admin-code-kit-${k || "none"}`} />)}</ChipRow>
+            <View style={{ height: space.md }} />
             <View style={{ flexDirection: "row", gap: space.sm }}>
               <View style={{ flex: 1 }}><Field label="Desde" value={e.valid_from} placeholder="AAAA-MM-DD" onChangeText={(v) => setE({ ...e, valid_from: v })} testID="admin-code-from" /></View>
               <View style={{ flex: 1 }}><Field label="Hasta" value={e.valid_until} placeholder="AAAA-MM-DD" onChangeText={(v) => setE({ ...e, valid_until: v })} testID="admin-code-until" /></View>

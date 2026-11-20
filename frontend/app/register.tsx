@@ -56,7 +56,7 @@ export default function Register() {
     try {
       const r = await api("/auth/register", { method: "POST", body: { ...f, email: f.email.trim(), role, consents: true } });
       await signIn(r.token, r.user);
-      router.replace("/onboarding");
+      router.replace("/choose-plan");
     } catch (err: any) {
       setErrors({ form: err.message });
     } finally {

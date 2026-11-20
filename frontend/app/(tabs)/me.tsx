@@ -48,6 +48,7 @@ export default function Me() {
     { title: "Compras", items: [
       { icon: "heart", title: "Biblioteca y favoritos", href: "/favorites", tint: "coral" },
       { icon: "truck", title: "Mis pedidos e historial", href: "/orders", tint: "sky" },
+      { icon: "file-text", title: "Reporte personal (Plus)", href: "/report" },
     ] },
     { title: "Configuración", items: [
       { icon: "bell", title: "Notificaciones", href: "/notifications" },

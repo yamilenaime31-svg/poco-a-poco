@@ -266,10 +266,13 @@ export function fmtDateTime(iso: string) {
   return `${x.getDate()} ${MONTHS[x.getMonth()]} · ${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`;
 }
 export function money(n: number) {
-  const s = Math.round(Number(n) || 0)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `$${s} MXN`;
+  const v = Math.round((Number(n) || 0) * 100) / 100;
+  const [int, dec] = Math.abs(v).toFixed(2).split(".");
+  const s = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${v < 0 ? "-" : ""}$${s}${dec !== "00" ? `.${dec}` : ""} MXN`;
 }
 export const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 export const isTime = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+
+export const FREE_FEATURES = ["Perfil y avatar", "Tratamientos, medicamentos, agenda y pendientes", "Recordatorios esenciales y señales rápidas", "Acompañantes y privacidad", "Catálogo, kits y recomendaciones básicas"];
+export const PLUS_FEATURES = ["Todo lo de Gratis", "Asistente de IA para organizar tratamientos y recurrencias", "Recomendaciones según tu tratamiento, con explicaciones ampliadas", "Reportes personales exportables", "Descuento en kits cuando esté activo"];

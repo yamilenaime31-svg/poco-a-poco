@@ -93,7 +93,7 @@ export default function KitBuilder() {
     setSize(s.id);
     if (items.length > s.max) { setItems(items.slice(0, s.max)); toast.show(`Quitamos los últimos artículos para ajustarlo a ${s.max}`); }
   };
-  const canNext = [forWho === "me" || !!forName.trim(), !!size, !!context && (context !== "Otro" || !!otherCtx.trim()), items.length > 0, true][step];
+  const canNext = [forWho === "me" || !!forName.trim(), !!size, !!context, items.length > 0, true][step];
 
   const save = async (thenOrder: boolean) => {
     if (thenOrder && unavailable.length) return toast.show("Cambia los artículos no disponibles para continuar", "error");
@@ -122,16 +122,16 @@ export default function KitBuilder() {
     </View>
   ) : (
     <View style={{ flexDirection: "row", gap: space.sm, alignItems: "center" }}>
-      {step > 0 ? <Btn label="Atrás" variant="ghost" onPress={() => setStep(step - 1)} testID="kit-back-button" /> : null}
       <View style={{ flex: 1, minWidth: 0 }}>
         {step >= 1 ? (
           <>
-            <Txt v="title" testID="kit-total">{money(total)}</Txt>
-            <Txt v="caption" testID="kit-count">{items.length} de {sz.max} · {sz.max - items.length === 0 ? "completo" : `quedan ${sz.max - items.length}`}</Txt>
+            <Txt v="caption" numberOfLines={1}>Precio total</Txt>
+            <Txt v="title" numberOfLines={1} style={{ flexShrink: 0 }} testID="kit-total">{money(total)}</Txt>
+            <Txt v="caption" numberOfLines={1} testID="kit-count">{items.length} de {sz.max} artículos{sz.max - items.length > 0 ? ` · te quedan ${sz.max - items.length}` : " · completo"}</Txt>
           </>
         ) : null}
       </View>
-      <Btn label="Continuar" disabled={!canNext} onPress={() => setStep(step + 1)} testID="kit-next-button" style={{ minWidth: 130 }} />
+      <Btn label="Continuar" disabled={!canNext} onPress={() => setStep(step + 1)} testID="kit-next-button" style={{ flexShrink: 0, minWidth: 120, paddingHorizontal: space.lg }} />
     </View>
   );
 
@@ -145,7 +145,7 @@ export default function KitBuilder() {
   };
 
   return (
-    <Screen title={params.id ? "Editar kit" : "Armar nuevo kit"} subtitle={`Paso ${step + 1} de 5 · ${STEPS[step]}`} testID={`kit-builder-step-${step}`} footer={footer}>
+    <Screen title={params.id ? "Editar kit" : "Armar nuevo kit"} subtitle={`Paso ${step + 1} de 5 · ${STEPS[step]}`} testID={`kit-builder-step-${step}`} footer={footer} onBack={step > 0 ? () => setStep(step - 1) : undefined}>
       <ProgressBar value={(step + 1) / 5} />
       <Animated.View key={step} entering={FadeIn.duration(220)} style={{ marginTop: space.lg }}>
         {step === 0 && (
@@ -196,7 +196,7 @@ export default function KitBuilder() {
             <View style={{ marginTop: space.lg }}>
               <ChipRow>{KIT_CONTEXTS.map((c) => <Chip key={c.label} label={c.label} icon={c.icon} selected={context === c.label} onPress={() => setContext(c.label)} testID={`kit-context-${c.label}`} />)}</ChipRow>
             </View>
-            {context === "Otro" ? <Field label="¿Para qué momento es?" value={otherCtx} onChangeText={setOtherCtx} placeholder="Ej. Viaje a otra ciudad" testID="kit-context-other-input" style={{ marginTop: space.md }} /> : null}
+            {context === "Otro" ? <Field label="¿Para qué momento es? (opcional)" value={otherCtx} onChangeText={setOtherCtx} placeholder="Ej. Viaje a otra ciudad" testID="kit-context-other-input" style={{ marginTop: space.md }} /> : null}
           </>
         )}
         {step === 3 && (

@@ -95,7 +95,7 @@ class TestPlansCodes:
         assert r.status_code == 200, r.text
         assert r.json()["institution"]
         r = requests.post(f"{BASE}/benefits/validate", headers=H(fresh), json={"code": "FUNDACION-2024"})
-        assert r.status_code == 400 and "vencido" in r.json()["detail"]
+        assert r.status_code == 400 and "vigente" in r.json()["detail"]  # iter7 message
 
     def test_activate_once(self, fresh):
         r = requests.post(f"{BASE}/benefits/activate", headers=H(fresh), json={"code": "HOSPITAL-DEMO"})
@@ -122,14 +122,14 @@ class TestCheckout:
         S["kit"] = k.json()["id"]
         requests.post(f"{BASE}/cart", headers=H(fresh), json={"type": "kit", "ref_id": S["kit"], "qty": 1})
         q = requests.get(f"{BASE}/checkout/quote", params={"shipping": "Estándar"}, headers=H(fresh)).json()
-        assert q["kits"] == 574 and len(q["discounts"]) == 1 and q["discounts"][0]["amount"] == 86, q
-        assert q["credit"] == 150 and q["shipping"] == 99 and q["total"] == 574 - 86 - 150 + 99
+        assert q["kits"] == 574 and len(q["discounts"]) == 1 and q["discounts"][0]["amount"] == 86.1, q  # iter7 decimals
+        assert q["credit"] == 150 and q["shipping"] == 99 and abs(q["total"] - (574 - 86.1 - 150 + 99)) < 0.01
         before = {p: prod(admin, p).get("stock_reserved", 0) for p in ["p34", "p35", "p4", "p38"]}
         o = requests.post(f"{BASE}/orders/checkout", headers=H(fresh), json=ADDR)
         assert o.status_code == 200, o.text
         o = o.json()
         S["order1"] = o["id"]
-        assert o["status"] == "Pendiente de confirmación" and o["total"] == 437 and o["credit"] == 150
+        assert o["status"] == "Pendiente de confirmación" and abs(o["total"] - 436.9) < 0.01 and o["credit"] == 150
         for p, n in before.items():
             assert prod(admin, p)["stock_reserved"] == n + 1
         p = requests.get(f"{BASE}/me/plan", headers=H(fresh)).json()

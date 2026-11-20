@@ -62,6 +62,9 @@ async def user_treatments(user_id: str) -> list[str]:
 
 
 async def context_for(user: dict, today: str) -> dict:
+    from business import is_plus
+    if not await is_plus(user):  # Free: recommendations use registered preferences only
+        return {"needs": [], "next": None, "rest": False, "interested": set(), "interested_tags": set(), "excluded_categories": set()}
     pr = user.get("profile", {}) or {}
     needs = [KB_BY_ID[n] for n in (pr.get("declared_needs") or []) if n in KB_BY_ID]
     nxt = None
@@ -116,11 +119,15 @@ async def explorable_needs(user=Depends(current_user)):
     declared = set((user.get("profile", {}) or {}).get("declared_needs") or [])
     items = [{"id": k["id"], "label": k["label"], "selected": k["id"] in declared} for k in KB if set(k["treatments"]) & set(types)]
     asked = bool((user.get("profile", {}) or {}).get("needs_prompt_answered"))
-    return {"treatments": sorted(set(types)), "needs": items, "asked": asked}
+    from business import is_plus
+    return {"treatments": sorted(set(types)), "needs": items, "asked": asked, "plus": await is_plus(user)}
 
 
 @api.put("/recommendations/needs")
 async def set_needs(needs: list = Body(..., embed=True), user=Depends(current_user)):
+    from business import is_plus
+    if not await is_plus(user):
+        raise HTTPException(403, "Las recomendaciones según tu tratamiento son parte de AMODO Plus.")
     clean_ids = [n for n in dict.fromkeys(needs) if n in KB_BY_ID]
     await db.users.update_one({"id": user["id"]}, {"$set": {"profile.declared_needs": clean_ids, "profile.needs_prompt_answered": True}})
     return {"needs": clean_ids}
@@ -138,6 +145,9 @@ async def explain(pid: str, today: str = Query(...), user=Depends(current_user))
     if not hit:
         raise HTTPException(404, "No encontramos esta recomendación")
     _, why, p, details = hit
+    from business import is_plus
+    if not await is_plus(user):
+        return {"text": why[0] if why else "Una opción general para empezar.", "reasons": why, "details": details, "price_is_demo": True, "plus": False}
     cached = await db.reco_explain.find_one({"user_id": user["id"], "product_id": pid, "day": today, "why": why})
     if cached:
         text = cached["text"]

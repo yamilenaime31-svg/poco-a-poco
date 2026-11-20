@@ -1215,6 +1215,8 @@ async def score_products(user: dict, today: str) -> tuple[list, str]:
     stage = STAGES.get((tr or {}).get("status") or (pr.get("treatment") or {}).get("status") or "")
     from knowledge import boost, context_for
     ctx = await context_for(user, today)
+    from business import is_plus
+    plus = await is_plus(user)
     out = []
     async for p in db.products.find({}):
         tags = set(p["tags"])
@@ -1241,7 +1243,7 @@ async def score_products(user: dict, today: str) -> tuple[list, str]:
             score += 1; why.append(f"Has incluido {p['category'].lower()} en tus kits.")
         if "Organizar papeles" in (needs.get("support") or []) and "organización" in tags:
             score += 2; why.append("Mencionaste que te vendría bien apoyo para organizar papeles.")
-        if stage and tags & set(stage[1]):
+        if stage and plus and tags & set(stage[1]):  # treatment-stage personalization is a Plus convenience
             score += 1; why.append(f"Orientativo para la etapa «{stage[0]}» que registraste (no es una recomendación médica).")
         if p["id"] in fav_ids:
             score -= 1

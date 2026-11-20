@@ -3,14 +3,13 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
-import { fmtDate, fmtDateTime, money } from "@/src/constants";
+import { FREE_FEATURES as FREE, PLUS_FEATURES, fmtDate, fmtDateTime, money } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Card, Ic, Loading, Row, Screen, Section, Sheet, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
 const KIND: Record<string, string> = { plus_access: "Acceso Plus", kit_discount_pct: "Descuento en kits", credit: "Crédito para artículos" };
-const FREE = ["Perfil, tratamientos y agenda", "Medicamentos, pendientes y recordatorios esenciales", "Señales rápidas y vinculación de acompañantes", "Privacidad y control de lo que compartes", "Catálogo y compra de kits"];
-const PLUS = ["Todo lo de Gratis", "Automatizaciones avanzadas y personalización ampliada", "Reportes exportables", "Descuento configurable en kits", "Herramientas adicionales de conveniencia"];
+const PLUS = PLUS_FEATURES;
 
 /** Mi plan y beneficios + comparison Free vs Plus (demo activation, no charge). */
 export default function Plan() {

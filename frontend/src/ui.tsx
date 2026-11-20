@@ -188,7 +188,7 @@ export function IconBtn({ icon, onPress, testID, badge }: { icon: string; onPres
   );
 }
 
-export function Header({ title, back = true, right, subtitle }: { title?: string; back?: boolean; right?: React.ReactNode; subtitle?: string }) {
+export function Header({ title, back = true, right, subtitle, onBack }: { title?: string; back?: boolean; right?: React.ReactNode; subtitle?: string; onBack?: () => void }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
@@ -196,7 +196,7 @@ export function Header({ title, back = true, right, subtitle }: { title?: string
     <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
       <View style={styles.headerRow}>
         {back ? (
-          <IconBtn icon="chevron-left" testID="header-back-button" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} />
+          <IconBtn icon="chevron-left" testID="header-back-button" onPress={() => (onBack ? onBack() : router.canGoBack() ? router.back() : router.replace("/"))} />
         ) : null}
         <View style={{ flex: 1, marginHorizontal: back ? space.md : 0 }}>
           {title ? (
@@ -220,6 +220,7 @@ type ScreenProps = {
   title?: string;
   subtitle?: string;
   back?: boolean;
+  onBack?: () => void;
   right?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -230,12 +231,12 @@ type ScreenProps = {
   overlay?: React.ReactNode;
 };
 
-export function Screen({ title, subtitle, back = true, right, children, footer, scroll = true, refreshing, onRefresh, testID, overlay }: ScreenProps) {
+export function Screen({ title, subtitle, back = true, right, children, footer, scroll = true, refreshing, onRefresh, testID, overlay, onBack }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID={testID}>
-      <Header title={title} subtitle={subtitle} back={back} right={right} />
+      <Header title={title} subtitle={subtitle} back={back} right={right} onBack={onBack} />
       {scroll ? (
         <KeyboardAwareScrollView
           bottomOffset={24}

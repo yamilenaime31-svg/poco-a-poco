@@ -22,7 +22,7 @@ export default function Login() {
     try {
       const r = await api("/auth/login", { method: "POST", body: { email: email.trim(), password } });
       await signIn(r.token, r.user);
-      router.replace(r.user.onboarding_done ? "/(tabs)" : "/onboarding");
+      router.replace(r.user.onboarding_done ? "/(tabs)" : r.user.plan_chosen ? "/onboarding" : "/choose-plan");
     } catch (e: any) {
       setError(e.message);
     } finally {

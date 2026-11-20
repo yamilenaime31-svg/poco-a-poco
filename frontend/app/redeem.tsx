@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate } from "@/src/api";
 import { fmtDate } from "@/src/constants";
@@ -10,6 +10,7 @@ import { space, useTheme } from "@/src/theme";
 
 export default function Redeem() {
   const router = useRouter();
+  const { onboarding } = useLocalSearchParams<{ onboarding?: string }>();
   const toast = useToast();
   const { colors } = useTheme();
   const [code, setCode] = useState("");
@@ -35,7 +36,7 @@ export default function Redeem() {
       await api("/benefits/activate", { method: "POST", body: { code } });
       invalidate();
       toast.show("Beneficios activados");
-      router.replace("/plan");
+      router.replace(onboarding ? "/onboarding" : "/plan");
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -44,9 +45,9 @@ export default function Redeem() {
   };
 
   return (
-    <Screen title="Tengo un código de institución" subtitle="Hospitales, clínicas, fundaciones o aseguradoras pueden ofrecerte beneficios" testID="redeem-screen">
-      <Field label="Código" value={code} onChangeText={(v) => { setCode(v.toUpperCase()); setInfo(null); setError(""); }} autoCapitalize="characters" placeholder="Ej. HOSPITAL-DEMO" error={error} testID="redeem-input" />
-      {!info ? <Btn label="Validar" loading={busy} disabled={code.trim().length < 3} onPress={validate} testID="redeem-validate" /> : (
+    <Screen title="Activa tu acceso institucional" subtitle="Ingresa el código que te proporcionó tu hospital o institución" testID="redeem-screen">
+      <Field label="Código de acceso" value={code} onChangeText={(v) => { setCode(v.toUpperCase()); setInfo(null); setError(""); }} autoCapitalize="characters" placeholder="Ej. HOSPITAL-DEMO" error={error} testID="redeem-input" />
+      {!info ? <Btn label="Validar código" loading={busy} disabled={code.trim().length < 3} onPress={validate} testID="redeem-validate" /> : (
         <>
           <Card tint="sage" testID="redeem-info">
             <Txt v="caption" color={colors.onSurface}>{info.institution_type}</Txt>
@@ -63,6 +64,9 @@ export default function Redeem() {
           <Btn label="Activar beneficios" icon="check" loading={busy} onPress={activate} testID="redeem-activate" />
         </>
       )}
+      {onboarding ? (
+        <Btn label="Continuar con AMODO Gratis" variant="ghost" onPress={async () => { await api("/me/plan", { method: "POST", body: { action: "free" } }); router.replace("/onboarding"); }} testID="redeem-continue-free" style={{ marginTop: space.md }} />
+      ) : null}
     </Screen>
   );
 }

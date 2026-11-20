@@ -59,6 +59,9 @@ def build_sessions(start: str, interval: Optional[int], weekdays: list, count: O
 
 @api.post("/treatments/parse")
 async def treatment_parse(text: str = Body(..., embed=True), today: str = Body(..., embed=True), user=Depends(current_user)):
+    from business import is_plus
+    if not await is_plus(user):
+        raise HTTPException(403, "El asistente de tratamientos es parte de AMODO Plus.")
     text = text.strip()[:2000]
     if len(text) < 3:
         raise HTTPException(422, "Escribe un poco más para poder ayudarte")
