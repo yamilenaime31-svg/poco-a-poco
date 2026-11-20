@@ -682,7 +682,8 @@ async def products(category: Optional[str] = None, q: Optional[str] = None):
         query["category"] = category
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
-    return [clean(p) async for p in db.products.find(query).sort("id", 1)]
+    from business import public_product
+    return [public_product(p) async for p in db.products.find(query).sort("id", 1)]
 
 
 @api.get("/products/{pid}")
@@ -690,7 +691,13 @@ async def product(pid: str):
     p = await db.products.find_one({"id": pid})
     if not p:
         raise HTTPException(404, "Producto no encontrado")
-    return clean(p)
+    from business import public_product
+    return public_product(p)
+
+
+def pub(p: dict) -> dict:
+    from business import public_product
+    return public_product(p)
 
 
 async def products_map(ids: list[str]) -> dict:
@@ -698,12 +705,14 @@ async def products_map(ids: list[str]) -> dict:
 
 
 async def kit_view(kit: dict) -> dict:
+    """Kit price = size base (includes the eligible items) + supplements of premium items only. Internal costs are never exposed."""
+    from business import price_kit, public_product
     kit = clean(kit)
     pm = await products_map([i["product_id"] for i in kit.get("items", [])])
-    kit["items"] = [{**i, "product": pm.get(i["product_id"])} for i in kit.get("items", []) if pm.get(i["product_id"])]
-    base = SIZES.get(kit.get("size"), SIZES["Mediano"])["base"]
-    kit["base_price"] = base
-    kit["total"] = base + sum(i["product"]["price"] for i in kit["items"])
+    q = await price_kit(kit.get("size"), kit.get("items", []), pm)
+    kit["size"] = q["size"]
+    kit["items"] = [{**i, "product": public_product(pm[i["product_id"]])} for i in kit.get("items", []) if pm.get(i["product_id"])]
+    kit.update({"base_price": q["base"], "supplements": q["supplements"], "total": q["subtotal"], "capacity": q["capacity"], "unavailable": q["unavailable"], "size_label": q["size_label"]})
     return kit
 
 
@@ -726,7 +735,7 @@ async def suggestions(user=Depends(current_user)):
             continue
         scored.append((score, p))
     scored.sort(key=lambda x: -x[0])
-    return {"products": [clean(p) for s, p in scored[:8]], "based_on": bool(liked)}
+    return {"products": [pub(p) for s, p in scored[:8]], "based_on": bool(liked)}
 
 
 @api.get("/kits")
@@ -745,15 +754,17 @@ async def get_kit(kid: str, user=Depends(current_user)):
     return await kit_view(k)
 
 
-def kit_fields(body: dict) -> dict:
-    size = body.get("size") or "Mediano"
-    if size not in SIZES:
+async def kit_fields(body: dict) -> dict:
+    from business import get_sizes, norm_size
+    sizes = await get_sizes()
+    size = norm_size(body.get("size"))
+    if size not in sizes:
         raise HTTPException(422, "Tamaño no válido")
     items = body.get("items") or []
     if not isinstance(items, list) or any(not isinstance(i, dict) or not i.get("product_id") for i in items):
         raise HTTPException(422, "Artículos del kit no válidos")
-    if len(items) > SIZES[size]["max"]:
-        raise HTTPException(422, f"El tamaño {size} admite hasta {SIZES[size]['max']} artículos")
+    if len(items) > sizes[size]["max"]:
+        raise HTTPException(422, f"El {sizes[size]['label'].lower()} admite hasta {sizes[size]['max']} artículos")
     return {"name": (body.get("name") or "Mi kit").strip(), "context": body.get("context", ""), "size": size,
             "categories": body.get("categories", []), "items": [{"product_id": i["product_id"], "options": i.get("options", {})} for i in items],
             "for_name": body.get("for_name", ""), "for_user_id": body.get("for_user_id"), "note": body.get("note", ""), "updated_at": now_iso()}
@@ -761,7 +772,7 @@ def kit_fields(body: dict) -> dict:
 
 @api.post("/kits")
 async def create_kit(body: dict = Body(...), user=Depends(current_user)):
-    kit = {"id": uid(), "owner_id": user["id"], "created_at": now_iso(), **kit_fields(body), "shared_with": await valid_share(user["id"], body.get("shared_with"))}
+    kit = {"id": uid(), "owner_id": user["id"], "created_at": now_iso(), **(await kit_fields(body)), "shared_with": await valid_share(user["id"], body.get("shared_with"))}
     await db.kits.insert_one(kit)
     await notify_shared(user, kit["shared_with"], f"Kit: {kit['name']}")
     return await kit_view(kit)
@@ -778,7 +789,7 @@ async def shared_kits(user=Depends(current_user)):
 
 @api.put("/kits/{kid}")
 async def update_kit(kid: str, body: dict = Body(...), user=Depends(current_user)):
-    s = kit_fields(body)
+    s = await kit_fields(body)
     if "shared_with" in body:
         s["shared_with"] = await valid_share(user["id"], body.get("shared_with"))
     res = await db.kits.update_one({"id": kid, "owner_id": user["id"]}, {"$set": s})
@@ -797,7 +808,7 @@ async def delete_kit(kid: str, user=Depends(current_user)):
 async def favorites(user=Depends(current_user)):
     ids = [f["product_id"] async for f in db.favorites.find({"user_id": user["id"]})]
     pm = await products_map(ids)
-    return [pm[i] for i in ids if i in pm]
+    return [pub(pm[i]) for i in ids if i in pm]
 
 
 @api.post("/favorites/{pid}")
@@ -822,13 +833,14 @@ async def cart_view(user_id: str) -> dict:
             if not k:
                 continue
             kv = await kit_view(k)
-            c.update({"name": kv["name"], "price": kv["total"], "detail": f"Kit {kv['size'].lower()} · {len(kv['items'])} artículos", "category": "Kit"})
+            c.update({"name": kv["name"], "price": kv["total"], "detail": f"{kv['size_label']} · {len(kv['items'])} artículos" + (f" · incluye ${kv['supplements']} en suplementos" if kv["supplements"] else ""),
+                      "category": "Kit", "product_ids": [i["product_id"] for i in kv["items"]], "image_product": kv["items"][0]["product"] if kv["items"] else None})
         else:
             p = await db.products.find_one({"id": c["ref_id"]})
             if not p:
                 continue
             opts = c.get("options") or {}
-            c.update({"name": p["name"], "price": p["price"], "category": p["category"],
+            c.update({"name": p["name"], "price": p["price"], "category": p["category"], "image_product": {"image": p.get("image"), "category": p["category"]},
                       "detail": " · ".join(x for x in [opts.get("color"), f"“{opts['text']}”" if opts.get("text") else None] if x)})
         c["subtotal"] = c["price"] * c["qty"]
         items.append(c)
@@ -873,13 +885,16 @@ SHIPPING = {"Estándar": 99, "Express": 179, "Recoger en punto AMODO": 0}
 STEPS = ["Confirmado", "Preparando tu kit", "En camino", "Entregado"]
 
 
+FLOW = ["Pendiente de confirmación", "Confirmado", "En preparación", "Enviado", "Entregado"]
+
+
 def order_view(o: dict) -> dict:
     o = clean(o)
-    mins = (datetime.now(timezone.utc) - datetime.fromisoformat(o["created_at"])).total_seconds() / 60
-    idx = 0 if o.get("cancelled") else min(3, int(mins // 3))
-    o["status"] = "Cancelado" if o.get("cancelled") else STEPS[idx]
-    o["timeline"] = [{"label": s, "done": i <= idx and not o.get("cancelled")} for i, s in enumerate(STEPS)]
-    o["active"] = idx < 3 and not o.get("cancelled")
+    status = o.get("status") or ("Cancelado" if o.get("cancelled") else "Confirmado")
+    idx = FLOW.index(status) if status in FLOW else -1
+    o["status"] = status
+    o["timeline"] = [{"label": s, "done": i <= idx} for i, s in enumerate(FLOW)]
+    o["active"] = status not in ("Entregado", "Cancelado")
     return o
 
 
@@ -896,19 +911,8 @@ class CheckoutIn(BaseModel):
 
 @api.post("/orders/checkout")
 async def checkout(body: CheckoutIn, user=Depends(current_user)):
-    cart = await cart_view(user["id"])
-    if not cart["items"]:
-        raise HTTPException(400, "Tu carrito está vacío")
-    ship = SHIPPING.get(body.shipping, 99)
-    order = {"id": uid(), "user_id": user["id"], "number": f"AM-{random.randint(10000, 99999)}",
-             "items": [{k: i[k] for k in ("type", "ref_id", "name", "detail", "qty", "price", "subtotal", "options")} for i in cart["items"]],
-             "subtotal": cart["subtotal"], "shipping_cost": ship, "total": cart["subtotal"] + ship,
-             "address": body.model_dump(), "payment": {"method": "Pago simulado", "status": "Aprobado (simulado, sin cargo real)"},
-             "created_at": now_iso()}
-    await db.orders.insert_one(order)
-    await db.cart.delete_many({"user_id": user["id"]})
-    await notify(user["id"], "Pedido confirmado", f"Tu pedido {order['number']} está confirmado.", "order", f"/order/{order['id']}")
-    return order_view(order)
+    from business import place_order
+    return order_view(await place_order(user, body.model_dump(), body.shipping))
 
 
 @api.get("/orders")
@@ -929,9 +933,10 @@ async def cancel_order(oid: str, user=Depends(current_user)):
     o = await db.orders.find_one({"id": oid, "user_id": user["id"]})
     if not o:
         raise HTTPException(404, "Pedido no encontrado")
-    if order_view(o)["status"] in ("En camino", "Entregado"):
+    if order_view(o)["status"] in ("Enviado", "Entregado", "Cancelado"):
         raise HTTPException(400, "Este pedido ya salió y no se puede cancelar")
-    await db.orders.update_one({"id": oid}, {"$set": {"cancelled": True}})
+    from business import set_order_status
+    await set_order_status({**o, "status": order_view(o)["status"]}, "Cancelado")
     return order_view(await db.orders.find_one({"id": oid}))
 
 
@@ -1257,7 +1262,7 @@ async def recommendations(today: str = Query(...), user=Depends(current_user)):
     scored, headline = await score_products(user, today)
     personal = [(s, w, p, d) for s, w, p, d in scored if s > 0][:8]
     general = [p for s, w, p, d in scored if s <= 0][: max(0, 4 - len(personal))]
-    items = [{**clean(p), "reasons": w[:2], "reason_details": d[:3]} for s, w, p, d in personal] + [{**clean(p), "reasons": ["Una opción para empezar. Cuéntanos tus gustos para ideas más tuyas."], "reason_details": [], "general": True} for p in general]
+    items = [{**pub(p), "reasons": w[:2], "reason_details": d[:3]} for s, w, p, d in personal] + [{**pub(p), "reasons": ["Una opción para empezar. Cuéntanos tus gustos para ideas más tuyas."], "reason_details": [], "general": True} for p in general]
     by_id = {p["id"]: (s, w) for s, w, p, d in scored}
     kits = []
     for t in TEMPLATES:
@@ -1307,6 +1312,7 @@ async def migrate_sharing():
 
 import planner  # noqa: E402  (registers routes on `api`)
 import knowledge  # noqa: E402
+import business  # noqa: E402
 
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -1320,6 +1326,8 @@ async def startup():
     await seed_demo()
     await migrate_sharing()
     await knowledge.seed_knowledge()
+    await business.seed_business()
+    await db.code_activations.create_index([("code_id", 1), ("user_id", 1)], unique=True)
     app.state.reminder_task = asyncio.create_task(planner.reminder_loop())
     app.state.media_task = asyncio.create_task(planner.warm_media())
 

@@ -15,6 +15,15 @@ const SHIP = [
   { label: "Recoger en punto AMODO", cost: 0, text: "Te avisamos cuando esté listo" },
 ];
 
+function Line({ l, r, bold }: { l: string; r: string; bold?: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: space.sm, paddingVertical: 4 }}>
+      <Txt v={bold ? "title" : "caption"} style={{ flex: 1 }}>{l}</Txt>
+      <Txt v={bold ? "title" : "caption"}>{r}</Txt>
+    </View>
+  );
+}
+
 export default function Checkout() {
   const router = useRouter();
   const toast = useToast();
@@ -26,8 +35,8 @@ export default function Checkout() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF({ ...f, [k]: v });
-  const cost = SHIP.find((s) => s.label === ship)!.cost;
-  const subtotal = cart.data?.subtotal || 0;
+  const q = useApi<any>(`/checkout/quote?shipping=${encodeURIComponent(ship)}`);
+  const b = q.data;
 
   const pay = async () => {
     const e: Record<string, string> = {};
@@ -59,7 +68,7 @@ export default function Checkout() {
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <Txt v="medium">Total</Txt>
             <Txt v="h2" testID="checkout-total">
-              {money(subtotal + cost)}
+              {b ? money(b.total) : "…"}
             </Txt>
           </View>
           <Btn label="Confirmar pedido" icon="lock" loading={busy} disabled={!cart.data?.items?.length} onPress={pay} testID="checkout-confirm-button" />
@@ -99,9 +108,9 @@ export default function Checkout() {
         <Card tint="lavender" testID="checkout-simulated-notice">
           <View style={{ flexDirection: "row", gap: space.sm, alignItems: "center" }}>
             <Ic name="credit-card" size={20} />
-            <Txt v="title">Pago simulado</Txt>
+            <Txt v="title">Pedido de demostración</Txt>
           </View>
-          <Txt style={{ marginTop: space.sm }}>Esta versión no realiza ningún cargo real. Tu pedido se crea y podrás seguir su estado.</Txt>
+          <Txt style={{ marginTop: space.sm }}>No se procesa ningún pago. Tu pedido queda «Pendiente de confirmación» y podrás seguir su estado o cancelarlo.</Txt>
         </Card>
       </Section>
 
@@ -114,10 +123,15 @@ export default function Checkout() {
             <Txt v="caption">{money(i.subtotal)}</Txt>
           </View>
         ))}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
-          <Txt v="caption">Envío</Txt>
-          <Txt v="caption">{cost ? money(cost) : "Gratis"}</Txt>
-        </View>
+        {b ? (
+          <View testID="checkout-breakdown">
+            {b.discounts.map((d: any) => <Line key={d.label} l={d.label} r={`−${money(d.amount)}`} />)}
+            {b.credit ? <Line l={`Crédito disponible (${money(b.credit_available)})`} r={`−${money(b.credit)}`} /> : null}
+            <Line l="Envío" r={b.shipping ? money(b.shipping) : "Gratis"} />
+            <Line l="Total" r={money(b.total)} bold />
+            <Txt v="caption" style={{ marginTop: space.sm }}>Plan: {b.plan}. {b.rule} {b.tax_note} Sin cargos adicionales.</Txt>
+          </View>
+        ) : null}
       </Section>
     </Screen>
   );

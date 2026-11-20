@@ -161,17 +161,19 @@ export const URGENCY = ["Cuando puedas", "Hoy", "Ahora"];
 export const QUICK_REPLIES = ["Voy para allá", "Lo resuelvo hoy", "Te llamo en un momento", "Entendido, aquí estoy"];
 
 export const KIT_CONTEXTS = [
-  { label: "Sesión de tratamiento", icon: "armchair", text: "Para las horas en sala." },
-  { label: "Hospitalización", icon: "bed", text: "Para estancias de varios días." },
-  { label: "Descanso en casa", icon: "house", text: "Para días tranquilos." },
-  { label: "Traslados", icon: "car", text: "Lo práctico para moverte." },
-  { label: "Regalo para alguien", icon: "gift", text: "Para acompañar a distancia." },
+  { label: "Antes del tratamiento", icon: "calendar-clock" },
+  { label: "Durante el tratamiento", icon: "armchair" },
+  { label: "Después del tratamiento", icon: "sunrise" },
+  { label: "Hospital", icon: "bed" },
+  { label: "Consulta", icon: "stethoscope" },
+  { label: "Casa", icon: "house" },
+  { label: "Otro", icon: "pencil" },
 ];
 
 export const KIT_SIZES = [
-  { label: "Pequeño", max: 4, base: 149, text: "Hasta 4 artículos" },
-  { label: "Mediano", max: 7, base: 219, text: "Hasta 7 artículos" },
-  { label: "Grande", max: 10, base: 289, text: "Hasta 10 artículos" },
+  { label: "Chico", max: 4, base: 299, text: "4 artículos" },
+  { label: "Mediano", max: 6, base: 499, text: "6 artículos" },
+  { label: "Grande", max: 10, base: 799, text: "Hasta 10 artículos" },
 ];
 
 export const CATEGORIES = [

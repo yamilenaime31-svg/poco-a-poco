@@ -6,6 +6,7 @@ import { queryClient } from "@/src/query-client";
 export type User = {
   id: string;
   email: string;
+  is_admin?: boolean;
   name: string;
   preferred_name: string;
   role: "patient" | "caregiver";

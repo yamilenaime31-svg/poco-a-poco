@@ -14,6 +14,7 @@ import {
   TextStyle,
   View,
   ViewStyle,
+  ScrollView,
 } from "react-native";
 import Lucide from "@react-native-vector-icons/lucide";
 import { Image } from "expo-image";
@@ -441,7 +442,7 @@ export function Sheet({ visible, onClose, title, children, testID }: { visible: 
           <Txt v="h2">{title}</Txt>
           <IconBtn icon="x" onPress={onClose} testID={testID ? `${testID}-close` : undefined} />
         </View>
-        {children}
+        <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView>
       </View>
     </Modal>
   );

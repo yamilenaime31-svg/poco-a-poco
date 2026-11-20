@@ -54,3 +54,11 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Knowledge base (backend/knowledge.py, db.knowledge, NCI/ACS/MedlinePlus sources, reviewed 2026-06); needs asked never assumed (GET/PUT /api/recommendations/needs); boost() context: declared needs, next appointment, recent "rest" moods, "Me interesa"; exclusions (nausea/mouth → no food items); explain endpoint with LLM (cached) + sources sheet
 - Catalog search + visible chip bar; 32 AI illustrations (Gemini Nano Banana) in object storage served at /api/media/amodo/products/*; prices labelled "precio de ejemplo"
 - Backlog: series delete scope, show series history in event detail, native-tabs import deprecation
+
+## Iteration 6 — Modelo de negocio (backend/business.py)
+- Wholesale-only catalog: products have sku, tier incluido/premium, supplement, unit_cost, prep_cost, min_order, ref_price, supplier_id, stock, stock_reserved, sizes, status (internal fields stripped by public_product)
+- Sizes in biz_settings (Chico 4/$299, Mediano 6/$499, Grande 10/$799; alias Pequeño→Chico); kit price = base + premium supplements (kit_view/price_kit); example items p33–p38
+- Kit builder 5 steps (para quién, tamaño, momento, artículos con etiquetas INCLUIDO/PREMIUM/NO DISPONIBLE, resumen "Tu kit, a tu manera" via POST /api/kits/quote); save without buying; continue → cart
+- Plans: GET/POST /api/me/plan (Gratis / Plus demo 30 días sin cargo); institutional codes POST /api/benefits/validate|activate (server validation, expiry, usage limit atomic, unique activation, budget, history)
+- Checkout: GET /api/checkout/quote (best-discount or sum-with-cap rule, credit, shipping, no negatives); orders status flow Pendiente de confirmación→Confirmado→En preparación→Enviado→Entregado/Cancelado; stock reserved on order, discounted when shipped, released on cancel; repeat order, duplicate kit
+- Admin (demo@amodo.app is_admin): /admin overview+alerts, products edit, inventory moves, costing simulator (POST /api/admin/costing), suppliers (demo), codes, orders status, settings (sizes, costs, plans)

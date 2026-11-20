@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { DEMO_PRICE, KIT_SIZES, money } from "@/src/constants";
+import { DEMO_PRICE, money } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, ErrorState, Field, IconBtn, Loading, ProductImage, Row, Screen, Sheet, Txt } from "@/src/ui";
@@ -53,7 +53,7 @@ export default function ProductDetail() {
   };
 
   const addToKit = async (k: any) => {
-    const max = KIT_SIZES.find((s) => s.label === k.size)?.max || 7;
+    const max = k.capacity || 6;
     if (k.items.length >= max) return toast.show(`El kit ${k.name} ya está completo (${max} artículos)`, "error");
     try {
       await api(`/kits/${k.id}`, { method: "PUT", body: { ...k, items: [...k.items.map((i: any) => ({ product_id: i.product_id, options: i.options })), { product_id: id, options }] } });
@@ -99,7 +99,7 @@ export default function ProductDetail() {
             {p.name}
           </Txt>
           <Txt v="h2" style={{ marginTop: space.xs }} testID="product-price">
-            {money(p.price)} <Txt v="caption">· {DEMO_PRICE}</Txt>
+            {money(p.price)} <Txt v="caption">· {DEMO_PRICE} · En kits: {!p.available ? "no disponible" : p.tier === "premium" ? `premium +${money(p.supplement)}` : "incluido"}</Txt>
           </Txt>
           <Txt style={{ marginTop: space.md, marginBottom: space.xl }}>{p.description}</Txt>
           {p.colors?.length || p.personalize_text ? (

@@ -42,7 +42,7 @@ export default function Cart() {
       ) : (
         c.items.map((it: any) => (
           <View key={it.id} style={{ flexDirection: "row", gap: space.md, paddingVertical: space.lg, borderBottomWidth: 0.5, borderBottomColor: colors.divider }} testID={`cart-item-${it.id}`}>
-            <ProductImage product={{ category: it.category === "Kit" ? "Detalles" : it.category }} height={72} style={{ width: 72 }} />
+            <ProductImage product={it.image_product || { category: "Detalles" }} height={72} style={{ width: 72 }} />
             <View style={{ flex: 1 }}>
               <Txt v="medium" numberOfLines={2}>
                 {it.name}
@@ -67,7 +67,7 @@ export default function Cart() {
       {c?.items?.length ? (
         <View style={{ flexDirection: "row", gap: 6, alignItems: "center", marginTop: space.lg }}>
           <Ic name="truck" size={14} />
-          <Txt v="caption">El envío se calcula en el siguiente paso.</Txt>
+          <Txt v="caption">El envío, los descuentos y tus beneficios se calculan en el siguiente paso.</Txt>
         </View>
       ) : null}
     </Screen>

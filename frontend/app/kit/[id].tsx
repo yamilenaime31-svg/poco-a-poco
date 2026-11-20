@@ -84,14 +84,15 @@ export default function KitDetail() {
             {k.items.length} artículos
           </Txt>
           {k.items.map((i: any, idx: number) => (
-            <Row key={i.product_id + idx} title={i.product.name} subtitle={[i.product.category, i.options?.color, i.options?.text ? `“${i.options.text}”` : null].filter(Boolean).join(" · ")} right={<Txt v="medium">{money(i.product.price)}</Txt>} onPress={() => router.push(`/product/${i.product_id}`)} testID={`kit-item-${i.product_id}`} last={idx === k.items.length - 1} />
+            <Row key={i.product_id + idx} title={i.product.name} subtitle={[i.product.category, i.options?.color, i.options?.text ? `“${i.options.text}”` : null].filter(Boolean).join(" · ")} right={<Txt v="caption">{i.product.tier === "premium" ? `+${money(i.product.supplement)}` : "Incluido"}</Txt>} onPress={() => router.push(`/product/${i.product_id}`)} testID={`kit-item-${i.product_id}`} last={idx === k.items.length - 1} />
           ))}
           <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.lg, marginTop: space.sm, borderTopWidth: 1, borderTopColor: colors.onSurface }}>
-            <Txt v="caption">Incluye base {money(k.base_price)} · precios de ejemplo</Txt>
+            <Txt v="caption">{k.size_label} {money(k.base_price)}{k.supplements ? ` + suplementos ${money(k.supplements)}` : ""} · precios de ejemplo</Txt>
             <Txt v="h2" testID="kit-detail-total">
               {money(k.total)}
             </Txt>
           </View>
+          {!k.template ? <Btn label="Duplicar kit" variant="secondary" icon="copy" onPress={async () => { const r = await api(`/kits/${id}/duplicate`, { method: "POST" }); invalidate(); router.push(`/kit/${r.id}`); }} testID="kit-duplicate-button" style={{ marginTop: space.xl }} /> : null}
           {!k.template ? <Btn label="Eliminar kit" variant="ghost" icon="trash-2" onPress={() => setConfirm(true)} testID="kit-delete-button" style={{ marginTop: space.xl }} /> : null}
         </>
       )}

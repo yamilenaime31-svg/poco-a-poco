@@ -38,9 +38,9 @@ export default function OrderDetail() {
             <Card tint="sage" style={{ marginBottom: space.xl }} testID="order-confirmation">
               <Ic name="circle-check" size={28} />
               <Txt v="h2" style={{ marginTop: space.sm }}>
-                ¡Pedido confirmado!
+                Pedido registrado
               </Txt>
-              <Txt style={{ marginTop: 4 }}>Gracias. Te avisaremos de cada paso. Pago simulado, sin cargo real.</Txt>
+              <Txt style={{ marginTop: 4 }}>Quedó pendiente de confirmación. Te avisaremos de cada paso. Pedido de demostración: no se procesó ningún pago.</Txt>
             </Card>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -77,6 +77,18 @@ export default function OrderDetail() {
                 <Txt v="medium">{money(i.subtotal)}</Txt>
               </View>
             ))}
+            {(o.discounts || []).map((d: any) => (
+              <View key={d.label} style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.sm }}>
+                <Txt v="caption" style={{ flex: 1 }}>{d.label}</Txt>
+                <Txt v="caption">−{money(d.amount)}</Txt>
+              </View>
+            ))}
+            {o.credit ? (
+              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.sm }}>
+                <Txt v="caption">Crédito institucional</Txt>
+                <Txt v="caption">−{money(o.credit)}</Txt>
+              </View>
+            ) : null}
             <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: space.md }}>
               <Txt v="caption">Envío ({o.address.shipping})</Txt>
               <Txt v="caption">{o.shipping_cost ? money(o.shipping_cost) : "Gratis"}</Txt>
@@ -98,7 +110,8 @@ export default function OrderDetail() {
               {o.payment.method} · {o.payment.status}
             </Txt>
           </Section>
-          {o.status === "Confirmado" || o.status === "Preparando tu kit" ? <Btn label="Cancelar pedido" variant="ghost" loading={busy} onPress={cancel} testID="order-cancel-button" style={{ marginTop: space.xl }} /> : null}
+          {["Pendiente de confirmación", "Confirmado", "En preparación"].includes(o.status) ? <Btn label="Cancelar pedido" variant="ghost" loading={busy} onPress={cancel} testID="order-cancel-button" style={{ marginTop: space.xl }} /> : null}
+          <Btn label="Repetir pedido" variant="secondary" icon="repeat" onPress={async () => { await api(`/orders/${id}/repeat`, { method: "POST" }); invalidate(); router.push("/cart"); }} testID="order-repeat-button" style={{ marginTop: space.md }} />
           <Btn label="Ver mis pedidos" variant="secondary" onPress={() => router.replace("/orders")} testID="order-all-button" style={{ marginTop: space.md }} />
         </>
       )}

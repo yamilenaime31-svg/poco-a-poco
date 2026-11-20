@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 6 business model tested end-to-end. Backend: 29/29 pytest pass (kit sizes, quote examples A/B/C = 299/419/574, capacity 422 on quote and POST /kits, public product field hiding, HOSPITAL-DEMO validate/activate once, FUNDACION-2024 vencido, /me/plan plus|free, checkout quote best-stacking 15% (86) + credit 150 + shipping 99 = 437, order 'Pendiente de confirmación' reserves stock and consumes credit, agotado p13 -> 409, big credit -> items_total 0/total 99, admin Enviado decrements stock+reserved, cancel releases reservation, closed order -> 400, caregiver 403 on 9 admin endpoints, costing 180/119/39.8, product PUT + validation, inventory entrada/salida/ajuste, suppliers, settings round-trip). Frontend (390px + 360px): kit-builder 5 steps all OK (Desde $299/$499/$799, Otro input, tags INCLUIDO/PREMIUM +$/NO DISPONIBLE, live total 419->484->484->574, capacity toast, summary with Por calcular, save -> /kit/<id>, order -> /cart $419), kit detail Incluido/+$ lines and duplicate OK, plan/redeem flow OK (expired error, info, activate -> Plus Institucional + 3 benefits), plan-change Plus/Gratis demo OK, checkout breakdown + demo notice + order detail + cancel + repeat OK, admin index/products/inventory/costing (live)/suppliers/codes/orders chips/settings OK, caregiver sees 'Sin acceso'. Bugs: (1) code sheet Save button unreachable (Sheet not scrollable); (2) cancelled orders do not refund institutional credit; (3) admin overview counts legacy orders without status as open / revenue; (4) order screen says '¡Pedido confirmado!' while status is Pendiente de confirmación. No deprecated Expo packages detected.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/orders/{id}/cancel and POST /api/admin/orders/{id}/status (Cancelado)", "issue": "set_order_status releases stock reservation but never refunds the institutional credit consumed at checkout. Reproduced: user with $150 credit placed order (credit 150 used), cancelled -> /me/plan credit remaining stays 0. business.py:325-339 (credit is decremented in place_order 305-311 but not restored).", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/admin/overview", "issue": "orders_open/revenue_demo use raw o.get('status'); legacy orders without 'status' (some cancelled via 'cancelled': true) are counted as open and their totals included in revenue (UI showed 'Pedidos abiertos 11 de 13' while list shows most Cancelado; revenue $21,950). Use order_view()-derived status. business.py:405-409. Same: GET /api/admin/orders returns raw docs (status null for legacy orders)."},
+      {"endpoint": "public_product available flag", "issue": "available = stock > 0 ignores stock_reserved, whereas price_kit/place_order use stock - stock_reserved. An item fully reserved shows available in catalog but 409s at checkout. business.py:68"},
+      {"endpoint": "PUT /api/admin/settings/costs|plans", "issue": "No type/range validation (stacking can be any string, negative pct, non-numeric values accepted). business.py:505-507"},
+      {"endpoint": "Admin codes/suppliers", "issue": "No delete endpoint; test codes can only be paused (TEST-UICODE and TEST-xxxx codes left 'pausado')."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Admin codes 'Nuevo código' Sheet", "issue": "Sheet (src/ui.tsx:432-448, maxHeight 85%, no ScrollView) clips content; at 390x844 the Save button sits at y=1000, cannot be scrolled to or tapped (Playwright: 'Element is outside of the viewport', mouse wheel does nothing). Only JS click worked. Wrap Sheet children in a ScrollView (keyboardShouldPersistTaps='handled') or add ScrollView in app/admin/codes.tsx:48.", "testID": "admin-code-save", "priority": "HIGH"},
+      {"component": "Order detail confirmation banner", "issue": "New order shows '¡Pedido confirmado!' while status badge says 'Pendiente de confirmación' (contradictory). app/order/[id].tsx:41", "testID": "order-confirmation", "priority": "MEDIUM"},
+      {"component": "Order cancel", "issue": "order-cancel-button cancels immediately with no confirmation sheet (destructive action). app/order/[id].tsx:113", "testID": "order-cancel-button", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Cancel order -> credit", "issue": "After cancelling, plan screen still shows credit used ($0 de $150) because backend doesn't refund it.", "affected_testIDs": ["order-cancel-button", "plan-benefit-credit"]}
+    ],
+    "design_issues": [
+      {"screen": "Dates without year", "issues": ["Code validity shows 'vie 31 dic' / admin new code 'Hoy – sáb 20 nov' (actually next year) without year; ambiguous, looks like it expires this year/today."]},
+      {"screen": "Kit builder items step", "issues": ["When a context with tags is chosen, the first chip is 'Sugeridos' and there is no 'Todo' option to see the full catalog at once (only per-category)."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter6_business.py", "/app/test_reports/pytest/pytest_iter6.xml"],
+  "action_items": [
+    "HIGH: Make Sheet content scrollable (src/ui.tsx Sheet -> ScrollView inside) so admin-code-save (and other tall sheets) is reachable on 390x844 and smaller.",
+    "HIGH: Refund consumed institutional credit when an order is cancelled (store per-benefit credit usage on the order and $inc remaining back in set_order_status).",
+    "MEDIUM: Change order confirmation copy for 'Pendiente de confirmación' (e.g., '¡Pedido registrado!').",
+    "MEDIUM: admin_overview/admin_orders should derive status via order_view() for legacy orders (open count & revenue).",
+    "LOW: public_product.available should use stock - stock_reserved; validate settings costs/plans types; add confirm before cancelling an order; show year in validity dates."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1341 lines (>700) - split into routers.",
+    "Credit consumption in place_order is non-atomic read-then-$inc; concurrent checkouts may overspend credit (use conditional update remaining >= use).",
+    "Stock reservation check in place_order is read-then-$inc without condition; concurrent orders can over-reserve.",
+    "kit/[id].tsx duplicate handler has no try/catch / error toast."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter6_business.py"],
+  "success_rate": {"backend": "100% (29/29 tests); 1 HIGH logic bug found by exploration (credit refund)", "frontend": "~92% (all requested flows work; code-sheet save unreachable)"},
+  "seed_data_creation": "Created TEST_ patients via /api/auth/register (test_xxxx@amodo.app, test_ui_*@amodo.app) and activated HOSPITAL-DEMO on them (uses 2/100). Created codes TEST-XXXXXX and TEST-UICODE (now 'pausado', no delete endpoint). Orders AM-45527 (Entregado, stock restored via entrada), AM-93903/AM-52523 (Cancelado). Demo account: TEST_ kits deleted, cart emptied, plan back to Gratis, p33 description restored, settings unchanged (299/499/799, costs default, stacking best). HOSPITAL-DEMO NOT activated on demo@amodo.app.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Env var is EXPO_PUBLIC_BACKEND_URL in frontend/.env. Run iter6 pytest with -n 0 (tests are sequential/stateful). Kit builder steps animate: wait for kit-builder-step-N before clicking. Choose context 'Otro' to see 'Todo' filter with all products. Stack screens stay in DOM: use .last for testIDs after push navigation. Fresh registered users need PUT /me {onboarding_done:true} before UI login.",
+  "rca_of_issue": "Code sheet: Sheet View has maxHeight 85% with children rendered directly (no ScrollView) so overflow is clipped. Credit: place_order decrements benefits.remaining but set_order_status(Cancelado) only reverts stock_reserved."
+}
