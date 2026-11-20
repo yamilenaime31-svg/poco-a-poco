@@ -259,17 +259,17 @@ async def breakdown(user: dict, kit_subtotal: int, other_subtotal: int, shipping
     plan = await plan_view(user)
     pcts = []
     if plan["tier"] == "plus" and cfg["plus_kit_discount_pct"]:
-        pcts.append(("Descuento AMODO Plus en kits", cfg["plus_kit_discount_pct"]))
+        pcts.append(("Descuento AMODO Plus en kits", cfg["plus_kit_discount_pct"], 0))
     for b in plan["benefits"]:
         if b["kind"] == "kit_discount_pct":
-            pcts.append((f"Descuento de {b['institution']} en kits", b["value"]))
+            pcts.append((f"Descuento de {b['institution']} en kits", b["value"], 1))
     discounts = []
     if pcts:
         if cfg["stacking"] == "sum":
-            pct = min(cfg["max_discount_pct"], sum(p for _, p in pcts))
-            label = " + ".join(lbl for lbl, _ in pcts)
+            pct = min(cfg["max_discount_pct"], sum(p for _, p, _ in pcts))
+            label = " + ".join(lbl for lbl, _, _ in pcts)
         else:  # "best": only the single best discount applies, never duplicated
-            label, pct = max(pcts, key=lambda x: x[1])
+            label, pct, _ = max(pcts, key=lambda x: (x[1], x[2]))  # on a tie, credit the institution
         discounts.append({"label": f"{label} ({pct}%)", "amount": round(kit_subtotal * pct / 100, 2)})
     disc = sum(d["amount"] for d in discounts)
     credits = [b for b in plan["benefits"] if b["kind"] == "credit"]
@@ -598,8 +598,9 @@ async def report(today: str, user=Depends(require_plus)):
     end = (datetime.strptime(today, "%Y-%m-%d") + timedelta(days=30)).date().isoformat()
     items = [i for i in await agenda_items(user, user["id"], today, end) if i["source"] != "doses"]
     meds = [m async for m in db.records.find({"kind": "medications", "owner_id": user["id"], "active": {"$ne": False}})]
-    lines = [f"AMODO · Resumen personal ({today} a {end})", "", "AGENDA"]
-    lines += [f"- {i['date']} {i['time'] or ''} · {i['title']} ({i['type']})" for i in items] or ["- Sin eventos"]
+    from knowledge import fmt_es
+    lines = [f"AMODO · Resumen personal (del {fmt_es(today)} al {fmt_es(end)})", "", "AGENDA"]
+    lines += [f"- {fmt_es(i['date'])}{' · ' + i['time'] if i['time'] else ''} · {i['title']} ({i['type']})" for i in items] or ["- Sin eventos"]
     lines += ["", "MEDICAMENTOS REGISTRADOS"] + ([f"- {m.get('name', '')} {m.get('dose', '')} · {m.get('times') or m.get('schedule') or ''}" for m in meds] or ["- Ninguno"])
     lines += ["", "Generado por ti desde AMODO. No sustituye las indicaciones de tu equipo médico."]
     return {"text": "\n".join(lines), "count": len(items)}

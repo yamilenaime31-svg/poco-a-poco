@@ -198,14 +198,14 @@ export function Header({ title, back = true, right, subtitle, onBack }: { title?
         {back ? (
           <IconBtn icon="chevron-left" testID="header-back-button" onPress={() => (onBack ? onBack() : router.canGoBack() ? router.back() : router.replace("/"))} />
         ) : null}
-        <View style={{ flex: 1, marginHorizontal: back ? space.md : 0 }}>
+        <View style={{ flex: 1, minWidth: 0, marginHorizontal: back ? space.md : 0 }}>
           {title ? (
-            <Txt v="h2" numberOfLines={1} testID="screen-title">
+            <Txt v="h2" numberOfLines={2} testID="screen-title">
               {title}
             </Txt>
           ) : null}
           {subtitle ? (
-            <Txt v="caption" numberOfLines={1}>
+            <Txt v="caption" numberOfLines={2}>
               {subtitle}
             </Txt>
           ) : null}

@@ -47,7 +47,7 @@ export default function ChoosePlan() {
   );
 
   return (
-    <Screen title="Elige cómo quieres comenzar" subtitle="Puedes cambiar tu plan cuando quieras. Tu información siempre será tuya." testID="choose-plan-screen">
+    <Screen back={false} title="Elige cómo quieres comenzar" subtitle="Puedes cambiar tu plan cuando quieras. Tu información siempre será tuya." testID="choose-plan-screen">
       <Card title="AMODO Gratis" price="$0" list={FREE_FEATURES} testID="choose-plan-free">
         <Btn label="Comenzar gratis" loading={busy === "free"} onPress={() => choose("free")} testID="choose-plan-free-button" />
       </Card>

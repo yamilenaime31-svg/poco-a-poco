@@ -127,7 +127,7 @@ export default function KitBuilder() {
           <>
             <Txt v="caption" numberOfLines={1}>Precio total</Txt>
             <Txt v="title" numberOfLines={1} style={{ flexShrink: 0 }} testID="kit-total">{money(total)}</Txt>
-            <Txt v="caption" numberOfLines={1} testID="kit-count">{items.length} de {sz.max} artículos{sz.max - items.length > 0 ? ` · te quedan ${sz.max - items.length}` : " · completo"}</Txt>
+            <Txt v="caption" numberOfLines={2} testID="kit-count">{items.length} de {sz.max} artículos{sz.max - items.length > 0 ? ` · te quedan ${sz.max - items.length}` : " · completo"}</Txt>
           </>
         ) : null}
       </View>

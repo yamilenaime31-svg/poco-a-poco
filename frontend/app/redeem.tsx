@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate } from "@/src/api";
+import { useAuth } from "@/src/auth";
 import { fmtDate } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Card, Field, Ic, Screen, Txt } from "@/src/ui";
@@ -17,6 +18,21 @@ export default function Redeem() {
   const [info, setInfo] = useState<any>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [freeBusy, setFreeBusy] = useState(false);
+  const { refresh } = useAuth();
+  const continueFree = async () => {
+    setFreeBusy(true);
+    setError("");
+    try {
+      await api("/me/plan", { method: "POST", body: { action: "free" } });
+      await refresh();
+      router.replace("/onboarding");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setFreeBusy(false);
+    }
+  };
 
   const validate = async () => {
     setBusy(true);
@@ -35,6 +51,7 @@ export default function Redeem() {
     try {
       await api("/benefits/activate", { method: "POST", body: { code } });
       invalidate();
+      await refresh();
       toast.show("Beneficios activados");
       router.replace(onboarding ? "/onboarding" : "/plan");
     } catch (e: any) {
@@ -65,7 +82,7 @@ export default function Redeem() {
         </>
       )}
       {onboarding ? (
-        <Btn label="Continuar con AMODO Gratis" variant="ghost" onPress={async () => { await api("/me/plan", { method: "POST", body: { action: "free" } }); router.replace("/onboarding"); }} testID="redeem-continue-free" style={{ marginTop: space.md }} />
+        <Btn label="Continuar con AMODO Gratis" variant="ghost" loading={freeBusy} onPress={continueFree} testID="redeem-continue-free" style={{ marginTop: space.md }} />
       ) : null}
     </Screen>
   );
