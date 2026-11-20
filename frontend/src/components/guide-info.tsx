@@ -41,7 +41,8 @@ export function GuideCard({ k, compact }: { k: any; compact?: boolean }) {
       <Txt v="caption">{k.guide.label}</Txt>
       <Txt v="title" numberOfLines={2}>{k.name}</Txt>
       <View style={styles.imgs}>
-        {k.items.slice(0, 5).map((i: any) => <ProductImage key={i.product_id} product={i.product} height={52} style={{ width: 52, borderRadius: radius.sm }} />)}
+        {k.items.slice(0, 4).map((i: any) => <ProductImage key={i.product_id} product={i.product} height={compact ? 44 : 52} style={{ width: compact ? 44 : 52, borderRadius: radius.sm }} />)}
+        {k.items.length > 4 ? <View style={[styles.more, { backgroundColor: colors.surfaceTertiary, width: compact ? 44 : 52, height: compact ? 44 : 52 }]}><Txt v="caption">+{k.items.length - 4}</Txt></View> : null}
       </View>
       <Txt v="caption" color={colors.onSurface}>{k.items.length} artículos · {money(k.total)} (ejemplo) · envío incluido</Txt>
       {!compact ? (
@@ -64,6 +65,7 @@ const styles = StyleSheet.create({
   link: { minHeight: 32, justifyContent: "center" },
   card: { borderRadius: radius.lg, padding: space.md, borderWidth: StyleSheet.hairlineWidth, marginBottom: space.md, gap: 4 },
   compact: { width: 240, marginBottom: 0 },
-  imgs: { flexDirection: "row", gap: 6, marginVertical: space.sm, flexWrap: "wrap" },
+  imgs: { flexDirection: "row", gap: 6, marginVertical: space.sm },
+  more: { borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
   toggle: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44 },
 });

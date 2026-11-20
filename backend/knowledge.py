@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 
 from fastapi import Body, Depends, HTTPException, Query
 
-from server import api, clean, current_user, db, logger, now_iso
+from server import api, clean, current_user, db, display_name, logger, now_iso
 from planner import TREATMENT_TYPES, llm_json
 
 REVIEWED = "2026-06"
@@ -218,19 +218,65 @@ def guided_template(kid: str):
             "description": k["tips"][0], "guide": {"need": k["id"], "label": k["label"], "tips": k["tips"], "precaution": k["precaution"], "sources": k["sources"], "reviewed": REVIEWED}}
 
 
+async def caregiver_context(user: dict) -> tuple[set, dict]:
+    """Treatment types the linked patients chose to share with this caregiver (privacy: only records in shared_with)."""
+    from planner import TREATMENT_TYPES as TT
+    types: dict[str, str] = {}
+    plus_any = False
+    from business import is_plus
+    async for link in db.links.find({"caregiver_id": user["id"], "status": "active"}):
+        p = await db.users.find_one({"id": link["patient_id"]})
+        if not p:
+            continue
+        plus_any = plus_any or await is_plus(p)
+        name = (display_name(p) or "").split(" ")[0]
+        async for t in db.records.find({"kind": "treatments", "owner_id": p["id"], "shared_with": user["id"], "status": {"$ne": "Finalizado"}}):
+            tt = t.get("treatment_type") if t.get("treatment_type") in TT else t.get("name") if t.get("name") in TT else None
+            if tt:
+                types.setdefault(tt, name)
+    return plus_any, types
+
+
 @api.get("/guided-kits")
 async def guided_kits(user=Depends(current_user)):
-    """Every guide is open to everyone (general information). With Plus, the ones related to the person's registered treatments/needs go first."""
+    """Every guide is open to everyone (general information). With Plus, the ones related to registered treatments/needs go first.
+    Caregivers see first the ones related to treatments their patient shared with them."""
     from business import is_plus
     from server import kit_view
     plus = await is_plus(user)
-    types = set(await user_treatments(user["id"])) if plus else set()
-    declared = set((user.get("profile", {}) or {}).get("declared_needs") or []) if plus else set()
+    declared: set = set()
+    names: dict[str, str] = {}
+    pat_plus, names = await caregiver_context(user)  # anyone who accompanies someone sees their shared treatments first
+    if not (plus or pat_plus):
+        names = {}
+    if plus:
+        names.update({t: "" for t in await user_treatments(user["id"])})
+        declared = set((user.get("profile", {}) or {}).get("declared_needs") or [])
+    plus = plus or pat_plus
     out = []
     for k in KB:
         t = guided_template("g-" + k["id"])
         kv = await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]})
-        for_you = "Elegiste este tema" if k["id"] in declared else "Relacionado con tu tratamiento registrado" if set(k["treatments"]) & types else ""
-        out.append({**kv, "for_you": for_you})
-    out.sort(key=lambda x: (not x["for_you"].startswith("Elegiste"), not x["for_you"]))
+        hit = next((names[x] for x in k["treatments"] if x in names), None)
+        for_you = "Tema elegido" if k["id"] in declared else ("Para tu tratamiento" if hit == "" else f"Para {hit}" if hit else "")
+        out.append({**kv, "for_you": for_you, "chosen": k["id"] in declared})
+    out.sort(key=lambda x: (not x["chosen"], not x["for_you"]))
     return {"plus": plus, "reviewed": REVIEWED, "kits": out}
+
+
+@api.post("/kits/{kid}/gift")
+async def gift_kit(kid: str, patient_id: str = Body(..., embed=True), message: str = Body("", embed=True), user=Depends(current_user)):
+    """A caregiver turns a suggested kit into a gift for a linked patient, with a personal message, and adds it to their cart."""
+    from server import find_template, kit_view, uid
+    t = find_template(kid)
+    if not t:
+        raise HTTPException(404, "Kit no encontrado")
+    if not await db.links.find_one({"caregiver_id": user["id"], "patient_id": patient_id, "status": "active"}):
+        raise HTTPException(403, "Solo puedes regalar kits a personas que acompañas")
+    p = await db.users.find_one({"id": patient_id})
+    kit = {"id": uid(), "owner_id": user["id"], "created_at": now_iso(), "updated_at": now_iso(), "name": f"{t['name']} · regalo", "context": t.get("context", ""),
+           "size": t["size"], "categories": [], "items": [{"product_id": x, "options": {}} for x in t["items"]], "for_name": display_name(p) if p else "",
+           "for_user_id": patient_id, "note": message.strip()[:300], "gift": True, "guide": t.get("guide"), "shared_with": []}
+    await db.kits.insert_one(kit)
+    await db.cart.insert_one({"id": uid(), "user_id": user["id"], "type": "kit", "ref_id": kit["id"], "qty": 1, "options": {}})
+    return {"id": kit["id"], "kit": await kit_view(kit)}

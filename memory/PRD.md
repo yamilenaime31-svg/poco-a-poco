@@ -67,3 +67,8 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - knowledge.py: 13 temas (añadidos hormigueo, sueño, memoria/concentración, estrés) con consejos generales parafraseados, precauciones y fuentes (NCI español/inglés, ACS, MedlinePlus); cada tema tiene un kit curado (id `g-<tema>`).
 - GET /api/guided-kits (todos los usuarios; con Plus se priorizan por tratamiento registrado / temas elegidos). Kits `g-*` funcionan en /kits/{id}, carrito y checkout (server.find_template).
 - Frontend: sección "Según guías confiables" en Mis kits, pantalla /guides, caja de guía y fuentes en detalle de kit (src/components/guide-info.tsx).
+
+## Iteration 10 (Jun 2026) — Acompañantes y regalos
+- /api/guided-kits prioriza para acompañantes (por vínculos activos, no por rol) los temas del tratamiento que el paciente compartió con ellos ("Para <nombre>"); requiere Plus del acompañante o del paciente.
+- POST /api/kits/{kid}/gift {patient_id, message}: kit regalo (gift:true) al carrito; al pagar, se comparte con el paciente y se le notifica con el mensaje. El paciente ve "Kit recibido" + "Mensaje de <nombre>".
+- Tarjetas de guía: fotos en una fila (máx. 4 + "+N"), etiquetas cortas.

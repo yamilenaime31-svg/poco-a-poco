@@ -756,7 +756,11 @@ async def get_kit(kid: str, user=Depends(current_user)):
     k = await db.kits.find_one({"id": kid, "$or": [{"owner_id": user["id"]}, {"shared_with": user["id"]}]})
     if not k:
         raise HTTPException(404, "Kit no encontrado")
-    return await kit_view(k)
+    kv = await kit_view(k)
+    if k.get("gift") and k["owner_id"] != user["id"]:
+        o = await db.users.find_one({"id": k["owner_id"]})
+        kv.update({"from_name": display_name(o) if o else "", "name": kv["name"].replace(" · regalo", "")})
+    return kv
 
 
 async def kit_fields(body: dict) -> dict:

@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 10 tested the 3 new features plus regression. Backend: 16/16 pytest passed. Covered caregiver-aware /api/guided-kits ('Para Lucia' sorted first only when caregiver OR patient is Plus; the unshared Cirugía treatment is NOT used; both on Free gets no tags; strangers get no tags; own Plus shows 'Para tu tratamiento'; a declared need shows 'Tema elegido' first). Covered POST /kits/{kid}/gift (404 for a kit that is not a template, 403 when not linked, 422 when patient_id is missing, message cut to 300 chars, gift kit in the cart). Covered checkout of a gift: the patient gets 'Carlos te envió un kit' with the message and link /kit/<id>, and can only GET the kit after checkout. Frontend at 390x844, all passed. As acompanante@amodo.app: /kit/g-sleep → kit-gift-button → kit-gift-sheet (chip Alex, kit-gift-message) → kit-gift-confirm → /cart shows 'Noches más tranquilas · regalo'. TEST patient: tapping the notification opens /kit/<id> with title 'Kit recibido' and the kit-note 'Mensaje' card; the edit, cart, duplicate, delete, gift and customize buttons are all absent. Guide cards in Mis kits (kits-guides) and /guides: images measured in a single row with no overflow, at most 4 images plus a '+1' tile for 5-item kits, short 'Para Lucia' badges, recipient-specific kits sorted first. Regression passed: /guides, /kit/g-* Personalizar → /kit-builder?template=g-feelings, Al carrito → /cart, GET /api/kits/t1. Only minor logic and UX issues were found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/orders/{id}/cancel (business.py set_order_status)", "issue": "The gift notification and the patient's access to the kit (shared_with) are granted at checkout. If the caregiver cancels the order, the patient keeps the 'X te envió un kit' notification and access to the kit, and gets no notice that it was cancelled. Reproduced: ui_setup_iter10.py cancels its order, and the patient still sees the gift."},
+      {"endpoint": "POST /api/kits/{kid}/duplicate and POST /api/orders/{oid}/repeat", "issue": "Duplicating a gift kit copies gift:true, for_user_id and note (business.py:403). Reordering a gift kit (the caregiver's 'Pedir de nuevo' list shows 'Un rato para ti · regalo') sends the patient another gift notification. This may or may not be intended."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/kit/<gift id> (patient view)", "issues": ["The title shows the internal suffix 'Un rato para ti · regalo'. Consider removing '· regalo' for the recipient.", "The message card only says 'Mensaje' and does not show who sent it (e.g. 'Mensaje de Carlos')."]},
+      {"screen": "/cart (caregiver)", "issues": ["The gift line does not show the recipient ('Para Alex') or that a message is attached."]},
+      {"screen": "kit-gift-sheet", "issues": ["The label 'Tu mensaje (opcional)' sits right under the chip row with almost no spacing. The marginTop passed to Field does not seem to reach the label."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter10_caregiver_gift.py", "/app/backend/tests/ui_setup_iter10.py", "/app/test_reports/pytest/pytest_iter10.xml"],
+  "action_items": [
+    "Optional: when a gift order is cancelled, notify the patient and/or remove them from the kit's shared_with.",
+    "Optional: when duplicating a gift kit, drop gift/for_user_id/note, or decide whether reordering a gift should notify the patient again.",
+    "Optional UX: show the sender on the received kit ('Mensaje de <nombre>'), remove the '· regalo' suffix for the recipient, and show 'Para <nombre>' on the gift line in the cart.",
+    "Optional UX: add spacing above the message field in kit-gift-sheet."
+  ],
+  "critical_code_review_comments": [
+    "caregiver_context privacy check is correct: it queries shared_with: caregiver id and status != Finalizado, and uses only the first name.",
+    "gift_kit stores for_name via display_name(p). The frontend shows a 'Para <name>' badge to the caregiver and also to the patient (reads 'Para Lucia' on the patient's own received kit). This is harmless.",
+    "The kit_fields update (PUT /kits) does not keep the gift flag explicitly. If the caregiver edits a gift kit in kit-builder and the builder does not send 'note', the message would be replaced with an empty string. Not verified in the UI."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter10_caregiver_gift.py", "/app/backend/tests/ui_setup_iter10.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% of tested flows"},
+  "seed_data_creation": "Created TEST_ users test_ui10_adb7f8@amodo.app (patient, Plus, shared Radioterapia) and test_ui10_adcfae@amodo.app (caregiver), all with password Demo1234, plus TEST_ users from pytest. Their gift orders were cancelled and their carts cleaned. The gift kit made from the acompanante UI test was deleted along with its cart item. Demo data was not changed: demo plan is free and Quimioterapia shared_with is [].",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -p no:xdist or keep the class-level independence. Each class gets its own ctx fixture under xdist LoadScope. Running ui_setup_iter10.py (PYTHONPATH=tests) creates a linked patient/caregiver pair with an ordered (then cancelled) gift kit."
+}

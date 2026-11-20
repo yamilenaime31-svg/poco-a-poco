@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import Body, Depends, HTTPException
 
-from server import api, cart_view, clean, current_user, db, notify, now_iso, products_map, uid
+from server import api, cart_view, clean, display_name, current_user, db, notify, now_iso, products_map, uid
 
 INTERNAL = ("unit_cost", "prep_cost", "supplier_id", "min_order", "ref_price", "stock_reserved")
 DEFAULT_SIZES = [
@@ -354,6 +354,12 @@ async def place_order(user: dict, address: dict, shipping: str) -> dict:
     if q["credit"]:
         await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": f"Usaste ${q['credit']} de crédito en el pedido {order['number']}."})
     await notify(user["id"], "Pedido registrado", f"Tu pedido {order['number']} quedó pendiente de confirmación (demostración).", "order", f"/order/{order['id']}")
+    for i in cart["items"]:
+        k = await db.kits.find_one({"id": i["ref_id"], "gift": True}) if i["type"] == "kit" else None
+        if k and k.get("for_user_id"):
+            await db.kits.update_one({"id": k["id"]}, {"$addToSet": {"shared_with": k["for_user_id"]}})
+            msg = f"«{k['note']}»" if k.get("note") else "Va en camino."
+            await notify(k["for_user_id"], f"{display_name(user)} te envió un kit", f"{k['name'].replace(' · regalo', '')}. {msg}", "order", f"/kit/{k['id']}")
     return order
 
 
