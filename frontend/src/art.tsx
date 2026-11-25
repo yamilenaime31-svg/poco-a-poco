@@ -1,9 +1,12 @@
 // AMODO graphic system: original organic shapes, mood figures and spot illustrations (react-native-svg).
 // Expressive art lives here; functional icons stay in Lucide (ui.tsx → Ic).
-import React from "react";
+import React, { useEffect } from "react";
 import { View } from "react-native";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
+import Animated, { ZoomIn, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from "react-native-reanimated";
+
+import { Ambient, Drift, useAmbient, useMotionAllowed } from "@/src/motion";
 import { useTheme } from "@/src/theme";
 
 function burst(n: number, r1: number, r2: number) {
@@ -77,6 +80,23 @@ export const MOOD_ART: Record<string, { shape: ShapeName; face: Face; tint: stri
   "Con dolor": { shape: "diamond", face: "pain", tint: "butter" },
 };
 
+/** Each state moves in its own way: slow breathing, a soft hop, a heavy lean… never dramatic, never "better" or "worse". */
+export const MOOD_MOTION: Record<string, Drift> = {
+  "En calma": { cycle: 4600, sx: 0.045, sy: 0.045 },
+  "Con energía": { cycle: 2800, pause: 900, ty: -5, sway: 4 },
+  "Cansado/a": { cycle: 5600, sy: -0.05, sx: 0.025, tilt: 2.5 },
+  "Con sueño": { cycle: 6000, sx: 0.03, sy: 0.055 },
+  "Sensible": { cycle: 5000, sway: 3.5 },
+  "Preocupado/a": { cycle: 4200, pause: 600, tilt: -3, tx: 1 },
+  "Con molestias": { cycle: 5200, sx: 0.02, sy: -0.02 },
+  "Con dolor": { cycle: 6000, sy: 0.015 },
+};
+
+/** Mood figure with its own ambient motion. */
+export function LiveMood({ mood, play, delay = 0, ...rest }: { mood: string; size?: number; color: string; selected?: boolean; play?: "loop" | "once" | "off"; delay?: number }) {
+  return <Ambient drift={{ ...(MOOD_MOTION[mood] || MOOD_MOTION["En calma"]), delay }} play={play}><MoodFigure mood={mood} {...rest} /></Ambient>;
+}
+
 /** Mood figure: shape + minimal expression. Shapes differ so colour is never the only cue. */
 export function MoodFigure({ mood, size = 56, color, selected }: { mood: string; size?: number; color: string; selected?: boolean }) {
   const { colors } = useTheme();
@@ -116,21 +136,40 @@ export function Spot({ name, size = 52, pop }: { name: SpotName | string; size?:
     ai: <><Path d="M30 6C32 22 38 28 54 30C38 32 32 38 30 54C28 38 22 32 6 30C22 28 28 22 30 6Z" fill={ink} /><Path d="M50 42C51 48 53 50 59 51C53 52 51 54 50 60C49 54 47 52 41 51C47 50 49 48 50 42Z" fill={p} /></>,
     calendar: <><Rect x={9} y={13} width={46} height={42} rx={10} fill={paper} /><Path d="M9 25h46v-2a10 10 0 0 0 -10 -10h-26a10 10 0 0 0 -10 10z" fill={ink} /><Circle cx={24} cy={39} r={4} fill={ink} /><Circle cx={40} cy={39} r={4} fill={p} /></>,
     gift: <><Rect x={11} y={26} width={42} height={30} rx={6} fill={paper} /><Path d="M32 26c-10 -18 -22 -6 -12 0zM32 26c10 -18 22 -6 12 0z" fill={ink} /><Rect x={28} y={26} width={8} height={30} fill={p} /></>,
+    report: <><Rect x={13} y={7} width={38} height={50} rx={8} fill={paper} /><Rect x={20} y={36} width={6} height={13} rx={3} fill={ink} /><Rect x={29} y={28} width={6} height={21} rx={3} fill={p} /><Rect x={38} y={32} width={6} height={17} rx={3} fill={ink} /><Path d="M21 17h16M21 23h9" {...line} /></>,
     heart: <><Path d="M32 54C8 38 10 16 24 14c5 0 8 4 8 4s3 -4 8 -4c14 2 16 24 -8 40z" fill={paper} /><Circle cx={48} cy={46} r={8} fill={ink} /><Circle cx={48} cy={46} r={3} fill={p} /></>,
   };
   return <Svg width={size} height={size} viewBox="0 0 64 64">{art[name] ?? art.kits}</Svg>;
 }
 
-/** Group of shapes "keeping each other company": hero corners and empty states. */
+/** Group of shapes "keeping each other company": hero corners and empty states. Each piece drifts at its own rhythm, inside its own box. */
 export function Company({ size = 96, a, b, c }: { size?: number; a?: string; b?: string; c?: string }) {
   const { colors } = useTheme();
+  const k = size / 120;
+  const on = useAmbient();
+  const blink = useSharedValue(1);
+  useEffect(() => {
+    if (!on) return;
+    const id = setInterval(() => { blink.value = withSequence(withTiming(0.15, { duration: 90 }), withTiming(1, { duration: 130 })); }, 4700);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [on]);
+  const eyes = useAnimatedStyle(() => ({ transform: [{ scaleY: blink.value }] }));
   return (
-    <Svg width={size} height={size * 0.8} viewBox="0 0 120 96">
-      <G transform="translate(0 20) scale(0.74)"><Path d={SHAPES.arch} fill={a || colors.lavender} /></G>
-      <G transform="translate(48 2) scale(0.62)"><Path d={SHAPES.pebble} fill={b || colors.butter} /></G>
-      <G transform="translate(62 44) scale(0.5)"><Path d={SHAPES.scallop} fill={c || colors.sage} /></G>
-      <Path d="M24 60q5 5 10 0M40 60q5 5 10 0" stroke={colors.onSurface} strokeWidth={3} strokeLinecap="round" fill="none" />
-    </Svg>
+    <View style={{ width: size, height: size * 0.8 }}>
+      <Ambient drift={{ cycle: 4400, ty: -5 * k, delay: 300 }} style={{ position: "absolute", left: 48 * k, top: 2 * k }}>
+        <Shape name="pebble" size={62 * k} color={b || colors.butter} />
+      </Ambient>
+      <Ambient drift={{ cycle: 5200, sx: 0.07, sy: 0.07, delay: 900 }} style={{ position: "absolute", left: 62 * k, top: 44 * k }}>
+        <Shape name="scallop" size={50 * k} color={c || colors.sage} />
+      </Ambient>
+      <Ambient drift={{ cycle: 5800, sx: 0.025, sy: 0.04 }} style={{ position: "absolute", left: 0, top: 20 * k }}>
+        <Shape name="arch" size={74 * k} color={a || colors.lavender} />
+        <Animated.View style={[{ position: "absolute", left: 20 * k, top: 36 * k }, eyes]}>
+          <Svg width={34 * k} height={10 * k} viewBox="0 0 34 10"><Path d="M4 3q5 5 10 0M20 3q5 5 10 0" stroke={colors.onSurface} strokeWidth={3} strokeLinecap="round" fill="none" /></Svg>
+        </Animated.View>
+      </Ambient>
+    </View>
   );
 }
 
@@ -151,14 +190,55 @@ export function KitBox({ level, size = 72, color, selected }: { level: 1 | 2 | 3
   );
 }
 
-/** Kit capacity as small modules that fill up. */
+/** Kit capacity as small modules that fill up (each one pops in when used). */
 export function Slots({ used, total, extra = 0 }: { used: number; total: number; extra?: number }) {
   const { colors } = useTheme();
+  const motion = useMotionAllowed();
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }} accessibilityLabel={`${used} de ${total} espacios usados`}>
       {Array.from({ length: Math.max(total, used) + extra }, (_, i) => (
-        <View key={i} style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: i < used ? colors.onSurface : "transparent", borderWidth: 1.5, borderColor: i < used ? colors.onSurface : colors.borderStrong, borderStyle: i >= total ? "dashed" : "solid" }} />
+        <View key={i} style={{ width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: i < used ? colors.onSurface : colors.borderStrong, borderStyle: i >= total ? "dashed" : "solid", overflow: "hidden" }}>
+          {i < used ? <Animated.View entering={motion ? ZoomIn.duration(220) : undefined} style={{ flex: 1, backgroundColor: colors.onSurface }} /> : null}
+        </View>
       ))}
+    </View>
+  );
+}
+
+/** Order confirmation: the objects settle into the box, the lid closes and a check appears. Static (closed + check) when motion is off. */
+export function KitClosing({ size = 132, color }: { size?: number; color: string }) {
+  const { colors } = useTheme();
+  const motion = useMotionAllowed();
+  const k = size / 72;
+  const sink = useSharedValue(motion ? 0 : 1);
+  const lid = useSharedValue(motion ? 0 : 1);
+  const done = useSharedValue(motion ? 0 : 1);
+  useEffect(() => {
+    if (!motion) return;
+    sink.value = withDelay(350, withTiming(1, { duration: 450 }));
+    lid.value = withDelay(800, withTiming(1, { duration: 320 }));
+    done.value = withDelay(1150, withSequence(withTiming(1.15, { duration: 160 }), withTiming(1, { duration: 140 })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const objects = useAnimatedStyle(() => ({ transform: [{ translateY: 16 * k * sink.value }], opacity: 1 - 0.9 * sink.value }));
+  const lidStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -22 * k * (1 - lid.value) }, { rotate: `${-14 * (1 - lid.value)}deg` }], opacity: 0.25 + 0.75 * lid.value }));
+  const check = useAnimatedStyle(() => ({ transform: [{ scale: done.value }], opacity: Math.min(1, done.value) }));
+  return (
+    <View style={{ width: size, height: size }} accessibilityLabel="Tu kit quedó listo">
+      <Animated.View style={[{ position: "absolute", left: 0, top: 0 }, objects]}>
+        <Svg width={size} height={size} viewBox="0 0 72 72">
+          <Circle cx={18} cy={30} r={9} fill={colors.butter} />
+          <Rect x={29} y={16} width={13} height={24} rx={6} fill={colors.lavender} />
+          <G transform="translate(44 18) scale(0.2)"><Path d={SHAPES.drop} fill={colors.coral} /></G>
+        </Svg>
+      </Animated.View>
+      <Svg width={size} height={size} viewBox="0 0 72 72" style={{ position: "absolute", left: 0, top: 0 }}>
+        <Rect x={7} y={34} width={58} height={30} rx={7} fill={color} />
+      </Svg>
+      <Animated.View style={[{ position: "absolute", left: 4 * k, top: 27 * k, width: 64 * k, height: 11 * k, borderRadius: 4 * k, backgroundColor: colors.onSurface }, lidStyle]} />
+      <Animated.View style={[{ position: "absolute", left: 26 * k, top: 40 * k, width: 20 * k, height: 20 * k, borderRadius: 10 * k, backgroundColor: colors.onSurface, alignItems: "center", justifyContent: "center" }, check]}>
+        <Svg width={11 * k} height={11 * k} viewBox="0 0 24 24"><Path d="M4 12l6 6L20 6" stroke={colors.surfaceSecondary} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" fill="none" /></Svg>
+      </Animated.View>
     </View>
   );
 }

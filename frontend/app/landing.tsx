@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { MoodFigure, Shape } from "@/src/art";
+import { LiveMood, Shape } from "@/src/art";
 import { CATEGORIES, tintOf } from "@/src/constants";
 import { Btn, Ic, Logo, ProductImage, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -41,7 +41,7 @@ export default function Landing() {
           <View style={styles.heroArt} pointerEvents="none">
             <View style={{ position: "absolute", left: -30, top: 6 }}><Shape name="scallop" size={150} color={colors.butter} /></View>
             <View style={{ position: "absolute", right: -24, top: -6 }}><Shape name="pebble" size={170} color={colors.coral} /></View>
-            <View style={{ position: "absolute", left: 96, top: 62 }}><MoodFigure mood="En calma" size={130} color={colors.sage} /></View>
+            <View style={{ position: "absolute", left: 96, top: 62 }}><LiveMood mood="En calma" size={130} color={colors.sage} /></View>
             <View style={{ position: "absolute", right: 46, top: 132 }}><Shape name="drop" size={64} color={colors.sky} /></View>
           </View>
           <Animated.View entering={FadeInDown.duration(300)}>

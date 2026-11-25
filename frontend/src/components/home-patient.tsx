@@ -2,12 +2,14 @@ import { SharedLists } from "@/src/components/shared-lists";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { Company, Spot } from "@/src/art";
 import { useAuth } from "@/src/auth";
+import { ProcessPreview } from "@/src/components/process-preview";
+import { useMotionAllowed } from "@/src/motion";
 import { Avatar } from "@/src/components/avatar";
 import { MoodCard } from "@/src/components/mood-card";
 import { TabScreen } from "@/src/components/tab-screen";
@@ -102,7 +104,8 @@ export function PatientHome() {
   const [sending, setSending] = useState(false);
   const next = d ? [...d.today_events, ...d.upcoming][0] : null;
   const kit = kits.data?.[0];
-  const still = useReducedMotion();
+  const still = !useMotionAllowed();
+  const [sent, setSent] = useState("");
 
   const send = async () => {
     setSending(true);
@@ -110,6 +113,8 @@ export function PatientHome() {
       const r = await api("/signals", { method: "POST", body: { type: confirm.type, label: confirm.label, urgency, message: "" } });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       toast.show(r.recipients ? `Enviada a ${r.recipients} persona(s) de tu red` : "Guardada. Aún no tienes acompañantes vinculados.");
+      setSent(confirm.type);
+      setTimeout(() => setSent(""), 2600);
       setConfirm(null);
       invalidate();
     } catch (e: any) {
@@ -204,8 +209,10 @@ export function PatientHome() {
               {favs.map((s) => (
                 <Pressable key={s.type} onPress={() => { tap(); setUrgency("Cuando puedas"); setConfirm(s); }} testID={`home-signal-${s.type}`} accessibilityRole="button" accessibilityLabel={`Enviar señal: ${s.label}`}
                   style={({ pressed }) => [styles.signal, { backgroundColor: tintOf(colors, s.tint).soft, transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
-                  <View style={[styles.signalIcon, { backgroundColor: tintOf(colors, s.tint).bg }]}><Ic name={s.icon} size={17} /></View>
-                  <Txt v="label" color={colors.onSurface} style={{ flex: 1 }}>{s.label}</Txt>
+                  {sent === s.type ? (
+                    <Animated.View entering={still ? undefined : ZoomIn.duration(220)} style={[styles.signalIcon, { backgroundColor: colors.surfaceInverse }]} testID={`home-signal-sent-${s.type}`}><Ic name="check" size={17} color={colors.onSurfaceInverse} /></Animated.View>
+                  ) : <View style={[styles.signalIcon, { backgroundColor: tintOf(colors, s.tint).bg }]}><Ic name={s.icon} size={17} /></View>}
+                  <Txt v="label" color={colors.onSurface} style={{ flex: 1 }}>{sent === s.type ? "Señal enviada" : s.label}</Txt>
                 </Pressable>
               ))}
               <Pressable onPress={() => router.push("/signals")} testID="home-signals-more" style={[styles.signal, { backgroundColor: colors.surfaceTertiary }]}>
@@ -220,6 +227,8 @@ export function PatientHome() {
               </Pressable>
             ) : null}
           </Section>
+
+          <ProcessPreview />
 
           <Section title="A tu modo" testID="home-shortcuts">
             <View style={{ flexDirection: "row", gap: space.sm }}>

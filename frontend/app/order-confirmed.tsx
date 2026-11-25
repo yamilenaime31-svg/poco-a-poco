@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
-import { KitBox } from "@/src/art";
+import { KitClosing } from "@/src/art";
 import { fmtDateTime, money } from "@/src/constants";
 import { Badge, Btn, ErrorState, Ic, Loading, Screen, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -25,8 +25,7 @@ export default function OrderConfirmed() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState onRetry={() => q.refetch()} /> : (
         <>
           <View style={[styles.hero, { backgroundColor: colors.sage }]}>
-            <KitBox level={3} size={128} color={colors.surfaceSecondary} />
-            <View style={[styles.mark, { backgroundColor: colors.surfaceInverse }]}><Ic name="check" size={20} color={colors.onSurfaceInverse} /></View>
+            <KitClosing size={136} color={colors.surfaceSecondary} />
           </View>
           <Txt v="display" testID="order-confirmed-title">Tu kit está confirmado</Txt>
           <Txt style={{ marginTop: space.xs }}>Preparamos una selección hecha a tu modo.</Txt>

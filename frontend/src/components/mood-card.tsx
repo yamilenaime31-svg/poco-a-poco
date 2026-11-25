@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { ZoomIn, useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 
 import { api, invalidate } from "@/src/api";
-import { MOOD_ART, MoodFigure } from "@/src/art";
+import { LiveMood, MOOD_ART } from "@/src/art";
 import { MOODS, tintOf } from "@/src/constants";
+import { useMotionAllowed } from "@/src/motion";
 import { useToast } from "@/src/toast";
 import { Btn, Chip, Ic, Txt, tap } from "@/src/ui";
 import { fonts, radius, space, useTheme } from "@/src/theme";
 
-function Mood({ mood, on, onPress }: { mood: string; on: boolean; onPress: () => void }) {
+function Mood({ mood, on, onPress, index }: { mood: string; on: boolean; onPress: () => void; index: number }) {
   const { colors } = useTheme();
-  const still = useReducedMotion();
+  const still = !useMotionAllowed();
   const s = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
@@ -21,8 +22,8 @@ function Mood({ mood, on, onPress }: { mood: string; on: boolean; onPress: () =>
         onPress();
       }}>
       <Animated.View style={anim}>
-        <MoodFigure mood={mood} size={60} color={tintOf(colors, MOOD_ART[mood]?.tint).bg} selected={on} />
-        {on ? <View style={[styles.tick, { backgroundColor: colors.surfaceInverse, borderColor: colors.surface }]}><Ic name="check" size={11} color={colors.onSurfaceInverse} /></View> : null}
+        <LiveMood mood={mood} size={60} color={tintOf(colors, MOOD_ART[mood]?.tint).bg} selected={on} play={on ? "loop" : "once"} delay={on ? 0 : 400 + index * 260} />
+        {on ? <Animated.View entering={still ? undefined : ZoomIn.duration(180)} style={[styles.tick, { backgroundColor: colors.surfaceInverse, borderColor: colors.surface }]}><Ic name="check" size={11} color={colors.onSurfaceInverse} /></Animated.View> : null}
       </Animated.View>
       <Txt v={on ? "label" : "caption"} color={colors.onSurface} style={styles.moodLabel}>{mood}</Txt>
     </Pressable>
@@ -101,7 +102,7 @@ export function MoodCard({ journal, date }: { journal: any; date: string }) {
         <Txt v="caption">Opcional</Txt>
       </View>
       <View style={styles.grid}>
-        {MOODS.map((m) => <Mood key={m} mood={m} on={moods.includes(m)} onPress={() => toggle(m)} />)}
+        {MOODS.map((m, i) => <Mood key={m} mood={m} index={i} on={moods.includes(m)} onPress={() => toggle(m)} />)}
       </View>
       {others.length ? <View style={styles.others}>{others.map((m) => <Chip key={m} label={m} selected onPress={() => toggle(m)} testID={`home-mood-${m}`} />)}</View> : null}
 

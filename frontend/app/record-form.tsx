@@ -6,7 +6,7 @@ import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { ShareWith, joinNames } from "@/src/components/share-with";
 import { KINDS, TREATMENT_TYPES, isDate, isTime } from "@/src/constants";
-import { DateField, SingleChoice } from "@/src/form";
+import { DateField, SingleChoice, TimeField, TimesField } from "@/src/form";
 import { useToast } from "@/src/toast";
 import { Btn, Chip, ChipRow, Field, Loading, Screen, Sheet, SwitchRow, Txt } from "@/src/ui";
 import { space } from "@/src/theme";
@@ -163,6 +163,8 @@ export default function RecordForm() {
           {fields.map((f) => {
             const tid = `field-${f.key}`;
             if (f.type === "date") return <DateField key={f.key} label={f.label} value={v[f.key] || ""} onChange={set(f.key)} testID={tid} error={errors[f.key]} />;
+            if (f.type === "time") return <TimeField key={f.key} label={f.label} value={v[f.key] || ""} onChange={set(f.key)} testID={tid} error={errors[f.key]} />;
+            if (f.type === "times") return <TimesField key={f.key} label={f.label} value={v[f.key] || ""} onChange={set(f.key)} testID={tid} error={errors[f.key]} />;
             if (f.type === "select") return <SingleChoice key={f.key} label={f.label} options={f.options!} value={v[f.key]} onChange={set(f.key)} testID={tid} />;
             if (f.type === "switch") return <SwitchRow key={f.key} label={f.label} value={!!v[f.key]} onValueChange={set(f.key)} testID={tid} />;
             if (f.type === "assignee")
@@ -184,10 +186,9 @@ export default function RecordForm() {
                 label={f.label}
                 value={v[f.key] !== undefined ? String(v[f.key]) : ""}
                 onChangeText={set(f.key)}
-                placeholder={f.placeholder || (f.type === "time" ? "HH:MM" : undefined)}
+                placeholder={f.placeholder}
                 multiline={f.type === "multiline"}
-                keyboardType={f.type === "number" ? "decimal-pad" : f.type === "time" ? "numbers-and-punctuation" : "default"}
-                maxLength={f.type === "time" ? 5 : undefined}
+                keyboardType={f.type === "number" ? "decimal-pad" : "default"}
                 error={errors[f.key]}
                 testID={tid}
               />

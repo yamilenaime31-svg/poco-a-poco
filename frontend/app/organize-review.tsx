@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { api, invalidate } from "@/src/api";
 import { ShareWith, joinNames, useCaregivers } from "@/src/components/share-with";
 import { fmtLongDate, isDate } from "@/src/constants";
-import { DateField, SingleChoice } from "@/src/form";
+import { DateField, SingleChoice, TimeField } from "@/src/form";
 import { organizeDraft } from "@/src/organize-store";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Card, Empty, Field, Ic, Screen, Txt } from "@/src/ui";
@@ -109,7 +109,7 @@ export default function OrganizeReview() {
                     <SingleChoice label="Categoría" options={Object.values(CATS).map((x) => x.label)} value={c.label} onChange={(v) => v && set(i, "category", LABEL_TO_CAT[v])} testID={`review-cat-${i}`} />
                     <Field label="Título" value={it.title} onChangeText={(v) => set(i, "title", v)} testID={`review-title-${i}`} />
                     <DateField label="Fecha" value={it.date} onChange={(v) => set(i, "date", v)} testID={`review-date-${i}`} />
-                    <Field label="Hora" value={it.time} onChangeText={(v) => set(i, "time", v)} placeholder="HH:MM" maxLength={5} testID={`review-time-${i}`} />
+                    <TimeField label="Hora" value={it.time || ""} onChange={(v) => set(i, "time", v)} testID={`review-time-${i}`} />
                     <Field label="Responsable" value={it.responsible} onChangeText={(v) => set(i, "responsible", v)} testID={`review-responsible-${i}`} />
                     {it.category === "expense" ? <Field label="Monto (MXN)" value={it.amount ? String(it.amount) : ""} onChangeText={(v) => set(i, "amount", v.replace(/[^\d.]/g, ""))} keyboardType="decimal-pad" testID={`review-amount-${i}`} /> : null}
                     <Field label="Información adicional" value={it.notes} onChangeText={(v) => set(i, "notes", v)} multiline testID={`review-notes-${i}`} />

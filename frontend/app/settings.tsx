@@ -58,7 +58,7 @@ export default function Settings() {
           ))}
         </ChipRow>
         <Txt style={{ marginTop: space.md }}>Así se verá el texto en AMODO.</Txt>
-        <SwitchRow label="Reducir animaciones" value={!!s.reduce_motion} onValueChange={(v) => setSetting("reduce_motion", v)} testID="settings-reduce-motion" />
+        <SwitchRow label="Desactivar animaciones de las ilustraciones" value={!!s.reduce_motion} onValueChange={(v) => setSetting("reduce_motion", v)} testID="settings-reduce-motion" />
       </Section>
       <NotificationSettings />
       <Section title="Otros avisos">

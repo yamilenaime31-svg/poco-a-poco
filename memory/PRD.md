@@ -117,3 +117,17 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Avatar (src/components/avatar.tsx): cabello + Ondulado, Afro, Flequillo, Coleta, Trenzas; 4 colores de cabello; Boina y Sombrero; lentes De sol; Collar y Flor; más colores de ropa/accesorio; fondos con la paleta nueva y "Forma de fondo" (Liso, Pétalo, Nube, Destello, Arco). Valores previos intactos.
 - Registros (/records/[kind]): héroe de color con ilustración y conteo, filas como tarjetas. Red de apoyo: tarjetas con ilustración. Administración: métricas en color y enlaces como tarjetas.
 - Verificado solo con capturas propias.
+
+## Iteration 17 (Jun 2026) — Selectores y movimiento
+- src/pickers.tsx: DateField/DateSheet (mini calendario L–D, flechas, encabezado → meses/año con ±5/±10 años, Hoy/Mañana, Sin fecha, Confirmar/Cancelar), TimeField/TimeSheet (ruedas hora/minuto/AM-PM con ajuste al valor, flechas y toque como alternativa, 12 h/24 h guardado en settings.time_24h), TimesField (varios horarios editables/eliminables). Formatos guardados sin cambio: YYYY-MM-DD y HH:MM. src/form.tsx reexporta.
+- Aplicado en record-form (date/time/times para todos los tipos), onboarding, organize-review, treatment-assistant (inicio, hora y cada sesión), admin/codes.
+- src/motion.tsx: useMotionAllowed (dispositivo + settings.reduce_motion), useAmbient (además pantalla enfocada y app activa), Ambient (bucles 3–6 s), Pop (respuesta breve).
+- src/art.tsx: LiveMood + MOOD_MOTION (movimiento propio por estado; seleccionados en bucle, el resto dos ciclos al entrar), Company animada por piezas con parpadeo, Slots con relleno animado, KitClosing (cierre de caja en confirmación de pedido). Señal enviada: marca de confirmación en el módulo solo tras éxito real.
+- Perfil → Configuración → Accesibilidad: "Desactivar animaciones de las ilustraciones" (settings.reduce_motion).
+- Las horas en listas (agenda, detalle) siguen mostrándose en 24 h.
+
+## Iteration 18 (Jun 2026) — Mi proceso integrado e interactivo
+- Inicio: sección "Mi proceso" (src/components/process-preview.tsx) tras Señales rápidas: periodos 7/30/90, días con figuras de estado (src/components/process-parts.tsx: WellbeingDays, DaySheet), 3 módulos y, con Plus, tarjeta "Tu proceso, en un reporte".
+- /process rediseñado como dashboard: periodos, filtros por categoría, bento de indicadores, calendario de bienestar, distribución de estados (toca → días), comparación con periodo anterior (solo Plus, backend), línea del tiempo con estado programada/registrada/cancelada, medicamentos, gastos, notas, estado vacío compacto. Sin pie fijo.
+- /process-report (Plus): periodo 7/30/90 o fechas con mini calendario, categorías (feelings, appointments, treatments, medications, activities, expenses, notes), incluir nombre, vista previa, generar, descargar, compartir enlace (15 min), reportes anteriores.
+- Backend process.py: GET /process añade daily, counts, tasks, plus, compare (Plus). POST/GET /process/reports y POST /process/reports/{id}/link requieren Plus (403 si no); /process-download/{code}. Se retiró POST /process/pdf-link (el PDF ahora es beneficio Plus, por decisión explícita del usuario). PDF con calendario de bienestar y secciones elegidas.

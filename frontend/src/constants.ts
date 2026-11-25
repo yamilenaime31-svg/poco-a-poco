@@ -1,6 +1,6 @@
 import type { ThemeColors } from "@/src/theme";
 
-export type FieldType = "text" | "multiline" | "date" | "time" | "select" | "number" | "switch" | "assignee";
+export type FieldType = "text" | "multiline" | "date" | "time" | "times" | "select" | "number" | "switch" | "assignee";
 export type FieldDef = { key: string; label: string; type: FieldType; options?: string[]; placeholder?: string; required?: boolean; showIf?: (v: Record<string, any>) => boolean };
 
 export type KindDef = {
@@ -59,7 +59,7 @@ export const KINDS: Record<string, KindDef> = {
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true },
       { key: "dose", label: "Indicación (como te la dieron)", type: "text", placeholder: "Ej. 1 tableta" },
-      { key: "times", label: "Horarios indicados (para recordatorios)", type: "text", placeholder: "Ej. 08:00, 20:00" },
+      { key: "times", label: "Horarios indicados (para recordatorios)", type: "times" },
       { key: "schedule", label: "Indicación de horario (como te la dieron)", type: "text", placeholder: "Ej. Mañana y noche, con alimentos" },
       { key: "start_date", label: "Desde", type: "date" },
       { key: "end_date", label: "Hasta (opcional)", type: "date" },
@@ -233,7 +233,7 @@ export const SHARE_KEYS: { key: string; label: string }[] = [
 
 // ---------------------------------------------------------------- formatting
 const DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
-const DAYS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+export const DAYS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 export const MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 

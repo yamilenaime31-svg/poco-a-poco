@@ -1,3 +1,4 @@
+import { DateField } from "@/src/pickers";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -61,8 +62,8 @@ export default function AdminCodes() {
             <ChipRow>{[["", "Ninguno"], ["Chico", "Kit chico"], ["Mediano", "Kit mediano"], ["Grande", "Kit grande"]].map(([k, l]) => <Chip key={k} label={l} selected={(e.benefits.funded_kit || "") === k} onPress={() => setB("funded_kit")(k)} testID={`admin-code-kit-${k || "none"}`} />)}</ChipRow>
             <View style={{ height: space.md }} />
             <View style={{ flexDirection: "row", gap: space.sm }}>
-              <View style={{ flex: 1 }}><Field label="Desde" value={e.valid_from} placeholder="AAAA-MM-DD" onChangeText={(v) => setE({ ...e, valid_from: v })} testID="admin-code-from" /></View>
-              <View style={{ flex: 1 }}><Field label="Hasta" value={e.valid_until} placeholder="AAAA-MM-DD" onChangeText={(v) => setE({ ...e, valid_until: v })} testID="admin-code-until" /></View>
+              <View style={{ flex: 1 }}><DateField label="Desde" value={e.valid_from || ""} onChange={(v) => setE({ ...e, valid_from: v })} testID="admin-code-from" compact /></View>
+              <View style={{ flex: 1 }}><DateField label="Hasta" value={e.valid_until || ""} onChange={(v) => setE({ ...e, valid_until: v })} testID="admin-code-until" compact /></View>
             </View>
             <View style={{ flexDirection: "row", gap: space.sm }}>
               <NumField label="Límite de usos / beneficiarios" value={e.max_uses} onChange={(v) => setE({ ...e, max_uses: v })} testID="admin-code-max" />

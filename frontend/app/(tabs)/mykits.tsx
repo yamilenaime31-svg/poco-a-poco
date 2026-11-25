@@ -7,6 +7,7 @@ import { RecoCard, NeedsPrompt } from "@/src/components/reco-card";
 import { TileGrid } from "@/src/components/tile-grid";
 import { GuideCard } from "@/src/components/guide-info";
 import { KitBox } from "@/src/art";
+import { Ambient } from "@/src/motion";
 import { CATEGORIES, money, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Ic, IconBtn, Loading, ProductImage, Row, Section, Txt } from "@/src/ui";
@@ -42,7 +43,7 @@ export default function MyKits() {
             <Ic name="arrow-right" size={14} color={colors.onSurfaceInverse} />
           </View>
         </View>
-        <KitBox level={3} size={104} color={colors.surfaceSecondary} />
+        <Ambient drift={{ cycle: 5200, ty: -4, pause: 800 }}><KitBox level={3} size={104} color={colors.surfaceSecondary} /></Ambient>
       </Pressable>
       <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.sm }}>
         {[{ l: "Catálogo", i: "store", h: "/catalog", c: "butterSoft" }, { l: "Favoritos", i: "heart", h: "/favorites", c: "mauveSoft" }, { l: "Pedidos", i: "truck", h: "/orders", c: "skySoft" }, { l: "Créditos", i: "wallet", h: "/credits", c: "sageSoft" }].map((x) => (

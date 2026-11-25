@@ -7,6 +7,7 @@ import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { ShareWith } from "@/src/components/share-with";
 import { KitBox, Slots, Spot } from "@/src/art";
+import { Pop } from "@/src/motion";
 import { CATEGORIES, KIT_CONTEXTS, money } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Chip, ChipRow, Field, Ic, Loading, ProductImage, ProgressBar, Screen, Txt } from "@/src/ui";
@@ -176,7 +177,7 @@ export default function KitBuilder() {
             <View style={{ gap: space.sm, marginTop: space.lg }}>
               {(sizes.data || []).map((s, i) => (
                 <Pressable key={s.id} onPress={() => pickSize(s)} testID={`kit-size-${s.id}`} accessibilityState={{ selected: size === s.id }} style={[styles.option, { backgroundColor: [colors.butterSoft, colors.coralSoft, colors.lavenderSoft][i] || colors.surfaceSecondary, borderColor: size === s.id ? colors.onSurface : "transparent" }]}>
-                  <KitBox level={(Math.min(i, 2) + 1) as 1 | 2 | 3} size={60} color={colors.surfaceSecondary} selected={size === s.id} />
+                  <Pop trigger={size === s.id}><KitBox level={(Math.min(i, 2) + 1) as 1 | 2 | 3} size={60} color={colors.surfaceSecondary} selected={size === s.id} /></Pop>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt v="title">{s.label}</Txt>
                     <Txt v="caption" color={colors.onSurface}>{s.text} · envío incluido</Txt>
@@ -207,7 +208,7 @@ export default function KitBuilder() {
           <>
             <Txt v="h1">Elige tus artículos</Txt>
             <View style={[styles.slots, { backgroundColor: colors.surfaceSecondary }]} testID="kit-slots">
-              <KitBox level={(Math.min((sizes.data || []).findIndex((x) => x.id === size), 2) + 1 || 1) as 1 | 2 | 3} size={52} color={colors.coral} />
+              <Pop trigger={items.length} amount={0.16}><KitBox level={(Math.min((sizes.data || []).findIndex((x) => x.id === size), 2) + 1 || 1) as 1 | 2 | 3} size={52} color={colors.coral} /></Pop>
               <View style={{ flex: 1, gap: 6 }}>
                 <Txt v="label" color={colors.onSurface}>{items.length} de {sz.max} espacios{sz.max - items.length > 0 ? ` · quedan ${sz.max - items.length}` : " · kit completo"}</Txt>
                 <Slots used={items.length} total={sz.max} />

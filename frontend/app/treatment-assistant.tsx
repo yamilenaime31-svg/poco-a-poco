@@ -1,3 +1,4 @@
+import { DateField, TimeField } from "@/src/pickers";
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -109,8 +110,8 @@ export default function TreatmentAssistant() {
             </View>
           ) : null}
           <View style={styles.row2}>
-            <View style={{ flex: 1 }}><Field label="Inicio" value={plan.start_date} onChangeText={(v) => setRule({ start_date: v })} placeholder="AAAA-MM-DD" testID="ta-start" maxLength={10} /></View>
-            <View style={{ flex: 1 }}><Field label="Hora" value={plan.time} onChangeText={(v) => setRule({ time: v })} placeholder="HH:MM" testID="ta-time" maxLength={5} /></View>
+            <View style={{ flex: 1 }}><DateField label="Inicio" value={plan.start_date || ""} onChange={(v) => setRule({ start_date: v })} testID="ta-start" compact /></View>
+            <View style={{ flex: 1 }}><TimeField label="Hora" value={plan.time || ""} onChange={(v) => setRule({ time: v })} testID="ta-time" compact /></View>
           </View>
           <View style={styles.row2}>
             <View style={{ flex: 1 }}><Field label="Cada (días)" value={plan.interval_days ? String(plan.interval_days) : ""} keyboardType="number-pad" onChangeText={(v) => setRule({ interval_days: Number(v) || null, weekdays: [] })} placeholder={plan.weekdays?.length ? "Días fijos" : "Ej. 21"} testID="ta-interval" /></View>
@@ -125,8 +126,8 @@ export default function TreatmentAssistant() {
               <View style={{ flex: 1 }}>
                 <Txt v="medium" style={{ fontSize: 14 }}>Sesión {i + 1}{isDate(s.date) ? ` — ${fmtLongDate(s.date)}` : ""}</Txt>
                 <View style={styles.row2}>
-                  <TextInput value={s.date} onChangeText={(v) => setSession(i, { date: v })} maxLength={10} testID={`ta-session-date-${i}`} style={[styles.mini, { borderColor: colors.border, color: colors.onSurface }]} />
-                  <TextInput value={s.time} onChangeText={(v) => setSession(i, { time: v })} maxLength={5} placeholder="HH:MM" placeholderTextColor={colors.muted} testID={`ta-session-time-${i}`} style={[styles.miniTime, { borderColor: colors.border, color: colors.onSurface }]} />
+                  <DateField value={s.date || ""} onChange={(v) => setSession(i, { date: v })} testID={`ta-session-date-${i}`} compact clearable={false} />
+                  <TimeField value={s.time || ""} onChange={(v) => setSession(i, { time: v })} testID={`ta-session-time-${i}`} compact />
                 </View>
               </View>
               <Pressable onPress={() => setPlan({ ...plan, sessions: plan.sessions.filter((_, j) => j !== i), sessions_count: plan.sessions.length - 1 || null })} hitSlop={8} testID={`ta-session-remove-${i}`} accessibilityLabel="Eliminar sesión" style={styles.remove}>
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 140, borderRadius: radius.md, borderWidth: 1, padding: space.md, marginBottom: space.md, fontFamily: fonts.body, fontSize: 15, textAlignVertical: "top" },
   note: { flexDirection: "row", gap: 6, marginTop: space.md },
   ask: { borderRadius: radius.md, padding: space.md, marginBottom: space.lg, gap: 2 },
-  row2: { flexDirection: "row", gap: space.sm },
+  row2: { flexDirection: "row", gap: space.sm, marginBottom: space.md },
   session: { flexDirection: "row", alignItems: "center", gap: space.sm, borderWidth: 0, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
   miniTime: { width: 76, flexGrow: 0, flexShrink: 0, height: 38, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.sm, marginTop: 6, fontFamily: fonts.body, fontSize: 14 },
   mini: { flex: 1, minWidth: 0, height: 38, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.sm, marginTop: 6, fontFamily: fonts.body, fontSize: 14 },

@@ -1,33 +1,10 @@
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
-import { addDays, isDate, today } from "@/src/constants";
 import { Chip, ChipRow, Field, Txt } from "@/src/ui";
 import { space } from "@/src/theme";
 
-export function DateField({ label, value, onChange, testID, error }: { label: string; value: string; onChange: (v: string) => void; testID: string; error?: string }) {
-  return (
-    <View>
-      <Field
-        label={label}
-        value={value}
-        onChangeText={onChange}
-        placeholder="AAAA-MM-DD"
-        keyboardType="numbers-and-punctuation"
-        maxLength={10}
-        testID={testID}
-        error={error || (value && !isDate(value) ? "Usa el formato AAAA-MM-DD" : undefined)}
-        style={{ marginBottom: 0 }}
-      />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, marginTop: -space.sm, marginBottom: space.lg }}>
-        <Chip label="Hoy" selected={value === today()} onPress={() => onChange(today())} testID={`${testID}-today`} />
-        <Chip label="Mañana" selected={value === addDays(1)} onPress={() => onChange(addDays(1))} testID={`${testID}-tomorrow`} />
-        <Chip label="En una semana" selected={value === addDays(7)} onPress={() => onChange(addDays(7))} testID={`${testID}-week`} />
-        {value ? <Chip label="Quitar fecha" onPress={() => onChange("")} testID={`${testID}-clear`} /> : null}
-      </ScrollView>
-    </View>
-  );
-}
+export { DateField, TimeField, TimesField } from "@/src/pickers";
 
 export function SingleChoice({ label, options, value, onChange, testID }: { label?: string; options: string[]; value?: string; onChange: (v: string) => void; testID: string }) {
   return (

@@ -8,19 +8,23 @@ from fastapi.responses import Response
 
 from knowledge import MONTHS, fmt_es
 from planner import EVENT_CAT
-from server import _date_or_empty, api, current_user, db, display_name
+from business import is_plus, require_plus
+from server import _date_or_empty, api, clean, current_user, db, display_name, now_iso, uid
 
 CAT_LABEL = {"appointments": "Consultas", "treatments": "Sesiones de tratamiento", "studies": "Estudios", "personal": "Actividades y otros"}
-SECTIONS = ("feelings", "activities", "medications", "expenses")
+SECTIONS = ("feelings", "appointments", "treatments", "medications", "activities", "expenses", "notes")
+CAT_SECTION = {"appointments": "appointments", "studies": "appointments", "treatments": "treatments", "personal": "activities"}
 
 
 def _top(counts: dict, n: int = 10) -> list[dict]:
     return [{"label": k, "value": v} for k, v in sorted(counts.items(), key=lambda x: -x[1])[:n]]
 
 
-async def process_data(user: dict, today: str, days: int) -> dict:
-    end = datetime.strptime(today, "%Y-%m-%d").date()
-    start = end - timedelta(days=days - 1)
+async def process_data(user: dict, today: str, days: int, start_s: str = "", end_s: str = "") -> dict:
+    end = datetime.strptime(end_s or today, "%Y-%m-%d").date()
+    start = datetime.strptime(start_s, "%Y-%m-%d").date() if start_s else end - timedelta(days=days - 1)
+    days = (end - start).days + 1
+    daily = {(start + timedelta(days=n)).isoformat(): {"date": (start + timedelta(days=n)).isoformat(), "moods": [], "energy": "", "note": "", "journal_id": None, "events": [], "doses_done": 0, "doses_skipped": 0, "spent": 0, "tasks_done": 0} for n in range(days)}
     s, e = start.isoformat(), end.isoformat()
     rng = {"$gte": s, "$lte": e}
     weeks = []
@@ -47,17 +51,26 @@ async def process_data(user: dict, today: str, days: int) -> dict:
             energy[j["energy"]] = energy.get(j["energy"], 0) + 1
         if j.get("mood_note") or j.get("note"):
             notes.append({"date": j["date"], "text": (j.get("mood_note") or j.get("note"))[:240]})
+        dd = daily[j["date"]]
+        dd.update(moods=dd["moods"] + [m for m in ms if m not in dd["moods"]], energy=j.get("energy") or dd["energy"], note=(j.get("mood_note") or j.get("note") or dd["note"])[:240], journal_id=j["id"])
     signals: dict[str, int] = {}
     async for sg in db.signals.find({"patient_id": user["id"], "created_at": {"$gte": s, "$lte": e + "T99"}}):
         signals[sg["label"]] = signals.get(sg["label"], 0) + 1
 
     cats: dict[str, int] = {}
+    counts: dict[str, int] = {}
     events = []
     async for ev in db.records.find({"kind": "events", "owner_id": user["id"], "date": rng}).sort("date", 1):
         c = CAT_LABEL[EVENT_CAT.get(ev.get("type"), "personal")]
         cats[c] = cats.get(c, 0) + 1
         week_of(ev["date"])["activities"] += 1
-        events.append({"date": ev["date"], "time": ev.get("time", ""), "title": ev.get("title", ""), "type": ev.get("type") or "Otro"})
+        key = EVENT_CAT.get(ev.get("type"), "personal")
+        counts[CAT_SECTION[key]] = counts.get(CAT_SECTION[key], 0) + 1
+        # "programada" = still ahead; "registrada" = its date already passed (AMODO does not know if it took place).
+        item = {"id": ev["id"], "date": ev["date"], "time": ev.get("time", ""), "title": ev.get("title", ""), "type": ev.get("type") or "Otro", "section": CAT_SECTION[key],
+                "status": "cancelada" if ev.get("status") == "Cancelado" else "programada" if ev["date"] > today else "registrada"}
+        events.append(item)
+        daily[ev["date"]]["events"].append(item)
     treatments = []
     async for t in db.records.find({"kind": "treatments", "owner_id": user["id"]}):
         n = await db.records.count_documents({"kind": "events", "treatment_id": t["id"], "date": rng})
@@ -71,6 +84,7 @@ async def process_data(user: dict, today: str, days: int) -> dict:
         if d.get("status") in dose and d["med_id"] in med_names:
             dose[d["status"]] += 1
             by_med.setdefault(med_names[d["med_id"]], {"realizado": 0, "omitido": 0})[d["status"]] += 1
+            daily[d["date"]]["doses_done" if d["status"] == "realizado" else "doses_skipped"] += 1
             if d["status"] == "realizado":
                 week_of(d["date"])["doses_done"] += 1
 
@@ -86,15 +100,26 @@ async def process_data(user: dict, today: str, days: int) -> dict:
             continue
         by_cat[x.get("category") or "Otro"] = by_cat.get(x.get("category") or "Otro", 0) + amt
         week_of(d)["spent"] += amt
+        daily[d]["spent"] = round(daily[d]["spent"] + amt, 2)
         if x.get("status") == "Pagado":
             paid += amt
         else:
             pending += amt
+    tasks_done = tasks_open = 0
+    async for tk in db.records.find({"kind": "tasks", "owner_id": user["id"]}):
+        d = _date_or_empty(tk.get("date")) or (tk.get("updated_at") or tk["created_at"])[:10]
+        if s <= d <= e:
+            if tk.get("done"):
+                tasks_done += 1
+                daily[d]["tasks_done"] += 1
+            else:
+                tasks_open += 1
     for w in weeks:
         w["spent"] = round(w["spent"], 2)
     return {"start": s, "end": e, "days": days, "period": f"Del {fmt_es(s)} al {fmt_es(e)} de {end.year}", "weeks": weeks,
-            "feelings": {"days_logged": feel_days, "moods": _top(moods), "energy": _top(energy), "signals": _top(signals, 6), "notes": notes[-5:]},
-            "activities": {"total": len(events), "by_category": _top(cats), "treatments": treatments, "events": events[-40:]},
+            "feelings": {"days_logged": feel_days, "moods": _top(moods), "energy": _top(energy), "signals": _top(signals, 6), "notes": notes[-12:]},
+            "activities": {"total": len(events), "by_category": _top(cats), "treatments": treatments, "events": events[-60:], "counts": counts},
+            "daily": list(daily.values()), "tasks": {"done": tasks_done, "open": tasks_open},
             "medications": {"done": dose["realizado"], "skipped": dose["omitido"], "by_med": [{"name": k, **v} for k, v in sorted(by_med.items())]},
             "expenses": {"total": round(paid + pending, 2), "paid": round(paid, 2), "pending": round(pending, 2), "by_category": [{"label": k, "value": round(v, 2)} for k, v in sorted(by_cat.items(), key=lambda x: -x[1])]},
             "empty": not (feel_days or events or dose["realizado"] or dose["omitido"] or by_cat or signals),
@@ -107,11 +132,21 @@ def _days(days: int) -> int:
     return days
 
 
+def _totals(d: dict) -> dict:
+    return {"feel_days": d["feelings"]["days_logged"], "activities": d["activities"]["total"], "doses_done": d["medications"]["done"], "spent": d["expenses"]["total"]}
+
+
 @api.get("/process")
 async def process(today: str = Query(...), days: int = 30, user=Depends(current_user)):
+    """Everyone sees their own records. Plus adds the comparison with the previous period (descriptive only)."""
     if not _date_or_empty(today):
         raise HTTPException(422, "Fecha no válida")
-    return await process_data(user, today, _days(days))
+    d = await process_data(user, today, _days(days))
+    d["plus"] = await is_plus(user)
+    if d["plus"]:
+        prev_end = (datetime.strptime(d["start"], "%Y-%m-%d").date() - timedelta(days=1)).isoformat()
+        d["compare"] = {"now": _totals(d), "before": _totals(await process_data(user, today, days, end_s=prev_end))}
+    return d
 
 
 # ---------------------------------------------------------------- PDF
@@ -127,6 +162,7 @@ def _money(v: float) -> str:
 
 
 def build_pdf(name: str, d: dict, sections: list[str]) -> bytes:
+    acts = [x for x in ("appointments", "treatments", "activities") if x in sections]
     from fpdf import FPDF
     ink, muted, sage, sand = (41, 45, 43), (106, 109, 105), (183, 198, 184), (231, 224, 214)
 
@@ -174,14 +210,34 @@ def build_pdf(name: str, d: dict, sections: list[str]) -> bytes:
             pdf.cell(width - 136, 6, _t(fmt(r["value"])), align="R", new_x="LMARGIN", new_y="NEXT")
 
     line("amodo", 20, True)
-    line("Mi proceso · resumen personal", 13, True)
-    line(f"{name} · {d['period']}", 10, color=muted)
+    line("Mi proceso · resumen personal de registros", 13, True)
+    line(f"{name + ' · ' if name else ''}{d['period']} · generado el {fmt_es(datetime.now(timezone.utc).date().isoformat())}", 10, color=muted)
     line(d["note"], 9, color=muted)
 
     if "feelings" in sections:
         f = d["feelings"]
         section("Cómo me he sentido")
         line(f"Registré cómo me sentía {f['days_logged']} de {d['days']} días.")
+        # Wellbeing calendar: one cell per day, filled when something was registered that day.
+        if len(d["daily"]) <= 92:
+            pdf.ln(2)
+            x0, y0 = 18, pdf.get_y()
+            off = datetime.strptime(d["start"], "%Y-%m-%d").weekday()
+            for n, day in enumerate(d["daily"]):
+                col, row = (n + off) % 7, (n + off) // 7
+                on = bool(day["moods"] or day["energy"])
+                pdf.set_fill_color(*(sage if on else sand))
+                pdf.rect(x0 + col * 8, y0 + row * 6.2, 7, 5.2, style="F")
+                pdf.set_font("Helvetica", "", 6.5)
+                pdf.set_text_color(*(ink if on else muted))
+                pdf.set_xy(x0 + col * 8, y0 + row * 6.2)
+                pdf.cell(7, 5.2, day["date"][8:], align="C")
+            rows = (len(d["daily"]) + off + 6) // 7
+            pdf.set_xy(80, y0)
+            pdf.set_font("Helvetica", "", 8.5)
+            pdf.set_text_color(*muted)
+            pdf.multi_cell(width - 62, 4.6, _t("Calendario de bienestar (lunes a domingo). Verde: día con registro. Arena: día sin registro; no significa ausencia de síntomas ni de actividades."))
+            pdf.set_y(max(pdf.get_y(), y0 + rows * 6.2) + 2)
         if f["moods"]:
             pdf.ln(1)
             bars(f["moods"], lambda v: f"{v} día{'s' if v != 1 else ''}")
@@ -193,25 +249,26 @@ def build_pdf(name: str, d: dict, sections: list[str]) -> bytes:
             pdf.ln(2)
             line("Señales que envié a mi red", 9, True, muted)
             bars(f["signals"], lambda v: f"{v} vez" if v == 1 else f"{v} veces")
-        for n in f["notes"]:
-            line(f"{fmt_es(n['date'])}: {n['text']}", 9, color=muted, h=4.8)
         if not (f["moods"] or f["energy"] or f["signals"]):
             line("Sin registros de bienestar en este periodo.", 9, color=muted)
 
-    if "activities" in sections:
+    if acts:
         a = d["activities"]
-        section("Citas y tratamientos")
-        line(f"{a['total']} actividad{'es' if a['total'] != 1 else ''} en la agenda durante el periodo.")
-        if a["by_category"]:
+        evs = [ev for ev in a["events"] if ev["section"] in acts]
+        names = {"appointments": "Citas y estudios", "treatments": "Tratamientos", "activities": "Actividades"}
+        section(" · ".join(names[x] for x in acts))
+        line(f"{len(evs)} registro{'s' if len(evs) != 1 else ''} en la agenda durante el periodo.")
+        rows = [{"label": names[x], "value": sum(1 for ev in evs if ev["section"] == x)} for x in acts]
+        if any(r["value"] for r in rows):
             pdf.ln(1)
-            bars(a["by_category"])
-        for t in a["treatments"]:
+            bars(rows)
+        for t in (a["treatments"] if "treatments" in acts else []):
             line(f"{t['name']} · {t['status'] or 'sin estado'}{' · ciclo ' + t['cycle'] if t['cycle'] else ''} · {t['sessions']} sesión(es) en el periodo", 9.5)
-        if a["events"]:
+        if evs:
             pdf.ln(2)
             line("Detalle", 9, True, muted)
-            for ev in a["events"]:
-                line(f"{fmt_es(ev['date'])}{' · ' + ev['time'] if ev['time'] else ''} · {ev['title']} ({ev['type']})", 9, h=4.8)
+            for ev in evs:
+                line(f"{fmt_es(ev['date'])}{' · ' + ev['time'] if ev['time'] else ''} · {ev['title']} ({ev['type']}) · {ev['status']}", 9, h=4.8)
 
     if "medications" in sections:
         m = d["medications"]
@@ -234,35 +291,71 @@ def build_pdf(name: str, d: dict, sections: list[str]) -> bytes:
         else:
             line("Sin gastos registrados en este periodo.", 9, color=muted)
 
+    if "notes" in sections:
+        section("Notas personales")
+        for n in d["feelings"]["notes"]:
+            line(f"{fmt_es(n['date'])}: {n['text']}", 9.5, h=5)
+        if not d["feelings"]["notes"]:
+            line("Sin notas en este periodo.", 9, color=muted)
+
     active = [w for w in d["weeks"] if w["feel_days"] or w["activities"] or w["doses_done"] or w["spent"]]
     if active:
         section("Semana a semana")
         for w in d["weeks"]:
-            parts = [f"{w['feel_days']} día(s) con registro de bienestar" if "feelings" in sections else "", f"{w['activities']} actividad(es)" if "activities" in sections else "",
+            parts = [f"{w['feel_days']} día(s) con registro de bienestar" if "feelings" in sections else "", f"{w['activities']} actividad(es)" if acts else "",
                      f"{w['doses_done']} toma(s) realizadas" if "medications" in sections else "", _money(w["spent"]) if "expenses" in sections else ""]
             line(f"Semana del {fmt_es(w['start'])}: " + " · ".join(p for p in parts if p), 9, h=4.8)
     return bytes(pdf.output())
 
 
-@api.post("/process/pdf-link")
-async def process_pdf_link(today: str = Body(..., embed=True), days: int = Body(30, embed=True), sections: list = Body(list(SECTIONS), embed=True), user=Depends(current_user)):
-    """Single-use, short-lived link so the phone's browser can download the PDF without exposing the session token."""
-    if not _date_or_empty(today):
-        raise HTTPException(422, "Fecha no válida")
-    sections = [s for s in sections if s in SECTIONS] or list(SECTIONS)
+async def _link(report: dict) -> str:
     code = secrets.token_urlsafe(24)
-    await db.process_links.insert_one({"code": code, "user_id": user["id"], "today": today, "days": _days(days), "sections": sections,
-                                       "expires": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()})
-    return {"path": f"/api/process-download/{code}"}
+    await db.process_links.insert_one({"code": code, "user_id": report["user_id"], "report_id": report["id"], "expires": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()})
+    return f"/api/process-download/{code}"
+
+
+@api.get("/process/reports")
+async def list_reports(user=Depends(current_user)):
+    return [clean(r) async for r in db.process_reports.find({"user_id": user["id"]}).sort("created_at", -1).limit(20)]
+
+
+@api.post("/process/reports")
+async def create_report(body: dict = Body(...), user=Depends(require_plus)):
+    """Plus: a personal PDF summary with the period and categories the person chose. Nothing is shared automatically."""
+    today, start, end = (_date_or_empty(body.get(k)) for k in ("today", "start", "end"))
+    if not today:
+        raise HTTPException(422, "Fecha no válida")
+    if start and end:
+        if start > end or (datetime.strptime(end, "%Y-%m-%d") - datetime.strptime(start, "%Y-%m-%d")).days > 366:
+            raise HTTPException(422, "Elige un rango de hasta un año, con inicio antes del final.")
+    else:
+        end = today
+        start = (datetime.strptime(today, "%Y-%m-%d").date() - timedelta(days=_days(int(body.get("days") or 30)) - 1)).isoformat()
+    sections = [x for x in (body.get("sections") or []) if x in SECTIONS]
+    if not sections:
+        raise HTTPException(422, "Elige al menos una categoría para tu reporte.")
+    r = {"id": uid(), "user_id": user["id"], "today": today, "start": start, "end": end, "sections": sections, "include_name": bool(body.get("include_name", True)),
+         "period": f"Del {fmt_es(start)} al {fmt_es(end)} de {end[:4]}", "created_at": now_iso()}
+    await db.process_reports.insert_one(r)
+    return {**clean(r), "path": await _link(r)}
+
+
+@api.post("/process/reports/{rid}/link")
+async def report_link(rid: str, user=Depends(require_plus)):
+    r = await db.process_reports.find_one({"id": rid, "user_id": user["id"]})
+    if not r:
+        raise HTTPException(404, "No encontramos ese reporte")
+    return {"path": await _link(r)}
 
 
 @api.get("/process-download/{code}")
 async def process_download(code: str):
-    link = await db.process_links.find_one_and_update({"code": code, "used": {"$ne": True}}, {"$set": {"used": True}})
-    if not link or link["expires"] < datetime.now(timezone.utc).isoformat():
-        raise HTTPException(404, "Este enlace ya no está disponible. Genera el resumen de nuevo desde AMODO.")
+    link = await db.process_links.find_one({"code": code})
+    if not link or not link.get("report_id") or link["expires"] < datetime.now(timezone.utc).isoformat():
+        raise HTTPException(404, "Este enlace ya no está disponible. Genera el enlace de nuevo desde AMODO.")
     user = await db.users.find_one({"id": link["user_id"]})
-    if not user:
+    r = await db.process_reports.find_one({"id": link["report_id"]})
+    if not user or not r or not await is_plus(user):
         raise HTTPException(404, "No encontrado")
-    data = build_pdf(display_name(user), await process_data(user, link["today"], link["days"]), link["sections"])
-    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="amodo-mi-proceso-{link["today"]}.pdf"', "Cache-Control": "no-store"})
+    data = build_pdf(display_name(user) if r["include_name"] else "", await process_data(user, r["today"], 30, r["start"], r["end"]), r["sections"])
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="amodo-mi-proceso-{r["end"]}.pdf"', "Cache-Control": "no-store"})
