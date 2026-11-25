@@ -40,7 +40,7 @@ export default function NextWeek() {
           <>
             <View style={{ flexDirection: "row", gap: space.sm }} testID="next-week-summary">
               {[["Citas", d.summary.visits], ["Traslados", d.summary.transfers], ["Pendientes", d.summary.tasks], ["Tomas", d.summary.doses]].map(([l, n]) => (
-                <View key={l} style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderWidth: 0.5, borderRadius: 8, padding: space.sm }}>
+                <View key={l} style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderWidth: 0, borderRadius: 8, padding: space.sm }}>
                   <Txt v="h2">{n}</Txt>
                   <Txt v="caption" style={{ fontSize: 12 }} numberOfLines={1}>{l}</Txt>
                 </View>

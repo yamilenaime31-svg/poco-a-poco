@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   box: { borderRadius: radius.md, padding: space.md, gap: 4 },
   tip: { flexDirection: "row", gap: 6 },
   link: { minHeight: 32, justifyContent: "center" },
-  card: { borderRadius: radius.lg, padding: space.md, borderWidth: StyleSheet.hairlineWidth, marginBottom: space.md, gap: 4 },
+  card: { borderRadius: radius.lg, padding: space.md, borderWidth: 0, marginBottom: space.md, gap: 4 },
   compact: { width: 240, marginBottom: 0 },
   imgs: { flexDirection: "row", gap: 6, marginVertical: space.sm },
   more: { borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },

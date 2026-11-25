@@ -144,18 +144,18 @@ export const SIGNALS = [
 ] as const;
 export const TREATMENT_TYPES = ["Quimioterapia", "Radioterapia", "Inmunoterapia", "Cirugía", "Terapia dirigida", "Terapia hormonal", "Otro"];
 export const AGENDA_CATS: Record<string, { label: string; icon: string; tint: string }> = {
-  treatments: { label: "Tratamientos", icon: "layers", tint: "sage" },
-  appointments: { label: "Consultas", icon: "stethoscope", tint: "lavender" },
-  studies: { label: "Estudios", icon: "microscope", tint: "lavender" },
+  treatments: { label: "Tratamientos", icon: "layers", tint: "lavender" },
+  appointments: { label: "Consultas", icon: "stethoscope", tint: "sky" },
+  studies: { label: "Estudios", icon: "microscope", tint: "mauve" },
   medications: { label: "Medicamentos programados", icon: "pill", tint: "coral" },
-  transfers: { label: "Traslados", icon: "car", tint: "sand" },
-  tasks: { label: "Pendientes", icon: "list-checks", tint: "sand" },
+  transfers: { label: "Traslados", icon: "car", tint: "butter" },
+  tasks: { label: "Pendientes", icon: "list-checks", tint: "sage" },
   payments: { label: "Pagos", icon: "wallet", tint: "sand" },
-  personal: { label: "Actividades y otros", icon: "sun", tint: "sand" },
+  personal: { label: "Actividades y otros", icon: "sun", tint: "sky" },
 };
 export const DEMO_PRICE = "precio de ejemplo";
 export const DEFAULT_FAV_SIGNALS = ["compania", "solo", "descanso", "venir", "ayuda"];
-export const MOODS = ["Tranquilo/a", "Con energía", "Cansado/a", "Con sueño", "Estresado/a", "Animado/a", "Incómodo/a", "Triste", "Necesito compañía", "Quiero descansar"];
+export const MOODS = ["En calma", "Con energía", "Cansado/a", "Con sueño", "Sensible", "Preocupado/a", "Con molestias", "Con dolor"];
 
 export const URGENCY = ["Cuando puedas", "Hoy", "Ahora"];
 export const QUICK_REPLIES = ["Voy para allá", "Lo resuelvo hoy", "Te llamo en un momento", "Entendido, aquí estoy"];
@@ -177,13 +177,13 @@ export const KIT_SIZES = [
 ];
 
 export const CATEGORIES = [
-  { label: "Comodidad", icon: "armchair", tint: "sage" },
-  { label: "Identidad y estilo", icon: "sparkles", tint: "lavender" },
-  { label: "Entretenimiento", icon: "book-open", tint: "sky" },
-  { label: "Organización", icon: "folder", tint: "butter" },
-  { label: "Antojos y preferencias", icon: "cup-soda", tint: "coral" },
-  { label: "Cuidado personal", icon: "hand-heart", tint: "sage" },
-  { label: "Detalles", icon: "gift", tint: "butter" },
+  { label: "Comodidad", icon: "armchair", tint: "coral" },
+  { label: "Identidad y estilo", icon: "sparkles", tint: "butter" },
+  { label: "Entretenimiento", icon: "book-open", tint: "mauve" },
+  { label: "Organización", icon: "folder", tint: "sky" },
+  { label: "Antojos y preferencias", icon: "cup-soda", tint: "sage" },
+  { label: "Cuidado personal", icon: "hand-heart", tint: "lavender" },
+  { label: "Detalles", icon: "gift", tint: "mauve" },
 ];
 
 export const IDENTITY = {
@@ -201,12 +201,10 @@ export const IDENTITY = {
 };
 
 export function tintOf(colors: ThemeColors, tint?: string) {
-  if (tint === "butter") return { bg: colors.butterSoft, fg: colors.onSurface, accent: colors.butter };
-  if (tint === "sky") return { bg: colors.skySoft, fg: colors.onSurface, accent: colors.sky };
-  if (tint === "lavender") return { bg: colors.lavenderSoft, fg: colors.onSurface, accent: colors.lavender };
-  if (tint === "coral") return { bg: colors.coralSoft, fg: colors.onSurface, accent: colors.coral };
-  if (tint === "sand") return { bg: colors.sand, fg: colors.onSurface, accent: colors.borderStrong };
-  return { bg: colors.sageSoft, fg: colors.onSurface, accent: colors.sage };
+  const c = colors as any;
+  if (tint === "sand" || !tint) return { bg: colors.sand, soft: colors.surfaceTertiary, fg: colors.onSurface, accent: colors.muted };
+  const k = c[tint] ? tint : "sage";
+  return { bg: c[k] as string, soft: c[`${k}Soft`] as string, fg: colors.onSurface, accent: c[`${k}Deep`] as string };
 }
 
 export function categoryOf(label?: string) {

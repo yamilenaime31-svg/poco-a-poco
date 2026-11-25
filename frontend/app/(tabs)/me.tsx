@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
+import { Shape, Spot } from "@/src/art";
 import { useAuth } from "@/src/auth";
 import { PlanCard } from "@/src/components/plan-card";
 import { Avatar } from "@/src/components/avatar";
 import { TabScreen } from "@/src/components/tab-screen";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Field, Ic, Row, Section, Sheet, Txt } from "@/src/ui";
-import { radius, space, useTheme } from "@/src/theme";
+import { space, useTheme } from "@/src/theme";
 
 type Item = { icon: string; title: string; href: any; tint?: string };
 const edit = (step: string) => ({ pathname: "/onboarding", params: { edit: "1", step } });
@@ -82,24 +83,25 @@ export default function Me() {
         <Btn label="Guardar" onPress={saveInfo} testID="profile-info-save" />
       </Sheet>
     )}>
-      <View style={{ alignItems: "center", marginTop: space.md }} testID="profile-card">
+      <View style={{ alignItems: "center", marginTop: space.sm, backgroundColor: colors.butter, borderRadius: 28, paddingVertical: space.xl, paddingHorizontal: space.lg, overflow: "hidden" }} testID="profile-card">
+        <View style={{ position: "absolute", left: -26, top: -22 }} pointerEvents="none"><Shape name="scallop" size={110} color={colors.coral} /></View>
+        <View style={{ position: "absolute", right: -30, bottom: -34 }} pointerEvents="none"><Shape name="pebble" size={130} color={colors.lavender} /></View>
         <Pressable onPress={() => router.push("/avatar")} testID="profile-avatar">
           <Avatar avatar={user?.profile?.avatar} name={user?.preferred_name} size={112} />
           <View style={{ position: "absolute", right: 0, bottom: 4, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceInverse, alignItems: "center", justifyContent: "center" }}><Ic name="pencil" size={15} color={colors.onSurfaceInverse} /></View>
         </Pressable>
-        <Txt v="h1" style={{ marginTop: space.md }} testID="profile-name">{user?.preferred_name || user?.name}</Txt>
-        <View style={{ alignItems: "center" }}><Badge label={isCg ? "Acompañante" : "Paciente"} tint={isCg ? "lavender" : "sage"} testID="profile-role-badge" /></View>
-        <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.lg }}>
-          <Btn label="Editar avatar" small variant="secondary" icon="smile" onPress={() => router.push("/avatar")} testID="profile-edit-avatar" />
-          <Btn label="Editar información" small variant="secondary" icon="pencil" onPress={() => setInfo(true)} testID="profile-edit-info" />
+        <Txt v="h1" style={{ marginTop: space.md, textAlign: "center" }} testID="profile-name">{user?.preferred_name || user?.name}</Txt>
+        <View style={{ alignItems: "center" }}><Badge label={isCg ? "Acompañante" : "Paciente"} tint="sand" testID="profile-role-badge" /></View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginTop: space.lg }}>
+          <Btn label="Mi avatar" small icon="smile" onPress={() => router.push("/avatar")} testID="profile-edit-avatar" />
+          <Btn label="Mis datos" small variant="secondary" icon="pencil" onPress={() => setInfo(true)} testID="profile-edit-info" />
         </View>
       </View>
 
-      <View style={{ backgroundColor: colors.lavenderSoft, borderRadius: radius.lg, padding: space.xl, marginTop: space.xl, overflow: "hidden" }} testID="profile-link-card">
-        <View style={{ position: "absolute", width: 120, height: 120, borderRadius: 60, backgroundColor: colors.lavender, right: -30, top: -40, opacity: 0.6 }} />
-        <Ic name="link" size={22} />
-        <Txt v="h2" style={{ marginTop: space.sm }}>{isCg ? "Vincúlate con alguien" : "Vincula con alguien"}</Txt>
-        <Txt style={{ marginTop: 4 }}>{isCg ? "Escanea un QR, abre un enlace o escribe un código." : "Comparte lo que tú elijas con las personas que te acompañan."}</Txt>
+      <View style={{ backgroundColor: colors.sage, borderRadius: 24, padding: space.lg, marginTop: space.sm, overflow: "hidden" }} testID="profile-link-card">
+        <View style={{ position: "absolute", right: 8, top: 8 }} pointerEvents="none"><Spot name="network" size={72} /></View>
+        <Txt v="h2" style={{ marginRight: 84 }}>{isCg ? "Vincúlate con alguien" : "Vincula con alguien"}</Txt>
+        <Txt style={{ marginTop: 4, marginRight: 84 }}>{isCg ? "Escanea un QR, abre un enlace o escribe un código." : "Comparte lo que tú elijas con las personas que te acompañan."}</Txt>
         <Btn label={isCg ? "Vincularme" : "Vincular acompañante"} icon="qr-code" onPress={() => router.push("/link")} testID="profile-link-button" style={{ marginTop: space.lg }} />
       </View>
 

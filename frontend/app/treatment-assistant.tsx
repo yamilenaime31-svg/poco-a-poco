@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   note: { flexDirection: "row", gap: 6, marginTop: space.md },
   ask: { borderRadius: radius.md, padding: space.md, marginBottom: space.lg, gap: 2 },
   row2: { flexDirection: "row", gap: space.sm },
-  session: { flexDirection: "row", alignItems: "center", gap: space.sm, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
+  session: { flexDirection: "row", alignItems: "center", gap: space.sm, borderWidth: 0, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
   miniTime: { width: 76, flexGrow: 0, flexShrink: 0, height: 38, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.sm, marginTop: 6, fontFamily: fonts.body, fontSize: 14 },
   mini: { flex: 1, minWidth: 0, height: 38, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.sm, marginTop: 6, fontFamily: fonts.body, fontSize: 14 },
   remove: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },

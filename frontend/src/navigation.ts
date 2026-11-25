@@ -1,3 +1,2 @@
-import { Platform } from "react-native";
-
-export const usesNativeTabs = Platform.OS === "ios" && parseInt(String(Platform.Version), 10) >= 26;
+// AMODO draws its own tab bar on every platform (see app/(tabs)/_layout.tsx).
+export const usesNativeTabs = false;

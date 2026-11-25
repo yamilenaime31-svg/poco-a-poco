@@ -2,6 +2,7 @@ import { StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
+import { KitBox } from "@/src/art";
 import { fmtDateTime, money } from "@/src/constants";
 import { Badge, Btn, ErrorState, Ic, Loading, Screen, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -23,11 +24,14 @@ export default function OrderConfirmed() {
       }>
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState onRetry={() => q.refetch()} /> : (
         <>
-          <View style={[styles.mark, { backgroundColor: colors.sageSoft }]}><Ic name="check" size={22} /></View>
+          <View style={[styles.hero, { backgroundColor: colors.sage }]}>
+            <KitBox level={3} size={128} color={colors.surfaceSecondary} />
+            <View style={[styles.mark, { backgroundColor: colors.surfaceInverse }]}><Ic name="check" size={20} color={colors.onSurfaceInverse} /></View>
+          </View>
           <Txt v="display" testID="order-confirmed-title">Tu kit está confirmado</Txt>
           <Txt style={{ marginTop: space.xs }}>Preparamos una selección hecha a tu modo.</Txt>
 
-          <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+          <View style={[styles.box, { backgroundColor: colors.surfaceSecondary }]}>
             <View style={styles.row}>
               <Txt v="caption">Pedido de demostración</Txt>
               <Txt v="title" testID="order-confirmed-number">{o.number}</Txt>
@@ -56,9 +60,10 @@ export default function OrderConfirmed() {
 }
 
 const styles = StyleSheet.create({
-  mark: { width: 44, height: 44, borderRadius: radius.sm, alignItems: "center", justifyContent: "center", marginBottom: space.lg, marginTop: space.lg },
-  box: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: space.lg, marginTop: space.xl, gap: 6 },
+  hero: { borderRadius: 28, alignItems: "center", justifyContent: "center", paddingVertical: space.lg, marginBottom: space.lg },
+  mark: { position: "absolute", right: space.lg, top: space.lg, width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  box: { borderRadius: radius.lg, padding: space.lg, marginTop: space.xl, gap: 6 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space.sm },
   item: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: space.sm, marginTop: 2 },
-  note: { flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: radius.sm, marginTop: space.lg },
+  note: { flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: radius.md, marginTop: space.lg },
 });

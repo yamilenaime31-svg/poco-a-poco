@@ -6,6 +6,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { ShareWith } from "@/src/components/share-with";
+import { KitBox, Slots, Spot } from "@/src/art";
 import { CATEGORIES, KIT_CONTEXTS, money } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Chip, ChipRow, Field, Ic, Loading, ProductImage, ProgressBar, Screen, Txt } from "@/src/ui";
@@ -139,9 +140,9 @@ export default function KitBuilder() {
     return <Screen title="Armar kit"><Loading /></Screen>;
 
   const tag = (p: any) => {
-    if (!p.available) return { t: "NO DISPONIBLE", bg: colors.surfaceTertiary, fg: colors.muted };
-    if (p.tier === "premium") return { t: `PREMIUM +${money(p.supplement)}`, bg: colors.lavenderSoft, fg: colors.onSurface };
-    return { t: "INCLUIDO", bg: colors.sageSoft, fg: colors.onSurface };
+    if (!p.available) return { t: "No disponible", bg: colors.surfaceTertiary, fg: colors.muted };
+    if (p.tier === "premium") return { t: `Premium +${money(p.supplement)}`, bg: colors.lavender, fg: colors.onSurface };
+    return { t: "Incluido", bg: colors.sage, fg: colors.onSurface };
   };
 
   return (
@@ -153,9 +154,10 @@ export default function KitBuilder() {
             <Txt v="h1">¿Para quién es este kit?</Txt>
             <View style={{ gap: space.sm, marginTop: space.lg }}>
               {[{ k: "me", t: "Para mí", d: "Según mis gustos y mi momento.", i: "user-round" }, { k: "other", t: "Para otra persona", d: "Un detalle para acompañar a alguien.", i: "gift" }].map((o) => (
-                <Pressable key={o.k} onPress={() => setForWho(o.k as any)} testID={`kit-for-${o.k}`} style={[styles.option, { backgroundColor: colors.surfaceSecondary, borderColor: forWho === o.k ? colors.onSurface : colors.border }]}>
-                  <Ic name={o.i} size={20} />
-                  <View style={{ flex: 1 }}><Txt v="title">{o.t}</Txt><Txt v="caption">{o.d}</Txt></View>
+                <Pressable key={o.k} onPress={() => setForWho(o.k as any)} testID={`kit-for-${o.k}`} accessibilityState={{ selected: forWho === o.k }} style={[styles.option, { backgroundColor: o.k === "me" ? colors.butter : colors.sage, borderColor: forWho === o.k ? colors.onSurface : "transparent" }]}>
+                  <Spot name={o.k === "me" ? "heart" : "gift"} size={48} pop={colors.lavender} />
+                  <View style={{ flex: 1 }}><Txt v="title">{o.t}</Txt><Txt v="caption" color={colors.onSurface}>{o.d}</Txt></View>
+                  {forWho === o.k ? <View style={[styles.check, { borderColor: colors.onSurface, backgroundColor: colors.surfaceInverse }]}><Ic name="check" size={16} color={colors.onSurfaceInverse} /></View> : null}
                 </Pressable>
               ))}
             </View>
@@ -173,15 +175,17 @@ export default function KitBuilder() {
             <Txt v="caption" style={{ marginTop: space.xs }}>El precio base incluye tus artículos elegidos, empaque y armado. Solo los artículos premium suman un suplemento.</Txt>
             <View style={{ gap: space.sm, marginTop: space.lg }}>
               {(sizes.data || []).map((s, i) => (
-                <Pressable key={s.id} onPress={() => pickSize(s)} testID={`kit-size-${s.id}`} style={[styles.option, { backgroundColor: colors.surfaceSecondary, borderColor: size === s.id ? colors.onSurface : colors.border }]}>
-                  <View style={[styles.iconWrap, { backgroundColor: colors.sageSoft, width: 34 + i * 8, height: 34 + i * 8 }]}><Ic name="package" size={16 + i * 3} /></View>
+                <Pressable key={s.id} onPress={() => pickSize(s)} testID={`kit-size-${s.id}`} accessibilityState={{ selected: size === s.id }} style={[styles.option, { backgroundColor: [colors.butterSoft, colors.coralSoft, colors.lavenderSoft][i] || colors.surfaceSecondary, borderColor: size === s.id ? colors.onSurface : "transparent" }]}>
+                  <KitBox level={(Math.min(i, 2) + 1) as 1 | 2 | 3} size={60} color={colors.surfaceSecondary} selected={size === s.id} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt v="title">{s.label}</Txt>
-                    <Txt v="caption">{s.text} · envío incluido</Txt>
+                    <Txt v="caption" color={colors.onSurface}>{s.text} · envío incluido</Txt>
+                    <View style={{ marginTop: 6 }}><Slots used={0} total={s.max} /></View>
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Txt v="caption">Desde</Txt>
-                    <Txt v="title">{money(s.base)}</Txt>
+                  <View style={{ alignItems: "flex-end", gap: 2 }}>
+                    <View style={[styles.check, { width: 28, height: 28, borderColor: size === s.id ? colors.onSurface : colors.borderStrong, backgroundColor: size === s.id ? colors.surfaceInverse : "transparent" }]}>{size === s.id ? <Ic name="check" size={14} color={colors.onSurfaceInverse} /> : null}</View>
+                    <Txt v="caption" color={colors.onSurface}>Desde</Txt>
+                    <Txt v="title" style={{ fontSize: 16 }}>{money(s.base).replace(" MXN", "")}</Txt>
                   </View>
                 </Pressable>
               ))}
@@ -201,7 +205,14 @@ export default function KitBuilder() {
         )}
         {step === 3 && (
           <>
-            <Txt v="h2">Elige tus artículos</Txt>
+            <Txt v="h1">Elige tus artículos</Txt>
+            <View style={[styles.slots, { backgroundColor: colors.surfaceSecondary }]} testID="kit-slots">
+              <KitBox level={(Math.min((sizes.data || []).findIndex((x) => x.id === size), 2) + 1 || 1) as 1 | 2 | 3} size={52} color={colors.coral} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Txt v="label" color={colors.onSurface}>{items.length} de {sz.max} espacios{sz.max - items.length > 0 ? ` · quedan ${sz.max - items.length}` : " · kit completo"}</Txt>
+                <Slots used={items.length} total={sz.max} />
+              </View>
+            </View>
             <Txt v="caption">Combina categorías como quieras. Los artículos incluidos no cambian el precio.</Txt>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, flexGrow: 0 }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.xl, paddingVertical: space.md }}>
               <Chip label={tags.length ? "Sugeridos" : "Todo"} selected={filter === "sugeridos"} onPress={() => setFilter("sugeridos")} testID="kit-filter-all" />
@@ -212,13 +223,13 @@ export default function KitBuilder() {
               const tg = tag(p);
               return (
                 <Pressable key={p.id} onPress={() => toggleItem(p.id)} disabled={!p.available && !on} testID={`kit-product-${p.id}`} accessibilityState={{ selected: on, disabled: !p.available }}
-                  style={[styles.prod, { backgroundColor: colors.surfaceSecondary, borderColor: on ? colors.onSurface : colors.border, opacity: p.available || on ? 1 : 0.6 }]}>
-                  <ProductImage product={p} height={64} style={{ width: 64, borderRadius: radius.sm }} />
+                  style={[styles.prod, { backgroundColor: colors.surfaceSecondary, borderColor: on ? colors.onSurface : "transparent", opacity: p.available || on ? 1 : 0.6 }]}>
+                  <ProductImage product={p} height={76} style={{ width: 76, borderRadius: radius.sm }} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Txt v="medium" style={{ fontSize: 14, lineHeight: 19 }} numberOfLines={2}>{p.name}</Txt>
                     <Txt v="caption" numberOfLines={1}>{p.description}</Txt>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                      <View style={[styles.tag, { backgroundColor: tg.bg }]}><Txt v="label" style={{ fontSize: 10 }} color={tg.fg} testID={`kit-tag-${p.id}`}>{tg.t}</Txt></View>
+                      <View style={[styles.tag, { backgroundColor: tg.bg }]}><Txt v="label" style={{ fontSize: 11 }} color={tg.fg} testID={`kit-tag-${p.id}`}>{tg.t}</Txt></View>
                       <Txt v="caption" style={{ fontSize: 12 }}>{p.category === "Antojos y preferencias" ? "Antojos" : p.category}</Txt>
                     </View>
                   </View>
@@ -234,7 +245,7 @@ export default function KitBuilder() {
           <>
             <Txt v="h1">Tu kit, a tu manera</Txt>
             <Txt v="caption" style={{ marginTop: space.xs }}>{[sz.label, ctxLabel, forWho === "other" ? `Para ${forName}` : "Para mí", `${items.length} artículos`].join(" · ")}</Txt>
-            <View style={[styles.box, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID="kit-summary">
+            <View style={[styles.box, { backgroundColor: colors.surfaceSecondary }]} testID="kit-summary">
               <Row2 l={`${sz.label} (precio base)`} r={money(sz.base)} />
               {items.map((i) => {
                 const p = pmap[i.product_id];
@@ -288,12 +299,13 @@ function Row2({ l, r, bold, testID }: { l: string; r: string; bold?: boolean; te
 }
 
 const styles = StyleSheet.create({
-  option: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: radius.md, borderWidth: 1.5 },
+  option: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 2 },
+  slots: { flexDirection: "row", alignItems: "center", gap: space.md, borderRadius: radius.lg, padding: space.md, marginVertical: space.md },
   iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  prod: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.sm, borderRadius: radius.md, borderWidth: 1.5, marginBottom: space.sm },
-  tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  prod: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.sm, borderRadius: radius.lg, borderWidth: 2, marginBottom: space.sm },
+  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   check: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  box: { borderRadius: radius.lg, padding: space.lg, marginVertical: space.lg, borderWidth: StyleSheet.hairlineWidth },
+  box: { borderRadius: radius.lg, padding: space.lg, marginVertical: space.lg },
   item: { paddingVertical: space.sm, borderTopWidth: StyleSheet.hairlineWidth, marginTop: space.sm },
   mini: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
 });

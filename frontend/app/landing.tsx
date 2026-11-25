@@ -1,21 +1,18 @@
 import { Pressable, StyleSheet, View } from "react-native";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { MoodFigure, Shape } from "@/src/art";
 import { CATEGORIES, tintOf } from "@/src/constants";
 import { Btn, Ic, Logo, ProductImage, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
-const HERO = "https://images.unsplash.com/photo-1583329550487-0fa300a4cd1a?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
-
 const MODULES = [
-  { icon: "calendar", title: "Organiza tus días", text: "Agenda, citas, pendientes y traslados.", tint: "sage" },
-  { icon: "users", title: "Conecta con tu red", text: "Comparte actividades y comunica necesidades.", tint: "lavender" },
+  { icon: "calendar", title: "Organiza tus días", text: "Agenda, citas, pendientes y traslados.", tint: "sky" },
+  { icon: "users", title: "Conecta con tu red", text: "Comparte actividades y comunica necesidades.", tint: "sage" },
   { icon: "package", title: "Arma tus kits", text: "Elige artículos según el momento, tus gustos y tus preferencias.", tint: "coral" },
-  { icon: "leaf", title: "Hazlo a tu ritmo", text: "Personaliza la experiencia y cambia lo que necesites.", tint: "sand" },
+  { icon: "leaf", title: "Hazlo a tu ritmo", text: "Personaliza la experiencia y cambia lo que necesites.", tint: "butter" },
 ];
 
 const FOOTER = [
@@ -34,27 +31,27 @@ export default function Landing() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID="landing-screen">
       <Animated.ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}>
-        <View style={styles.hero}>
-          <Image source={{ uri: HERO }} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
-          <LinearGradient colors={["rgba(37,37,37,0.05)", "rgba(37,37,37,0.75)"]} style={StyleSheet.absoluteFill} />
-          <View style={[styles.heroTop, { paddingTop: insets.top + space.lg }]}>
-            <Logo size={30} color={colors.onSurfaceInverse} />
-            <Pressable onPress={() => router.push("/login")} testID="landing-login-link" hitSlop={10}>
-              <Txt v="medium" color={colors.onSurfaceInverse}>
-                Iniciar sesión
-              </Txt>
+        <View style={[styles.hero, { backgroundColor: colors.lavender, paddingTop: insets.top + space.md }]}>
+          <View style={styles.heroTop}>
+            <Logo size={30} />
+            <Pressable onPress={() => router.push("/login")} testID="landing-login-link" hitSlop={10} style={[styles.login, { backgroundColor: colors.surfaceSecondary }]}>
+              <Txt v="label" color={colors.onSurface}>Iniciar sesión</Txt>
             </Pressable>
           </View>
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.heroBottom}>
-            <Txt v="display" color={colors.onSurfaceInverse} style={{ fontSize: 40, lineHeight: 46 }}>
-              A tu manera,{"\n"}poco a poco.
-            </Txt>
-            <Txt color={colors.onSurfaceInverse} style={{ marginTop: space.md, opacity: 0.92 }}>
+          <View style={styles.heroArt} pointerEvents="none">
+            <View style={{ position: "absolute", left: -30, top: 6 }}><Shape name="scallop" size={150} color={colors.butter} /></View>
+            <View style={{ position: "absolute", right: -24, top: -6 }}><Shape name="pebble" size={170} color={colors.coral} /></View>
+            <View style={{ position: "absolute", left: 96, top: 62 }}><MoodFigure mood="En calma" size={130} color={colors.sage} /></View>
+            <View style={{ position: "absolute", right: 46, top: 132 }}><Shape name="drop" size={64} color={colors.sky} /></View>
+          </View>
+          <Animated.View entering={FadeInDown.duration(300)}>
+            <Txt v="display" style={{ fontSize: 38, lineHeight: 42 }}>Un día a la vez,{"\n"}a tu modo.</Txt>
+            <Txt style={{ marginTop: space.md }}>
               Un espacio para organizar tus días, conectar con quienes te acompañan y preparar lo que necesitas en cada etapa.
             </Txt>
             <View style={{ gap: space.sm, marginTop: space.xl }}>
-              <Btn label="Comenzar" variant="accent" onPress={() => router.push("/welcome")} testID="landing-start-button" />
-              <Btn label="Conocer AMODO" variant="secondary" onPress={() => router.push("/info/about")} testID="landing-about-button" />
+              <Btn label="Comenzar" onPress={() => router.push("/welcome")} testID="landing-start-button" />
+              <Btn label="Conocer AMODO" variant="ghost" icon="arrow-right" onPress={() => router.push("/info/about")} testID="landing-about-button" />
             </View>
           </Animated.View>
         </View>
@@ -71,7 +68,7 @@ export default function Landing() {
                 <Txt v="title" style={{ marginTop: space.lg }}>
                   {m.title}
                 </Txt>
-                <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4, opacity: 0.75 }}>
+                <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>
                   {m.text}
                 </Txt>
               </Animated.View>
@@ -83,7 +80,7 @@ export default function Landing() {
           <Txt v="label">Cómo funciona</Txt>
           {["Crea tu espacio.", "Personaliza lo que necesitas.", "Organiza, comparte y prepara tus kits."].map((s, i) => (
             <View key={s} style={[styles.step, { borderBottomColor: colors.divider }]}>
-              <Txt v="display" color={colors.sage} style={{ width: 48 }}>
+              <Txt v="display" color={colors.lavenderDeep} style={{ width: 48 }}>
                 {i + 1}
               </Txt>
               <Txt v="title" style={{ flex: 1 }}>
@@ -116,7 +113,7 @@ export default function Landing() {
         </View>
 
         <View style={[styles.pad]}>
-          <View style={[styles.care, { backgroundColor: colors.lavenderSoft }]}>
+          <View style={[styles.care, { backgroundColor: colors.sage }]}>
             <Ic name="hand-heart" size={24} />
             <Txt v="h2" style={{ marginTop: space.md }}>
               Para quienes acompañan
@@ -149,12 +146,13 @@ export default function Landing() {
 }
 
 const styles = StyleSheet.create({
-  hero: { height: 620, justifyContent: "space-between" },
-  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: space.xl },
-  heroBottom: { padding: space.xl, paddingBottom: space.xxl },
+  hero: { paddingHorizontal: space.xl, paddingBottom: space.xl, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: "hidden" },
+  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  login: { minHeight: 44, paddingHorizontal: space.lg, borderRadius: 22, justifyContent: "center" },
+  heroArt: { height: 226, marginTop: space.md },
   pad: { paddingHorizontal: space.xl, paddingTop: space.xxxl },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
-  module: { width: "47.8%", borderRadius: radius.lg, padding: space.lg, minHeight: 160 },
+  module: { width: "47.5%", flexGrow: 1, borderRadius: radius.lg, padding: space.lg, minHeight: 160 },
   step: { flexDirection: "row", alignItems: "center", paddingVertical: space.lg, borderBottomWidth: StyleSheet.hairlineWidth },
   care: { borderRadius: radius.lg, padding: space.xl },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: space.xxxl, paddingTop: space.xl },

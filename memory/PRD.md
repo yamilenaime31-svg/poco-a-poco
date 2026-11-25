@@ -102,3 +102,12 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Análisis de gastos: /expense-analysis (cálculo en cliente sobre /records/expenses[?owner_id]): barras mes a mes pagado/pendiente (últimos 6), filtro por mes, diferencia vs mes anterior, quién pagó (monto y %), quién pagó mes a mes, categorías. Acceso: fila "Ver análisis" en Gastos.
 - Lista desde la cita: fila en /event/[id] que crea (POST /checklists {event_id}) o abre la lista ligada; acompañante solo abre si se la compartieron.
 - Solo verificado con capturas propias (sin testing agent).
+
+## Iteration 15 (Jun 2026) — Rediseño integral (dirección artística + sistema de diseño)
+- Tokens (src/theme.ts): marfil #F7F6F2, blanco, tinta #25282A; pasteles con presencia lavender/sage/coral(durazno)/sky/butter/mauve con variantes Soft y Deep; radios 12/16/20; margen lateral 20. Fuentes: Plus Jakarta Sans (títulos, botones) + DM Sans (texto). Sin mayúsculas en etiquetas.
+- Sistema gráfico original (src/art.tsx, react-native-svg): Shape (formas orgánicas), MoodFigure (8 figuras forma+expresión), Spot (ilustraciones por herramienta), Company (composición para héroes/estados vacíos), KitBox (contenedor chico/mediano/grande), Slots (espacios del kit).
+- UI base (src/ui.tsx): botones píldora, chips con selección en tinta + check, tarjetas sin borde, Section con título grande, Row con icono en bloque pastel, Empty con ilustración, contexto OnTint (texto secundario en tinta sobre pastel), tintOf → {bg, soft, accent}.
+- Navegación: barra propia en tinta con píldora clara y etiquetas visibles (app/(tabs)/_layout.tsx); ya no usa NativeTabs.
+- Inicio: saludo display, tarjeta Mi día lavanda con ilustración y estado vacío neutral, estados (En calma, Con energía, Cansado/a, Con sueño, Sensible, Preocupado/a, Con molestias, Con dolor) con animación breve y movimiento reducido, señales en retícula 2 columnas sin truncar, bento "A tu modo".
+- Agenda: segmento en tinta, hoy en lavanda, tarjetas grandes por categoría para visitas y compactas para lo demás. Organiza: módulo IA en tinta + retículas con ilustraciones. Kits: héroe durazno, tamaños con KitBox, espacios que se llenan, etiquetas Incluido/Premium. Perfil: héroe mantequilla, plan Plus lavanda. Landing/bienvenida/planes/Plus/confirmación de pedido con el mismo lenguaje.
+- Sin cambios en lógica, API ni datos.

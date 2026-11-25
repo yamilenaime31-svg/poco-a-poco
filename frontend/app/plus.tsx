@@ -1,3 +1,4 @@
+import { Shape } from "@/src/art";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -7,7 +8,7 @@ import { useAuth } from "@/src/auth";
 import { PLUS_BENEFITS, money } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Ic, Loading, Screen, Section, Txt } from "@/src/ui";
-import { radius, space, useTheme } from "@/src/theme";
+import { space, useTheme } from "@/src/theme";
 
 /** Simulated Plus subscription: summary, price, benefits, renewal & cancellation terms, explicit confirmation. */
 export default function PlusCheckout() {
@@ -44,14 +45,15 @@ export default function PlusCheckout() {
           <Txt v="caption" style={{ textAlign: "center" }}>Activación de demostración. No se realizará ningún cobro real.</Txt>
         </>
       )}>
-      <View style={[styles.price, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+      <View style={[styles.price, { backgroundColor: colors.lavender }]}>
+        <View style={{ position: "absolute", right: -20, top: -24 }} pointerEvents="none"><Shape name="burst" size={120} color={colors.butter} /></View>
         <Txt v="display" testID="plus-price">{money(c.plus_price)}</Txt>
         <Txt v="caption">al mes, impuestos incluidos · sin permanencia</Txt>
       </View>
       <Section title="Lo que cambia para ti">
         {PLUS_BENEFITS(c).map((b) => (
           <View key={b.t} style={styles.li}>
-            <Ic name={b.i} size={16} />
+            <View style={{ width: 36, height: 36, borderRadius: 13, backgroundColor: colors.lavenderSoft, alignItems: "center", justifyContent: "center" }}><Ic name={b.i} size={16} /></View>
             <View style={{ flex: 1 }}>
               <Txt v="medium">{b.t}</Txt>
               <Txt v="caption">{b.s}</Txt>
@@ -71,6 +73,6 @@ export default function PlusCheckout() {
 }
 
 const styles = StyleSheet.create({
-  price: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: space.lg, marginTop: space.sm },
+  price: { borderRadius: 24, padding: space.lg, marginTop: space.sm, overflow: "hidden" },
   li: { flexDirection: "row", gap: space.md, paddingVertical: space.sm },
 });

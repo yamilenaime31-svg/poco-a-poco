@@ -111,7 +111,7 @@ export function NeedsPrompt() {
 }
 
 const styles = StyleSheet.create({
-  card: { width: 264, borderRadius: radius.lg, padding: space.md, borderWidth: StyleSheet.hairlineWidth },
+  card: { width: 264, borderRadius: radius.lg, padding: space.md, borderWidth: 0 },
   top: { flexDirection: "row", gap: space.md, alignItems: "center" },
   actions: { flexDirection: "row", gap: space.sm, marginTop: space.sm, alignItems: "center" },
   icon: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: "center", justifyContent: "center" },

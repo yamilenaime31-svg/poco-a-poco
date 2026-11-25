@@ -147,7 +147,7 @@ export default function Checkout() {
 
 const styles = StyleSheet.create({
   line: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: space.sm, paddingVertical: 4 },
-  item: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: space.md, marginBottom: space.sm, gap: 4 },
+  item: { borderWidth: 0, borderRadius: radius.md, padding: space.md, marginBottom: space.sm, gap: 4 },
   imgs: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginVertical: space.sm },
   modes: { flexDirection: "row", gap: space.sm, marginVertical: space.sm, flexWrap: "wrap" },
   mode: { minHeight: 40, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: 1, justifyContent: "center" },

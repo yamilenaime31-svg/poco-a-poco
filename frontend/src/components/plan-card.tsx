@@ -2,9 +2,10 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
+import { Shape } from "@/src/art";
 import { fmtDate, money } from "@/src/constants";
 import { Btn, Ic, Txt } from "@/src/ui";
-import { radius, space, useTheme } from "@/src/theme";
+import { space, useTheme } from "@/src/theme";
 
 const credits = (p: any) => p.benefits.filter((b: any) => b.kind === "credit").reduce((a: number, b: any) => a + (b.remaining || 0), 0);
 const discount = (p: any) => Math.max(0, ...p.benefits.filter((b: any) => b.kind === "kit_discount_pct").map((b: any) => b.value));
@@ -30,9 +31,10 @@ export function PlanCard() {
   ].filter(Boolean) as string[];
   const go = (h: string) => () => router.push(h as any);
   return (
-    <View style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID="profile-plan-card">
-      <Txt v="label">Mi plan AMODO</Txt>
-      <Txt v="h2" style={{ marginTop: 4 }} testID="profile-plan-name">{title}</Txt>
+    <View style={[styles.card, { backgroundColor: p.tier === "plus" ? colors.lavender : colors.surfaceSecondary }]} testID="profile-plan-card">
+      <View style={{ position: "absolute", right: -18, top: -18 }} pointerEvents="none"><Shape name="burst" size={92} color={p.tier === "plus" ? colors.butter : colors.lavender} /></View>
+      <Txt v="label" color={colors.onSurface}>Mi plan AMODO</Txt>
+      <Txt v="section" style={{ marginTop: 4, marginRight: 64 }} testID="profile-plan-name">{title}</Txt>
       <Txt v="caption" color={colors.onSurface} testID="profile-plan-sub">{sub}</Txt>
       {facts.map((f) => (
         <View key={f} style={styles.li}><Ic name="check" size={14} /><Txt v="caption" color={colors.onSurface} style={{ flex: 1 }}>{f}</Txt></View>
@@ -63,7 +65,7 @@ export function PlanCard() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, padding: space.lg, marginTop: space.xl },
+  card: { borderRadius: 24, padding: space.lg, marginTop: space.xxl, overflow: "hidden" },
   li: { flexDirection: "row", gap: 6, marginTop: 6 },
   btns: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.md },
   btn: { flexGrow: 1, minWidth: 140 },

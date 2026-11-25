@@ -6,6 +6,7 @@ import { TabScreen } from "@/src/components/tab-screen";
 import { RecoCard, NeedsPrompt } from "@/src/components/reco-card";
 import { TileGrid } from "@/src/components/tile-grid";
 import { GuideCard } from "@/src/components/guide-info";
+import { KitBox } from "@/src/art";
 import { CATEGORIES, money, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Ic, IconBtn, Loading, ProductImage, Row, Section, Txt } from "@/src/ui";
@@ -30,22 +31,25 @@ export default function MyKits() {
   };
 
   return (
-    <TabScreen title="Mis kits" testID="kits-screen" refreshing={kits.isRefetching} onRefresh={() => invalidate()}
+    <TabScreen title="Kits" subtitle="Objetos que te acompañan, elegidos por ti" testID="kits-screen" refreshing={kits.isRefetching} onRefresh={() => invalidate()}
       right={<View style={{ marginRight: space.sm }}><IconBtn icon="shopping-bag" badge={!!cart.data?.count} onPress={() => router.push("/cart")} testID="kits-cart-button" /></View>}>
-      <Pressable onPress={() => router.push("/kit-builder")} testID="kits-new-button" style={({ pressed }) => [styles.cta, { backgroundColor: colors.sageSoft, opacity: pressed ? 0.88 : 1 }]}>
-        <View style={[styles.ctaIcon, { backgroundColor: colors.surfaceSecondary }]}><Ic name="plus" size={20} /></View>
+      <Pressable onPress={() => router.push("/kit-builder")} testID="kits-new-button" style={({ pressed }) => [styles.cta, { backgroundColor: colors.coral, transform: [{ scale: pressed ? 0.985 : 1 }] }]}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt v="title">Armar nuevo kit</Txt>
-          <Txt v="caption" color={colors.onSurface}>Personalízalo a tu manera</Txt>
+          <Txt v="section">Arma un kit{"\n"}a tu modo</Txt>
+          <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>Elige tamaño, momento y cada artículo. Envío incluido.</Txt>
+          <View style={[styles.ctaBtn, { backgroundColor: colors.surfaceInverse }]}>
+            <Txt v="label" color={colors.onSurfaceInverse}>Empezar</Txt>
+            <Ic name="arrow-right" size={14} color={colors.onSurfaceInverse} />
+          </View>
         </View>
-        <Ic name="arrow-right" size={18} />
+        <KitBox level={3} size={104} color={colors.surfaceSecondary} />
       </Pressable>
       <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.sm }}>
-        {[{ l: "Catálogo", i: "store", h: "/catalog" }, { l: "Favoritos", i: "heart", h: "/favorites" }, { l: "Pedidos", i: "truck", h: "/orders" }, { l: "Mis créditos", i: "wallet", h: "/credits" }].map((x) => (
-          <Pressable key={x.l} accessibilityRole="button" accessibilityLabel={x.l} onPress={() => router.push(x.h as any)} testID={`kits-link-${x.l}`}
-            style={({ pressed }) => [styles.quick, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+        {[{ l: "Catálogo", i: "store", h: "/catalog", c: "butterSoft" }, { l: "Favoritos", i: "heart", h: "/favorites", c: "mauveSoft" }, { l: "Pedidos", i: "truck", h: "/orders", c: "skySoft" }, { l: "Créditos", i: "wallet", h: "/credits", c: "sageSoft" }].map((x) => (
+          <Pressable key={x.l} accessibilityRole="button" accessibilityLabel={x.l} onPress={() => router.push(x.h as any)} testID={`kits-link-${x.l === "Créditos" ? "Mis créditos" : x.l}`}
+            style={({ pressed }) => [styles.quick, { backgroundColor: (colors as any)[x.c], opacity: pressed ? 0.8 : 1 }]}>
             <Ic name={x.i} size={18} />
-            <Txt v="medium" style={{ fontSize: 13, lineHeight: 17 }} numberOfLines={1}>{x.l}</Txt>
+            <Txt v="label" color={colors.onSurface} style={{ fontSize: 12, textAlign: "center" }}>{x.l}</Txt>
           </Pressable>
         ))}
       </View>
@@ -111,7 +115,7 @@ export default function MyKits() {
 }
 
 const styles = StyleSheet.create({
-  cta: { flexDirection: "row", alignItems: "center", gap: space.md, borderRadius: radius.lg, paddingVertical: space.md, paddingHorizontal: space.lg, marginTop: space.sm },
-  ctaIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  quick: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, minHeight: 64, paddingVertical: space.sm, paddingHorizontal: 4, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
+  cta: { flexDirection: "row", alignItems: "center", gap: space.sm, borderRadius: 24, padding: space.lg, marginTop: space.sm },
+  ctaBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", minHeight: 44, paddingHorizontal: space.lg, borderRadius: 22, marginTop: space.md },
+  quick: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, minHeight: 68, paddingVertical: space.sm, paddingHorizontal: 4, borderRadius: radius.md },
 });

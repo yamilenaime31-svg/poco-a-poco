@@ -12,6 +12,7 @@ import { radius, space, useTheme } from "@/src/theme";
 type View_ = "month" | "week" | "day" | "list";
 const VIEWS: { k: View_; l: string }[] = [{ k: "month", l: "Mes" }, { k: "week", l: "Semana" }, { k: "day", l: "Día" }, { k: "list", l: "Lista" }];
 const WD = ["L", "M", "M", "J", "V", "S", "D"];
+const BIG = ["treatments", "appointments", "studies"]; // visits get the larger card
 const ADD = [
   { l: "Escribir con IA", i: "sparkles", kind: "ai" },
   { l: "Tratamiento con asistente", i: "wand-sparkles", kind: "assistant" },
@@ -22,6 +23,7 @@ const ADD = [
   { l: "Gasto", i: "wallet", kind: "expenses" },
 ];
 
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 const parse = (d: string) => new Date(`${d}T12:00:00`);
 const shift = (d: string, days: number) => { const x = parse(d); x.setDate(x.getDate() + days); return isoDate(x); };
 const mondayOf = (d: string) => shift(d, -((parse(d).getDay() + 6) % 7));
@@ -83,7 +85,7 @@ export default function Agenda() {
     const cats = [...new Set((byDay[d] || []).map((i) => i.category))].slice(0, 3);
     return (
       <View style={styles.dots}>
-        {cats.map((c) => <View key={c} style={[styles.dot, { backgroundColor: tintOf(colors, AGENDA_CATS[c]?.tint).accent }]} />)}
+        {cats.map((c) => <View key={c} style={[styles.dot, { backgroundColor: d === sel ? colors.onSurfaceInverse : tintOf(colors, AGENDA_CATS[c]?.tint).accent }]} />)}
       </View>
     );
   };
@@ -93,26 +95,48 @@ export default function Agenda() {
     if (!items.length) return <Txt v="caption" style={{ paddingVertical: space.md }} testID="agenda-day-empty">Nada registrado para este día.</Txt>;
     const groups: Record<string, any[]> = {};
     items.forEach((i) => (groups[i.category] = [...(groups[i.category] || []), i]));
-    return Object.entries(groups).map(([c, list]) => (
-      <View key={c} style={{ marginTop: space.md }}>
-        <Txt v="label" style={{ marginBottom: 2 }}>{AGENDA_CATS[c]?.label || c}</Txt>
-        {list.map((i, n) => (
-          <Row key={i.key} icon={AGENDA_CATS[c]?.icon} tint={AGENDA_CATS[c]?.tint} title={i.title} last={n === list.length - 1} testID={`agenda-item-${i.key}`}
-            subtitle={[i.time, i.location, i.source === "doses" ? (i.status === "pendiente" ? "Por registrar" : i.status === "realizado" ? "Realizado" : "Omitido") : null,
-              i.source === "transfers" ? (i.confirmed ? "Confirmado" : "Por confirmar") : null, i.series_id ? "Serie" : null, i.shared ? "Compartido" : null].filter(Boolean).join(" · ")}
-            onPress={() => open(i)} />
-        ))}
-      </View>
-    ));
+    const status = (i: any) => [i.location, i.source === "doses" ? (i.status === "pendiente" ? "Por registrar" : i.status === "realizado" ? "Realizado" : "Omitido") : null,
+      i.source === "transfers" ? (i.confirmed ? "Confirmado" : "Por confirmar") : null, i.series_id ? "Serie" : null, i.shared ? "Compartido" : null].filter(Boolean).join(" · ");
+    return Object.entries(groups).map(([c, list]) => {
+      const cat = AGENDA_CATS[c] || AGENDA_CATS.personal;
+      const tn = tintOf(colors, cat.tint);
+      const big = BIG.includes(c);
+      return (
+        <View key={c} style={{ marginTop: space.md }}>
+          <View style={styles.catHead}>
+            <View style={[styles.catDot, { backgroundColor: tn.bg }]}><Ic name={cat.icon} size={12} /></View>
+            <Txt v="label" color={colors.onSurface}>{cat.label}</Txt>
+          </View>
+          {list.map((i) => big ? (
+            <Pressable key={i.key} onPress={() => open(i)} testID={`agenda-item-${i.key}`} style={({ pressed }) => [styles.bigCard, { backgroundColor: tn.bg, transform: [{ scale: pressed ? 0.985 : 1 }] }]}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Txt v="h2">{i.title}</Txt>
+                {status(i) ? <Txt v="caption" color={colors.onSurface} style={{ marginTop: 2 }}>{status(i)}</Txt> : null}
+              </View>
+              <View style={[styles.time, { backgroundColor: colors.surfaceInverse }]}><Txt v="label" color={colors.onSurfaceInverse}>{i.time || "Sin hora"}</Txt></View>
+            </Pressable>
+          ) : (
+            <Pressable key={i.key} onPress={() => open(i)} testID={`agenda-item-${i.key}`} style={({ pressed }) => [styles.smallCard, { backgroundColor: tn.soft, opacity: pressed ? 0.8 : 1 }]}>
+              <Txt v="label" color={colors.onSurface} style={{ width: 46 }}>{i.time || "—"}</Txt>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Txt v="medium">{i.title}</Txt>
+                {status(i) ? <Txt v="caption">{status(i)}</Txt> : null}
+              </View>
+              <Ic name="chevron-right" size={16} />
+            </Pressable>
+          ))}
+        </View>
+      );
+    });
   };
 
   const month0 = parse(`${month}-01`);
   const chips = (
-    <View style={{ borderBottomWidth: 0.5, borderBottomColor: colors.divider }}>
+    <View>
       <View style={[styles.seg, { backgroundColor: colors.surfaceTertiary }]}>
         {VIEWS.map((v) => (
-          <Pressable key={v.k} onPress={() => { tap(); setView(v.k); }} testID={`agenda-view-${v.k}`} style={[styles.segItem, view === v.k && { backgroundColor: colors.surfaceSecondary }]}>
-            <Txt v="medium" style={{ fontSize: 13 }} color={view === v.k ? colors.onSurface : colors.muted}>{v.l}</Txt>
+          <Pressable key={v.k} onPress={() => { tap(); setView(v.k); }} testID={`agenda-view-${v.k}`} accessibilityState={{ selected: view === v.k }} style={[styles.segItem, view === v.k && { backgroundColor: colors.surfaceInverse }]}>
+            <Txt v="label" color={view === v.k ? colors.onSurfaceInverse : colors.onSurface}>{v.l}</Txt>
           </Pressable>
         ))}
       </View>
@@ -128,7 +152,7 @@ export default function Agenda() {
   const nav = (label: string, prev: () => void, next: () => void, id: string) => (
     <View style={styles.nav}>
       <Pressable onPress={prev} hitSlop={10} style={styles.navBtn} testID={`agenda-${id}-prev`}><Ic name="chevron-left" size={20} /></Pressable>
-      <Txt v="title" style={{ flex: 1, textAlign: "center" }} testID={`agenda-${id}-label`}>{label}</Txt>
+      <Txt v="h2" style={{ flex: 1, textAlign: "center" }} testID={`agenda-${id}-label`}>{cap(label)}</Txt>
       <Pressable onPress={next} hitSlop={10} style={styles.navBtn} testID={`agenda-${id}-next`}><Ic name="chevron-right" size={20} /></Pressable>
     </View>
   );
@@ -139,7 +163,7 @@ export default function Agenda() {
         <>
           {canEdit ? <Fab bottom={bc + 16} label="Agregar" onPress={() => setAdding(true)} testID="agenda-add-button" /> : null}
           <Sheet visible={adding} onClose={() => setAdding(false)} title="¿Qué quieres agregar?" testID="agenda-add-sheet">
-            {ADD.filter((a) => !owner || !["ai", "assistant"].includes(a.kind)).map((a, i) => <Row key={a.kind} icon={a.i} tint={i < 2 ? "sage" : "sand"} title={a.l} onPress={() => add(a.kind)} testID={`agenda-add-${a.kind}`} last={i === ADD.length - 1} />)}
+            {ADD.filter((a) => !owner || !["ai", "assistant"].includes(a.kind)).map((a, i) => <Row key={a.kind} icon={a.i} tint={["butter", "butter", "sky", "coral", "butter", "sage", "sand"][ADD.indexOf(a)]} title={a.l} onPress={() => add(a.kind)} testID={`agenda-add-${a.kind}`} last={i === ADD.length - 1} />)}
           </Sheet>
           <Sheet visible={!!dose} onClose={() => setDose(null)} title={dose?.title || ""} testID="dose-sheet">
             <Txt v="caption" style={{ marginBottom: space.lg }}>{dose ? `${fmtDate(dose.date)} · ${dose.time}${dose.dose ? ` · ${dose.dose}` : ""}` : ""}. Registra solo lo que realmente ocurrió; AMODO no asume nada.</Txt>
@@ -157,7 +181,7 @@ export default function Agenda() {
       {view === "month" ? (
         <>
           {nav(`${MONTHS_LONG[month0.getMonth()]} ${month0.getFullYear()}`, () => setMonth(isoDate(new Date(month0.getFullYear(), month0.getMonth() - 1, 1)).slice(0, 7)), () => setMonth(isoDate(new Date(month0.getFullYear(), month0.getMonth() + 1, 1)).slice(0, 7)), "month")}
-          <View style={styles.week}>{WD.map((w, i) => <Txt key={i} v="label" style={{ flex: 1, textAlign: "center" }}>{w}</Txt>)}</View>
+          <View style={styles.week}>{WD.map((w, i) => <Txt key={i} v="caption" style={{ flex: 1, textAlign: "center" }}>{w}</Txt>)}</View>
           <View testID="agenda-month-grid">
             {[0, 1, 2, 3, 4, 5].map((r) => (
               <View key={r} style={styles.week}>
@@ -167,7 +191,7 @@ export default function Agenda() {
                   const on = d === sel;
                   return (
                     <Pressable key={d} onPress={() => { tap(); setSel(d); }} testID={`agenda-day-${d}`} accessibilityLabel={fmtLongDate(d)}
-                      style={[styles.cell, on && { backgroundColor: colors.surfaceInverse }, !on && d === t && { borderColor: colors.sage, borderWidth: 1.5 }]}>
+                      style={[styles.cell, on && { backgroundColor: colors.surfaceInverse }, !on && d === t && { backgroundColor: colors.lavender }]}>
                       <Txt v="medium" style={{ fontSize: 14 }} color={on ? colors.onSurfaceInverse : inMonth ? colors.onSurface : colors.borderStrong}>{parse(d).getDate()}</Txt>
                       {dots(d)}
                     </Pressable>
@@ -176,7 +200,7 @@ export default function Agenda() {
               </View>
             ))}
           </View>
-          <Txt v="title" style={{ marginTop: space.lg }}>{fmtLongDate(sel)}</Txt>
+          <Txt v="section" style={{ marginTop: space.lg }}>{cap(fmtLongDate(sel))}</Txt>
           {q.isLoading ? <Loading /> : dayList(sel)}
         </>
       ) : view === "week" ? (
@@ -187,15 +211,15 @@ export default function Agenda() {
               const d = shift(start, i);
               const on = d === sel;
               return (
-                <Pressable key={d} onPress={() => setSel(d)} testID={`agenda-week-${d}`} style={[styles.weekDay, { borderColor: colors.border }, on && { backgroundColor: colors.surfaceInverse, borderColor: colors.surfaceInverse }]}>
-                  <Txt v="label" color={on ? colors.onSurfaceInverse : colors.muted}>{WD[i]}</Txt>
+                <Pressable key={d} onPress={() => setSel(d)} testID={`agenda-week-${d}`} style={[styles.weekDay, { backgroundColor: d === t ? colors.lavender : colors.surfaceSecondary }, on && { backgroundColor: colors.surfaceInverse }]}>
+                  <Txt v="caption" color={on ? colors.onSurfaceInverse : colors.onSurface}>{WD[i]}</Txt>
                   <Txt v="title" color={on ? colors.onSurfaceInverse : colors.onSurface}>{parse(d).getDate()}</Txt>
                   {dots(d)}
                 </Pressable>
               );
             })}
           </View>
-          <Txt v="title" style={{ marginTop: space.lg }}>{fmtLongDate(sel)}</Txt>
+          <Txt v="section" style={{ marginTop: space.lg }}>{cap(fmtLongDate(sel))}</Txt>
           {q.isLoading ? <Loading /> : dayList(sel)}
         </>
       ) : view === "day" ? (
@@ -208,7 +232,7 @@ export default function Agenda() {
       ) : (
         Object.keys(byDay).sort().map((d) => (
           <View key={d} style={{ marginTop: space.md }}>
-            <Txt v="title">{fmtDate(d)}</Txt>
+            <Txt v="section">{cap(fmtDate(d))}</Txt>
             {dayList(d)}
           </View>
         ))
@@ -219,13 +243,18 @@ export default function Agenda() {
 }
 
 const styles = StyleSheet.create({
-  seg: { flexDirection: "row", marginHorizontal: space.xl, marginBottom: space.sm, borderRadius: radius.pill, padding: 3 },
-  segItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 36, borderRadius: radius.pill },
+  seg: { flexDirection: "row", marginHorizontal: space.xl, marginBottom: space.sm, borderRadius: radius.pill, padding: 4 },
+  segItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 40, borderRadius: radius.pill },
   nav: { flexDirection: "row", alignItems: "center", marginVertical: space.sm },
   navBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   week: { flexDirection: "row", gap: 4, marginBottom: 4 },
-  cell: { flex: 1, minWidth: 0, height: 46, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
-  weekDay: { flex: 1, minWidth: 0, paddingVertical: space.sm, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", gap: 2 },
+  cell: { flex: 1, minWidth: 0, height: 46, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  weekDay: { flex: 1, minWidth: 0, paddingVertical: space.md, borderRadius: 18, alignItems: "center", gap: 2 },
+  catHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  catDot: { width: 22, height: 22, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  bigCard: { flexDirection: "row", alignItems: "flex-start", gap: space.sm, borderRadius: radius.lg, padding: space.lg, marginBottom: space.sm, minHeight: 84 },
+  smallCard: { flexDirection: "row", alignItems: "center", gap: space.sm, borderRadius: radius.md, paddingVertical: 10, paddingHorizontal: space.md, marginBottom: 6, minHeight: 52 },
+  time: { paddingHorizontal: 10, minHeight: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   dots: { flexDirection: "row", gap: 3, height: 6, marginTop: 3 },
   dot: { width: 5, height: 5, borderRadius: 3 },
 });

@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 14 — Full visual redesign regression QA (frontend only; backend not retested by request). Login demo@amodo.app / Demo1234. Ran at 390x844, 360x740 AND 430x932 across all five tabs (Inicio, Agenda, Kits, Organiza, Perfil), kit-builder step 1, signal confirm sheet, role switch to caregiver and back, plus 25 secondary and public routes. Horizontal overflow check: scrollWidth == clientWidth on EVERY screen tested at EVERY viewport (0px overflow everywhere). Zero console errors and zero page errors captured during the entire session. All required testIDs present and functional: tab-index/agenda/mykits/organiza/me render, show the light ivory pill on the selected tab AND show the label at all times (ink dark bar), navigation between tabs works and returns correctly. Home hero home-my-day-card renders with home-greeting/home-pending-count/home-agenda-link/home-add-button/home-my-day-button all populated; home-mood-* for all 8 labels present and multi-select works (En calma + Con energía + Cansado/a stayed selected across reloads and even after role-switch round-trip — persistence verified). Bento tiles home-organize-{Mis kits, Próxima semana, Mi red de apoyo, Medicamentos, Traslados, Gastos} all present. Quick signals grid (home-signal-compania/solo/descanso/venir/ayuda) opens signal-confirm-sheet correctly with 'Cuando puedas/Hoy/Ahora' chips + Enviar. Agenda tab exposes agenda-view-month/week/day/list; Kits tab exposes kits-new-button, kits-cart-button, kits-link-{Catálogo,Favoritos,Pedidos,Mis créditos}; Organiza exposes organiza-input, organiza-parse-button, organiza-next-week, organiza-checklists, organiza-process, organiza-day, organiza-signals, organiza-history; Perfil exposes profile-card and profile-switch-role-button. Kit builder step 1 renders with pastel option tiles and a check icon on the selected option (selection state uses BOTH color AND an icon — not color-only). Role switch to caregiver renders caregiver-home-screen and switch-back restores home-greeting (demo@amodo.app left in PATIENT mode as instructed). Tab bar position at page bottom measured top=777/bottom=829 in a 844px viewport: it sits in the layout, never over content (15px safe gap). All 7 public screens (/landing,/welcome,/login,/register,/choose-plan,/plus,/forgot) and all 18 secondary routes tested (/checklists,/process,/next-week,/style,/network,/link,/signals,/day,/pending,/records/expenses,/expense-analysis,/record-form?kind=events,/notifications,/settings,/credits,/benefits,/plan,/orders,/admin) render without 'Unmatched Route' and without horizontal overflow. No deprecated packages detected in this iteration's changes. The only React Native warning still visible is the pre-existing expo-router/unstable-native-tabs deprecation (reported in iteration_13).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Agenda (/(tabs)/agenda)", "issues": ["Toast bubble 'Lo guardamos solo para ti' pops up on tab entry and visually overlaps the 'Agenda' title for ~2s at 390x844. Not clipped, not blocking input, but it sits directly on top of the H1 which looks like a layout collision at first glance. Minor — consider nudging the toast below the header or shortening its dwell time. Reference: frontend/app/(tabs)/agenda.tsx"]}
+    ],
+    "react_native_issues": [
+      {"component": "expo-router/unstable-native-tabs (pre-existing, not introduced this iteration)", "issue": "Console still reports 'expo-router/unstable-native-tabs is deprecated. Use expo-router/native-tabs instead.' Reference: frontend/app/(tabs)/_layout.tsx (import path for Tabs)."},
+      {"component": "AmodoTabBar accessibilityState", "issue": "accessibilityState={{selected: on}} on the tab Pressable does not translate to aria-selected in react-native-web (aria-selected returned null in DOM). Screen readers on web will not announce which tab is active. Visual pill + darker text does convey selection. Low priority. Reference: frontend/app/(tabs)/_layout.tsx:32"}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_14.json"],
+  "action_items": [
+    "(Optional, cosmetic) Nudge the Agenda 'Lo guardamos solo para ti' toast below the title so it doesn't overlap the 'Agenda' H1 on tab-entry at 390x844.",
+    "(Optional, a11y) Add role='tab' with aria-selected on the web for the custom tab bar, or rely on accessibilityState via a Platform-specific wrapper; today only visual pill conveys selection on web.",
+    "(Carried over from iter13) Migrate frontend/app/(tabs)/_layout.tsx away from expo-router/unstable-native-tabs to expo-router/native-tabs to clear the deprecation warning."
+  ],
+  "critical_code_review_comments": [
+    "theme.ts: palette tokens are well scoped (surface/onSurface pairs + pastel soft/deep variants). Good practice — no color literals leaked into components we inspected.",
+    "(tabs)/_layout.tsx: AmodoTabBar sits inside the layout (not absolute-positioned), uses useSafeAreaInsets for bottom padding, and renders labels unconditionally — matches the 'never over content' and 'labels visible' requirements. minHeight=52 per tab item => >=44pt touch target OK.",
+    "The selection state in the custom tab bar is conveyed by BOTH icon/text color change AND a lighter pill background — not colour-only, meets WCAG 1.4.1.",
+    "Kit builder step 1 also uses colour + a filled check icon for the selected option (not colour-only)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested this iteration (unchanged per request)", "frontend": "100% of requested regression & visual flows pass; 2 minor non-blocking observations above"},
+  "seed_data_creation": "No TEST_* records created. Mood multi-select taps (En calma, Con energía, Cansado/a) are per-day transient state that auto-rolls over; signal confirm sheet was opened and closed with Escape — nothing sent. demo@amodo.app left in PATIENT mode (role switched to caregiver then back as instructed). Plus status unchanged.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Visual redesign is clean across 360/390/430 widths with zero horizontal overflow and zero console errors. The only visible redesign nit is the Agenda-tab entry toast overlapping the title. To reproduce the overflow check quickly: await page.evaluate(\"() => ({sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth})\") on each route. All testIDs listed in the review request were found and clickable.",
+  "rca_of_issue": "n/a — no regressions found."
+}

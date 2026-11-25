@@ -24,8 +24,12 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/auth";
+import { Company } from "@/src/art";
 import { categoryOf, tintOf } from "@/src/constants";
 import { fonts, radius, space, useTheme } from "@/src/theme";
+
+/** True inside a pastel surface: secondary text switches to ink so it stays WCAG AA. */
+export const OnTint = React.createContext(false);
 
 export const tap = () => Haptics.selectionAsync().catch(() => {});
 
@@ -35,21 +39,23 @@ export function Ic({ name, size = 20, color }: { name: string; size?: number; co
 }
 
 const VARIANTS: Record<string, TextStyle & { fontSize: number; lineHeight: number }> = {
-  display: { fontFamily: fonts.displayBold, fontSize: 28, lineHeight: 34, letterSpacing: -0.6 },
-  h1: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.4 },
-  h2: { fontFamily: fonts.display, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
-  title: { fontFamily: fonts.displayMedium, fontSize: 15, lineHeight: 21, letterSpacing: -0.1 },
+  display: { fontFamily: fonts.displayBold, fontSize: 34, lineHeight: 39, letterSpacing: -1 },
+  h1: { fontFamily: fonts.displayBold, fontSize: 30, lineHeight: 35, letterSpacing: -0.8 },
+  section: { fontFamily: fonts.display, fontSize: 22, lineHeight: 27, letterSpacing: -0.5 },
+  h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 25, letterSpacing: -0.4 },
+  title: { fontFamily: fonts.displayMedium, fontSize: 17, lineHeight: 22, letterSpacing: -0.2 },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
-  medium: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 22 },
+  medium: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 21 },
   caption: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 11, lineHeight: 16, letterSpacing: 0.9, textTransform: "uppercase" },
+  label: { fontFamily: fonts.displayMedium, fontSize: 13, lineHeight: 17, letterSpacing: -0.1 },
 };
 
 export function Txt({ v = "body", color, style, children, ...rest }: TextProps & { v?: keyof typeof VARIANTS | string; color?: string }) {
   const { colors } = useTheme();
   const { textScale } = useAuth();
+  const onTint = React.useContext(OnTint);
   const base = VARIANTS[v] || VARIANTS.body;
-  const c = color ?? (v === "caption" || v === "label" ? colors.muted : colors.onSurface);
+  const c = color ?? ((v === "caption" || v === "label") && !onTint ? colors.muted : colors.onSurface);
   return (
     <Text
       {...rest}
@@ -86,10 +92,10 @@ export function Btn({ label, onPress, variant = "primary", icon, loading, disabl
   const { colors } = useTheme();
   const map = {
     primary: { bg: colors.surfaceInverse, fg: colors.onSurfaceInverse, bd: colors.surfaceInverse },
-    accent: { bg: colors.brandPrimary, fg: colors.onBrandPrimary, bd: colors.brandPrimary },
-    secondary: { bg: colors.surfaceSecondary, fg: colors.onSurface, bd: colors.border },
+    accent: { bg: colors.lavender, fg: colors.onSurface, bd: colors.lavender },
+    secondary: { bg: colors.surfaceTertiary, fg: colors.onSurface, bd: colors.surfaceTertiary },
     ghost: { bg: "transparent", fg: colors.onSurface, bd: "transparent" },
-    danger: { bg: colors.coralSoft, fg: colors.onSurface, bd: colors.coralSoft },
+    danger: { bg: colors.error, fg: colors.onError, bd: colors.error },
   }[variant];
   return (
     <Pressable
@@ -103,7 +109,7 @@ export function Btn({ label, onPress, variant = "primary", icon, loading, disabl
       style={({ pressed }) => [
         styles.btn,
         small && styles.btnSmall,
-        { backgroundColor: map.bg, borderColor: map.bd, opacity: disabled ? 0.45 : pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        { backgroundColor: map.bg, borderColor: map.bd, opacity: disabled ? 0.4 : pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
         style,
       ]}
     >
@@ -130,11 +136,13 @@ export function Chip({ label, selected, onPress, testID, icon }: { label: string
       }}
       style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: selected ? colors.sageSoft : colors.surfaceSecondary, borderColor: selected ? colors.sage : colors.border, opacity: pressed ? 0.8 : 1 },
+        { backgroundColor: selected ? colors.surfaceInverse : colors.surfaceSecondary, borderColor: selected ? colors.surfaceInverse : colors.border, opacity: pressed ? 0.8 : 1 },
       ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
     >
-      {selected ? <Ic name="check" size={14} /> : icon ? <Ic name={icon} size={14} /> : null}
-      <Text style={[styles.chipText, { color: colors.onSurface }]}>{label}</Text>
+      {selected ? <Ic name="check" size={14} color={colors.onSurfaceInverse} /> : icon ? <Ic name={icon} size={14} /> : null}
+      <Text style={[styles.chipText, { color: selected ? colors.onSurfaceInverse : colors.onSurface }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -149,7 +157,7 @@ export function Field({ label, hint, error, testID, multiline, style, ...rest }:
   return (
     <View style={{ marginBottom: space.lg }}>
       {label ? (
-        <Txt v="medium" style={{ marginBottom: 6, fontSize: 14 }}>
+        <Txt v="label" color={colors.onSurface} style={{ marginBottom: 6 }}>
           {label}
         </Txt>
       ) : null}
@@ -159,7 +167,7 @@ export function Field({ label, hint, error, testID, multiline, style, ...rest }:
         multiline={multiline}
         style={[
           styles.input,
-          { backgroundColor: colors.surfaceSecondary, borderColor: error ? colors.coral : colors.border, color: colors.onSurface, fontSize: 15 * textScale },
+          { backgroundColor: colors.surfaceSecondary, borderColor: error ? colors.onError : colors.border, color: colors.onSurface, fontSize: 15 * textScale },
           multiline && { minHeight: 104, textAlignVertical: "top", paddingTop: 14 },
           style,
         ]}
@@ -183,7 +191,7 @@ export function IconBtn({ icon, onPress, testID, badge }: { icon: string; onPres
   return (
     <Pressable testID={testID} onPress={onPress} hitSlop={6} style={({ pressed }) => [styles.iconBtn, { backgroundColor: colors.surfaceSecondary, opacity: pressed ? 0.7 : 1 }]}>
       <Ic name={icon} size={20} />
-      {badge ? <View style={[styles.dot, { backgroundColor: colors.coral, borderColor: colors.surfaceSecondary }]} /> : null}
+      {badge ? <View style={[styles.dot, { backgroundColor: colors.coralDeep, borderColor: colors.surfaceSecondary }]} /> : null}
     </Pressable>
   );
 }
@@ -193,7 +201,7 @@ export function Header({ title, back = true, right, subtitle, onBack }: { title?
   const router = useRouter();
   const { colors } = useTheme();
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.surface }]}>
       <View style={styles.headerRow}>
         {back ? (
           <IconBtn icon="chevron-left" testID="header-back-button" onPress={() => (onBack ? onBack() : router.canGoBack() ? router.back() : router.replace("/"))} />
@@ -241,8 +249,8 @@ export function Screen({ title, subtitle, back = true, right, children, footer, 
         <KeyboardAwareScrollView
           bottomOffset={24}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: space.xl, paddingBottom: footer ? space.xl : insets.bottom + space.xxl }}
-          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.sage} /> : undefined}
+          contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: footer ? space.xl : insets.bottom + space.xxl }}
+          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.onSurface} /> : undefined}
         >
           {children}
         </KeyboardAwareScrollView>
@@ -250,7 +258,7 @@ export function Screen({ title, subtitle, back = true, right, children, footer, 
         <View style={{ flex: 1 }}>{children}</View>
       )}
       {footer ? (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + space.lg, backgroundColor: colors.surface, borderTopColor: colors.divider }]}>{footer}</View>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + space.md, backgroundColor: colors.surface }]}>{footer}</View>
       ) : null}
       {overlay}
     </View>
@@ -260,29 +268,32 @@ export function Screen({ title, subtitle, back = true, right, children, footer, 
 export function Card({ children, style, tint, testID, onPress }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; tint?: string; testID?: string; onPress?: () => void }) {
   const { colors } = useTheme();
   const bg = tint ? tintOf(colors, tint).bg : colors.surfaceSecondary;
+  const body = <OnTint.Provider value={!!tint}>{children}</OnTint.Provider>;
   if (onPress)
     return (
-      <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [styles.card, !tint && { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, { backgroundColor: bg, opacity: pressed ? 0.88 : 1 }, style]}>
-        {children}
+      <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: bg, transform: [{ scale: pressed ? 0.985 : 1 }] }, style]}>
+        {body}
       </Pressable>
     );
   return (
-    <View testID={testID} style={[styles.card, !tint && { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, { backgroundColor: bg }, style]}>
-      {children}
+    <View testID={testID} style={[styles.card, { backgroundColor: bg }, style]}>
+      {body}
     </View>
   );
 }
 
 export function Section({ title, action, onAction, children, testID, style }: { title: string; action?: string; onAction?: () => void; children?: React.ReactNode; testID?: string; style?: StyleProp<ViewStyle> }) {
+  const { colors } = useTheme();
   return (
-    <View style={[{ marginTop: space.xl }, style]} testID={testID}>
+    <View style={[{ marginTop: space.xxl }, style]} testID={testID}>
       <View style={styles.sectionHead}>
-        <Txt v="label">{title}</Txt>
+        <Txt v="section" style={{ flex: 1 }}>{title}</Txt>
         {action ? (
           <Pressable onPress={onAction} hitSlop={10} testID={testID ? `${testID}-action` : undefined}>
-            <Txt v="medium" style={{ fontSize: 14, textDecorationLine: "underline" }}>
-              {action}
-            </Txt>
+            <View style={styles.sectionAction}>
+              <Txt v="label" color={colors.onSurface}>{action}</Txt>
+              <Ic name="arrow-right" size={14} />
+            </View>
           </Pressable>
         ) : null}
       </View>
@@ -317,7 +328,7 @@ export function Row({
       testID={testID}
       disabled={!onPress}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, { borderBottomColor: colors.divider, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, opacity: pressed ? 0.7 : 1 }]}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
     >
       {icon ? (
         <View style={[styles.rowIcon, { backgroundColor: t.bg }]}>
@@ -343,8 +354,11 @@ export function Empty({ icon = "leaf", title, text, action, onAction, testID }: 
   const { colors } = useTheme();
   return (
     <View style={styles.empty} testID={testID}>
-      <View style={[styles.emptyIcon, { backgroundColor: colors.sageSoft }]}>
-        <Ic name={icon} size={26} />
+      <View style={styles.emptyArt}>
+        <Company size={104} />
+        <View style={[styles.emptyIcon, { backgroundColor: colors.surfaceInverse }]}>
+          <Ic name={icon} size={16} color={colors.onSurfaceInverse} />
+        </View>
       </View>
       <Txt v="title" style={{ textAlign: "center" }}>
         {title}
@@ -363,7 +377,7 @@ export function Loading() {
   const { colors } = useTheme();
   return (
     <View style={{ padding: space.xxxl, alignItems: "center" }} testID="loading-indicator">
-      <ActivityIndicator color={colors.sage} />
+      <ActivityIndicator color={colors.onSurface} />
     </View>
   );
 }
@@ -386,9 +400,8 @@ export const mediaUrl = (u: string) => (u.startsWith("/") ? `${process.env.EXPO_
 export function ProductImage({ product, height = 140, style }: { product?: { image?: string | null; category?: string }; height?: number; style?: StyleProp<ViewStyle> }) {
   const { colors } = useTheme();
   const cat = categoryOf(product?.category);
-  const t = tintOf(colors, cat.tint);
   return (
-    <View style={[{ height, borderRadius: radius.sm, backgroundColor: colors.surfaceTertiary, alignItems: "center", justifyContent: "center", overflow: "hidden" }, style]}>
+    <View style={[{ height, borderRadius: radius.sm, backgroundColor: tintOf(colors, cat.tint).soft, alignItems: "center", justifyContent: "center", overflow: "hidden" }, style]}>
       {product?.image ? (
         <Image source={{ uri: mediaUrl(product.image) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : (
@@ -401,12 +414,12 @@ export function ProductImage({ product, height = 140, style }: { product?: { ima
 export function SwitchRow({ label, hint, value, onValueChange, testID }: { label: string; hint?: string; value: boolean; onValueChange: (v: boolean) => void; testID?: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.row, { borderBottomColor: colors.divider, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+    <View style={styles.row}>
       <View style={{ flex: 1 }}>
         <Txt v="medium">{label}</Txt>
         {hint ? <Txt v="caption">{hint}</Txt> : null}
       </View>
-      <Switch testID={testID} value={value} onValueChange={onValueChange} trackColor={{ true: colors.sage, false: colors.surfaceTertiary }} thumbColor={colors.surfaceSecondary} />
+      <Switch testID={testID} value={value} onValueChange={onValueChange} trackColor={{ true: colors.onSurface, false: colors.borderStrong }} thumbColor={colors.surfaceSecondary} />
     </View>
   );
 }
@@ -449,34 +462,36 @@ export function Sheet({ visible, onClose, title, children, testID }: { visible: 
 export function ProgressBar({ value }: { value: number }) {
   const { colors } = useTheme();
   return (
-    <View style={{ height: 4, borderRadius: 4, backgroundColor: colors.surfaceTertiary, overflow: "hidden" }} testID="progress-bar">
-      <View style={{ width: `${Math.max(4, Math.min(100, value * 100))}%`, height: 4, backgroundColor: colors.sage, borderRadius: 4 }} />
+    <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceTertiary, overflow: "hidden" }} testID="progress-bar">
+      <View style={{ width: `${Math.max(4, Math.min(100, value * 100))}%`, height: 8, backgroundColor: colors.onSurface, borderRadius: 4 }} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  btn: { minHeight: 48, borderRadius: radius.md, paddingHorizontal: space.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, borderWidth: 1 },
+  btn: { minHeight: 52, borderRadius: radius.pill, paddingHorizontal: space.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, borderWidth: 1 },
   btnSmall: { minHeight: 44, paddingHorizontal: space.lg },
-  btnText: { fontFamily: fonts.bodyBold, fontSize: 15, letterSpacing: -0.1 },
-  chip: { minHeight: 36, paddingHorizontal: 12, borderRadius: radius.sm, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
+  btnText: { fontFamily: fonts.displayMedium, fontSize: 15, letterSpacing: -0.2 },
+  chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
   chipText: { fontFamily: fonts.bodyMedium, fontSize: 14 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  input: { minHeight: 48, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: space.lg, fontFamily: fonts.body },
+  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1.5, paddingHorizontal: space.lg, fontFamily: fonts.body },
   iconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   dot: { position: "absolute", top: 9, right: 10, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
-  header: { paddingHorizontal: space.lg, paddingBottom: space.md, borderBottomWidth: StyleSheet.hairlineWidth },
+  header: { paddingHorizontal: space.lg, paddingBottom: space.sm },
   headerRow: { flexDirection: "row", alignItems: "center", minHeight: 44 },
-  footer: { paddingHorizontal: space.xl, paddingTop: space.lg, borderTopWidth: StyleSheet.hairlineWidth, gap: space.sm },
-  card: { borderRadius: radius.md, padding: space.lg },
-  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.sm, minHeight: 28 },
-  row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 14, minHeight: 56 },
-  rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  footer: { paddingHorizontal: space.xl, paddingTop: space.md, gap: space.sm },
+  card: { borderRadius: radius.lg, padding: space.lg },
+  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm, marginBottom: space.md, minHeight: 28 },
+  sectionAction: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 32 },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 8, minHeight: 60 },
+  rowIcon: { width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   empty: { alignItems: "center", paddingVertical: space.xxl, paddingHorizontal: space.lg },
-  emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", marginBottom: space.md },
-  badge: { paddingHorizontal: 8, height: 22, borderRadius: 6, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },
-  badgeText: { fontFamily: fonts.bodyMedium, fontSize: 12 },
-  fab: { position: "absolute", right: space.xl, height: 56, minWidth: 56, paddingHorizontal: 18, borderRadius: 28, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center" },
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.xl, maxHeight: "85%" },
+  emptyArt: { marginBottom: space.md, alignItems: "center" },
+  emptyIcon: { position: "absolute", right: -6, bottom: -4, width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  badge: { paddingHorizontal: 10, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },
+  badgeText: { fontFamily: fonts.displayMedium, fontSize: 12 },
+  fab: { position: "absolute", right: space.xl, height: 56, minWidth: 56, paddingHorizontal: 20, borderRadius: 28, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center" },
+  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: space.xl, maxHeight: "85%" },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: space.md, marginTop: -8 },
 });

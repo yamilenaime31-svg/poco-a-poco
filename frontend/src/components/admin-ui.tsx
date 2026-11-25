@@ -54,5 +54,5 @@ export function NumField({ label, value, onChange, testID }: { label: string; va
 export const tableRow = (colors: any) => ({ flexDirection: "row" as const, gap: space.sm, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider, alignItems: "center" as const });
 
 const styles = StyleSheet.create({
-  metric: { flex: 1, minWidth: 0, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, padding: space.md, gap: 2 },
+  metric: { flex: 1, minWidth: 0, borderRadius: radius.md, borderWidth: 0, padding: space.md, gap: 2 },
 });

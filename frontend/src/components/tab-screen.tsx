@@ -37,18 +37,18 @@ export function TabScreen({
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID={testID}>
-      <View style={{ paddingTop: insets.top + space.sm, paddingHorizontal: space.xl, paddingBottom: space.md, backgroundColor: colors.surface, borderBottomWidth: sticky ? 0 : 0.5, borderBottomColor: colors.divider }}>
-        <View style={{ flexDirection: "row", alignItems: "center", minHeight: 44 }}>
-          <View style={{ flex: 1 }}>{title ? <Txt v="h1">{title}</Txt> : <Logo size={26} />}</View>
+      <View style={{ paddingTop: insets.top + space.xs, paddingHorizontal: space.xl, paddingBottom: space.sm, backgroundColor: colors.surface }}>
+        <View style={{ flexDirection: "row", alignItems: "center", minHeight: 48, gap: space.sm }}>
+          <View style={{ flex: 1 }}>{title ? <Txt v="h1" testID="tab-title">{title}</Txt> : <Logo size={26} />}</View>
           {right}
           <IconBtn icon="bell" badge={!!unread} onPress={() => router.push("/notifications")} testID="header-notifications-button" />
         </View>
-        {subtitle ? <Txt v="caption">{subtitle}</Txt> : null}
+        {subtitle ? <Txt v="caption" style={{ marginTop: 2 }}>{subtitle}</Txt> : null}
       </View>
       {sticky}
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: bottomChrome + space.xxxl + space.xl }}
-        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.sage} /> : undefined}
+        contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.xs, paddingBottom: bottomChrome + space.xxl }}
+        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.onSurface} /> : undefined}
       >
         {children}
       </ScrollView>

@@ -10,11 +10,12 @@ import { TabScreen } from "@/src/components/tab-screen";
 import { TileGrid } from "@/src/components/tile-grid";
 import { SIGNALS, fmtDate, fmtDateTime, today } from "@/src/constants";
 import { Badge, Card, Chip, Empty, ErrorState, Loading, Row, Section, Txt } from "@/src/ui";
-import { space } from "@/src/theme";
+import { space, useTheme } from "@/src/theme";
 
 export function CaregiverHome() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const q = useApi<any>(`/home?today=${today()}&role=caregiver`);
   const d = q.data?.role === "caregiver" ? q.data : undefined;
   const [pid, setPid] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export function CaregiverHome() {
   return (
     <TabScreen unread={d?.unread} refreshing={q.isRefetching} onRefresh={q.refetch} testID="caregiver-home-screen">
       <Animated.View entering={FadeInDown.duration(400)}>
-        <Txt v="h1" style={{ marginTop: space.sm }} testID="home-greeting">
+        <Txt v="display" style={{ marginTop: space.xs }} testID="home-greeting">
           Hola, {user?.preferred_name || user?.name}.
         </Txt>
         <Txt v="caption">Lo que necesitas, cuando lo necesitas.</Txt>
@@ -42,20 +43,20 @@ export function CaregiverHome() {
             ))}
           </ScrollView>
 
-          <Card style={{ marginTop: space.md }} testID="caregiver-requests-card">
+          <Card tint="sage" style={{ marginTop: space.md, borderRadius: 24 }} testID="caregiver-requests-card">
             <View style={styles.head}>
-              <Txt v="label">Solicitudes recibidas</Txt>
-              <Badge label={`${d.signals.length} abiertas`} tint={d.signals.length ? "coral" : "sand"} testID="caregiver-requests-count" />
+              <Txt v="title">Solicitudes recibidas</Txt>
+              <Badge label={`${d.signals.length} abiertas`} tint="sand" testID="caregiver-requests-count" />
             </View>
             {d.signals.length === 0 ? (
-              <Txt v="caption" style={{ marginTop: space.sm }}>
+              <Txt v="caption" color={colors.onSurface} style={{ marginTop: space.sm }}>
                 Sin solicitudes nuevas por ahora.
               </Txt>
             ) : (
               d.signals.slice(0, 3).map((s: any, i: number) => {
                 const def = SIGNALS.find((x) => x.type === s.type);
                 return (
-                  <Row key={s.id} icon={def?.icon || "bell"} tint={def?.tint} title={`${s.patient_name}: ${s.label}`} subtitle={`${s.urgency} · ${fmtDateTime(s.created_at)}${s.message ? `\n${s.message}` : ""}`} onPress={() => router.push("/signals")} testID={`caregiver-signal-${s.id}`} last={i === Math.min(2, d.signals.length - 1)} />
+                  <Row key={s.id} icon={def?.icon || "bell"} tint="sand" title={`${s.patient_name}: ${s.label}`} subtitle={`${s.urgency} · ${fmtDateTime(s.created_at)}${s.message ? `\n${s.message}` : ""}`} onPress={() => router.push("/signals")} testID={`caregiver-signal-${s.id}`} last={i === Math.min(2, d.signals.length - 1)} />
                 );
               })
             )}
