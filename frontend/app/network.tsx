@@ -1,3 +1,4 @@
+import { Spot } from "@/src/art";
 import { useState } from "react";
 import { Share, View } from "react-native";
 
@@ -96,13 +97,14 @@ export default function Network() {
         <>
           {!isCg ? (
             <>
-              <Card tint="sage" testID="network-invite-code-card">
+              <Card tint="sage" style={{ borderRadius: 24, overflow: "hidden" }} testID="network-invite-code-card">
+                <View style={{ position: "absolute", right: 10, top: 10 }} pointerEvents="none"><Spot name="network" size={76} /></View>
                 <Txt v="label">Tu código de invitación</Txt>
                 <Txt v="display" style={{ letterSpacing: 4, marginVertical: space.sm }} testID="network-invite-code">
                   {d.invite_code}
                 </Txt>
                 <Txt v="caption">Quien lo use se unirá a tu red con los permisos que definiste por defecto.</Txt>
-                <Btn label="Compartir código" small variant="secondary" icon="share-2" onPress={() => Share.share({ message: `Únete a mi red en AMODO con el código ${d.invite_code}` })} testID="network-share-code-button" style={{ alignSelf: "flex-start", marginTop: space.md }} />
+                <Btn label="Compartir código" small icon="share-2" onPress={() => Share.share({ message: `Únete a mi red en AMODO con el código ${d.invite_code}` })} testID="network-share-code-button" style={{ alignSelf: "flex-start", marginTop: space.md }} />
               </Card>
               <Section title="Invitar por correo">
                 <Field label="Nombre" value={name} onChangeText={setName} testID="network-invite-name-input" />
@@ -118,8 +120,9 @@ export default function Network() {
           {isCg || d.as_caregiver.length ? (
             <>
               {isCg ? (
-                <Card tint="lavender">
-                  <Txt v="title">Vincúlate con quien acompañas</Txt>
+                <Card tint="lavender" style={{ borderRadius: 24 }}>
+                  <Spot name="network" size={56} />
+                  <Txt v="h2" style={{ marginTop: space.sm }}>Vincúlate con quien acompañas</Txt>
                   <Field label="Código de invitación" value={code} onChangeText={(v) => setCode(v.toUpperCase())} autoCapitalize="characters" maxLength={6} testID="network-join-code-input" style={{ marginTop: space.sm }} />
                   <Btn label="Vincularme con código" icon="link" loading={busy} disabled={code.length < 6} onPress={() => run("/network/join", { code }, "Ya formas parte de su red")} testID="network-join-button" />
                   <Txt v="caption" style={{ marginVertical: space.lg, textAlign: "center" }}>

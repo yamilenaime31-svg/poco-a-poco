@@ -17,11 +17,11 @@ export function AdminScreen({ title, subtitle, children, footer, overlay, testID
   return <Screen title={title} subtitle={subtitle} footer={footer} overlay={overlay} testID={testID}>{children}</Screen>;
 }
 
-export function Metric({ label, value, testID }: { label: string; value: string | number; testID?: string }) {
+export function Metric({ label, value, testID, bg }: { label: string; value: string | number; testID?: string; bg?: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.metric, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID={testID}>
-      <Txt v="caption" numberOfLines={2}>{label}</Txt>
+    <View style={[styles.metric, { backgroundColor: bg || colors.surfaceSecondary }]} testID={testID}>
+      <Txt v="caption" color={colors.onSurface} numberOfLines={2}>{label}</Txt>
       <Txt v="h2">{value}</Txt>
     </View>
   );

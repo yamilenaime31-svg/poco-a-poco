@@ -111,3 +111,9 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Inicio: saludo display, tarjeta Mi día lavanda con ilustración y estado vacío neutral, estados (En calma, Con energía, Cansado/a, Con sueño, Sensible, Preocupado/a, Con molestias, Con dolor) con animación breve y movimiento reducido, señales en retícula 2 columnas sin truncar, bento "A tu modo".
 - Agenda: segmento en tinta, hoy en lavanda, tarjetas grandes por categoría para visitas y compactas para lo demás. Organiza: módulo IA en tinta + retículas con ilustraciones. Kits: héroe durazno, tamaños con KitBox, espacios que se llenan, etiquetas Incluido/Premium. Perfil: héroe mantequilla, plan Plus lavanda. Landing/bienvenida/planes/Plus/confirmación de pedido con el mismo lenguaje.
 - Sin cambios en lógica, API ni datos.
+
+## Iteration 16 (Jun 2026)
+- Avisos (src/toast.tsx): ahora salen abajo, sobre la barra inferior/pie (bottom inset + 96).
+- Avatar (src/components/avatar.tsx): cabello + Ondulado, Afro, Flequillo, Coleta, Trenzas; 4 colores de cabello; Boina y Sombrero; lentes De sol; Collar y Flor; más colores de ropa/accesorio; fondos con la paleta nueva y "Forma de fondo" (Liso, Pétalo, Nube, Destello, Arco). Valores previos intactos.
+- Registros (/records/[kind]): héroe de color con ilustración y conteo, filas como tarjetas. Red de apoyo: tarjetas con ilustración. Administración: métricas en color y enlaces como tarjetas.
+- Verificado solo con capturas propias.

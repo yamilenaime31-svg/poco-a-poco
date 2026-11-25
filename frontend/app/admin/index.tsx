@@ -20,6 +20,8 @@ const LINKS = [
   { t: "Ajustes", s: "Tamaños, precios base, costos y planes", i: "settings", h: "/admin/settings" },
 ];
 
+const TINTS = ["sky", "butter", "lavender", "sage", "coral", "mauve"];
+
 export default function AdminHome() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -30,12 +32,12 @@ export default function AdminHome() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} /> : (
         <>
           <Grid>
-            <Metric label="Artículos" value={o.products} testID="admin-metric-products" />
-            <Metric label="Agotados o inactivos" value={o.out_of_stock} testID="admin-metric-out" />
-            <Metric label="Valor del inventario (costo)" value={money(Math.round(o.inventory_value))} />
-            <Metric label="Pedidos abiertos" value={`${o.orders_open} de ${o.orders}`} />
-            <Metric label="Ventas de demostración" value={money(o.revenue_demo)} />
-            <Metric label="Activaciones de códigos" value={o.activations} />
+            <Metric bg={colors.sky} label="Artículos" value={o.products} testID="admin-metric-products" />
+            <Metric bg={colors.coral} label="Agotados o inactivos" value={o.out_of_stock} testID="admin-metric-out" />
+            <Metric bg={colors.butter} label="Valor del inventario (costo)" value={money(Math.round(o.inventory_value))} />
+            <Metric bg={colors.lavender} label="Pedidos abiertos" value={`${o.orders_open} de ${o.orders}`} />
+            <Metric bg={colors.sage} label="Ventas de demostración" value={money(o.revenue_demo)} />
+            <Metric bg={colors.mauve} label="Activaciones de códigos" value={o.activations} />
           </Grid>
           <Section title={`Alertas de rentabilidad (${o.alerts.length})`} testID="admin-alerts">
             {o.alerts.length ? o.alerts.map((a: any, i: number) => (
@@ -47,7 +49,11 @@ export default function AdminHome() {
             <Txt v="caption">Los precios mostrados a usuarios no cambian solos; ajusta suplementos o clasificaciones manualmente.</Txt>
           </Section>
           <Section title="Gestión">
-            {LINKS.map((l, i) => <Row key={l.h} icon={l.i} tint="sand" title={l.t} subtitle={l.s} onPress={() => router.push(l.h as any)} testID={`admin-link-${l.h.split("/").pop()}`} last={i === LINKS.length - 1} />)}
+            {LINKS.map((l, i) => (
+              <View key={l.h} style={{ backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, paddingHorizontal: space.md, marginBottom: space.sm }}>
+                <Row icon={l.i} tint={TINTS[i % TINTS.length]} title={l.t} subtitle={l.s} onPress={() => router.push(l.h as any)} testID={`admin-link-${l.h.split("/").pop()}`} last />
+              </View>
+            ))}
           </Section>
         </>
       )}

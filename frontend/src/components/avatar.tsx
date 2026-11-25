@@ -1,6 +1,7 @@
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
 import { View } from "react-native";
 
+import { SHAPES, ShapeName } from "@/src/art";
 import { Txt } from "@/src/ui";
 import { useTheme } from "@/src/theme";
 
@@ -13,20 +14,22 @@ export const AVATAR_OPTIONS: Record<string, { label: string; values: string[]; c
   eyes: { label: "Ojos", values: ["Puntos", "Sonrientes", "Abiertos", "Tranquilos"] },
   brows: { label: "Cejas", values: ["Suaves", "Rectas", "Arqueadas", "Sin cejas"] },
   mouth: { label: "Boca", values: ["Sonrisa", "Neutral", "Abierta", "Pequeña"] },
-  hair: { label: "Cabello", values: ["Sin cabello", "Rapado", "Corto", "Rizado", "Melena", "Largo", "Chongo"] },
-  hairColor: { label: "Color de cabello", values: ["#2B2B2B", "#5A3825", "#A0522D", "#D9B26F", "#BDBDBD", "#9B7BD4", "#E98A6B"], colors: true },
-  headwear: { label: "Pañuelos y gorros", values: ["Ninguno", "Pañuelo", "Gorro", "Banda", "Turbante"] },
-  headColor: { label: "Color del accesorio", values: ["#A8DDB5", "#D4C2F4", "#FFC5AB", "#FFE49B", "#B9DDF7", "#292929"], colors: true },
-  glasses: { label: "Lentes", values: ["Sin lentes", "Redondos", "Cuadrados"] },
-  accessory: { label: "Detalles", values: ["Ninguno", "Aretes", "Pecas", "Lunar", "Vello facial"] },
+  hair: { label: "Cabello", values: ["Sin cabello", "Rapado", "Corto", "Rizado", "Melena", "Largo", "Chongo", "Ondulado", "Afro", "Flequillo", "Coleta", "Trenzas"] },
+  hairColor: { label: "Color de cabello", values: ["#2B2B2B", "#5A3825", "#A0522D", "#D9B26F", "#BDBDBD", "#9B7BD4", "#E98A6B", "#F2F0EA", "#E4A3C8", "#7FA8DC", "#6FAE8A"], colors: true },
+  headwear: { label: "Pañuelos y gorros", values: ["Ninguno", "Pañuelo", "Gorro", "Banda", "Turbante", "Boina", "Sombrero"] },
+  headColor: { label: "Color del accesorio", values: ["#A8DDB5", "#D4C2F4", "#FFC5AB", "#FFE49B", "#B9DDF7", "#292929", "#BEB1EE", "#F6BA91", "#F3DA83", "#E4C5DE", "#FFFFFF"], colors: true },
+  glasses: { label: "Lentes", values: ["Sin lentes", "Redondos", "Cuadrados", "De sol"] },
+  accessory: { label: "Detalles", values: ["Ninguno", "Aretes", "Pecas", "Lunar", "Vello facial", "Collar", "Flor"] },
   clothes: { label: "Ropa", values: ["Cuello redondo", "Cuello V", "Sudadera"] },
-  clothColor: { label: "Color de ropa", values: ["#A8DDB5", "#D4C2F4", "#FFC5AB", "#FFE49B", "#B9DDF7", "#292929", "#FFFFFF"], colors: true },
-  bg: { label: "Fondo", values: ["#E3F5E8", "#F0E8FD", "#FFE9DF", "#FFF4CF", "#E6F3FD"], colors: true },
+  clothColor: { label: "Color de ropa", values: ["#A8DDB5", "#D4C2F4", "#FFC5AB", "#FFE49B", "#B9DDF7", "#292929", "#FFFFFF", "#BEB1EE", "#F6BA91", "#F3DA83", "#E4C5DE", "#AFCBF0"], colors: true },
+  bg: { label: "Color de fondo", values: ["#E3F5E8", "#F0E8FD", "#FFE9DF", "#FFF4CF", "#E6F3FD", "#B9D6AE", "#BEB1EE", "#F6BA91", "#F3DA83", "#AFCBF0", "#E4C5DE", "#F7F6F2", "#25282A"], colors: true },
+  bgShape: { label: "Forma de fondo", values: ["Liso", "Pétalo", "Nube", "Destello", "Arco"] },
 };
 
 export const DEFAULT_AVATAR: AvatarData = Object.fromEntries(Object.entries(AVATAR_OPTIONS).map(([k, o]) => [k, o.values[k === "hair" ? 2 : 0]]));
 
 const INK = "#292929";
+const BG_SHAPE: Record<string, ShapeName> = { "Pétalo": "petal", Nube: "cloud", Destello: "burst", Arco: "arch" };
 
 // Zoomed viewBoxes so option thumbnails focus on the feature they change.
 export const AVATAR_CROPS = { full: "0 0 100 100", head: "12 4 76 76", face: "22 18 56 56", eyes: "30 28 40 40", mouth: "32 40 36 36" };
@@ -39,7 +42,11 @@ export function AvatarSvg({ a, size = 96, crop = "full" }: { a: AvatarData; size
   const covered = v.headwear !== "Ninguno" && v.headwear !== "Banda";
   return (
     <Svg width={size} height={size} viewBox={AVATAR_CROPS[crop]}>
-      <Circle cx={50} cy={50} r={50} fill={v.bg} />
+      <Rect x={0} y={0} width={100} height={100} fill={v.bg} />
+      {BG_SHAPE[v.bgShape] ? <Path d={SHAPES[BG_SHAPE[v.bgShape]]} fill="#FFFFFF" opacity={v.bg === "#25282A" ? 0.18 : 0.5} transform="translate(-6 -8) scale(1.12)" /> : null}
+      {!covered && v.hair === "Afro" ? <Circle cx={50} cy={31} r={27} fill={hc} /> : null}
+      {!covered && v.hair === "Ondulado" ? <Path d="M27 40 Q21 54 27 64 Q22 74 32 82 L68 82 Q78 74 73 64 Q79 54 73 40 Z" fill={hc} /> : null}
+      {!covered && v.hair === "Coleta" ? <Path d="M68 24 Q88 28 82 58 Q76 46 70 42 Z" fill={hc} /> : null}
       {!covered && (v.hair === "Largo" || v.hair === "Melena") ? <Path d={v.hair === "Largo" ? "M28 40 Q26 80 36 86 L64 86 Q74 80 72 40 Z" : "M28 40 Q27 64 34 68 L66 68 Q73 64 72 40 Z"} fill={hc} /> : null}
       <Path d={v.clothes === "Sudadera" ? "M12 100 Q12 70 50 68 Q88 70 88 100 Z" : "M16 100 Q16 73 50 71 Q84 73 84 100 Z"} fill={v.clothColor} stroke={v.clothColor === "#FFFFFF" ? "#E0D2BC" : "none"} />
       <Rect x={44} y={58} width={12} height={15} rx={5} fill={skin} />
@@ -48,7 +55,9 @@ export function AvatarSvg({ a, size = 96, crop = "full" }: { a: AvatarData; size
       <Circle cx={70} cy={46} r={4} fill={skin} />
       {head}
       {!covered && v.hair === "Rapado" ? <Path d="M30 38 Q32 20 50 19 Q68 20 70 38 Q60 28 50 28 Q40 28 30 38 Z" fill={hc} opacity={0.55} /> : null}
-      {!covered && ["Corto", "Melena", "Largo", "Chongo"].includes(v.hair) ? <Path d="M28 42 Q27 17 50 17 Q73 17 72 42 Q66 30 56 28 Q44 33 30 40 Z" fill={hc} /> : null}
+      {!covered && ["Corto", "Melena", "Largo", "Chongo", "Ondulado", "Afro", "Coleta", "Trenzas"].includes(v.hair) ? <Path d="M28 42 Q27 17 50 17 Q73 17 72 42 Q66 30 56 28 Q44 33 30 40 Z" fill={hc} /> : null}
+      {!covered && v.hair === "Flequillo" ? <Path d="M28 44 Q26 16 50 16 Q74 16 72 44 Q70 36 66 35 Q50 31 34 35 Q30 36 28 44 Z" fill={hc} /> : null}
+      {!covered && v.hair === "Trenzas" ? <G fill={hc}>{[50, 58, 66, 74].map((y) => <G key={y}><Circle cx={27} cy={y} r={4.6} /><Circle cx={73} cy={y} r={4.6} /></G>)}</G> : null}
       {!covered && v.hair === "Chongo" ? <Circle cx={50} cy={13} r={8} fill={hc} /> : null}
       {!covered && v.hair === "Rizado" ? (
         <G fill={hc}>
@@ -76,6 +85,19 @@ export function AvatarSvg({ a, size = 96, crop = "full" }: { a: AvatarData; size
         <G fill={v.headColor}>
           <Path d="M26 42 Q22 10 50 11 Q78 10 74 42 Q62 30 50 31 Q38 30 26 42 Z" />
           <Path d="M36 22 Q50 34 64 22" stroke={INK} strokeOpacity={0.15} strokeWidth={2} fill="none" />
+        </G>
+      ) : null}
+      {v.headwear === "Boina" ? (
+        <G fill={v.headColor}>
+          <Ellipse cx={47} cy={22} rx={27} ry={12} />
+          <Circle cx={50} cy={9.5} r={2.2} />
+        </G>
+      ) : null}
+      {v.headwear === "Sombrero" ? (
+        <G fill={v.headColor}>
+          <Path d="M33 31 Q33 9 50 9 Q67 9 67 31 Z" />
+          <Ellipse cx={50} cy={31} rx={33} ry={5.5} />
+          <Rect x={33} y={25} width={34} height={4} fill={INK} opacity={0.18} />
         </G>
       ) : null}
       {v.headwear === "Banda" ? <Rect x={29} y={29} width={42} height={6} rx={3} fill={v.headColor} /> : null}
@@ -118,7 +140,7 @@ export function AvatarSvg({ a, size = 96, crop = "full" }: { a: AvatarData; size
         </G>
       )}
       {v.glasses !== "Sin lentes" ? (
-        <G stroke={INK} strokeWidth={1.6} fill="none">
+        <G stroke={INK} strokeWidth={1.6} fill={v.glasses === "De sol" ? INK : "none"}>
           {v.glasses === "Redondos" ? (
             <>
               <Circle cx={41.5} cy={44} r={6} />
@@ -138,6 +160,13 @@ export function AvatarSvg({ a, size = 96, crop = "full" }: { a: AvatarData; size
           {[[37, 51], [40, 53], [43, 51], [57, 51], [60, 53], [63, 51]].map(([x, y]) => (
             <Circle key={`${x}${y}`} cx={x} cy={y} r={0.9} />
           ))}
+        </G>
+      ) : null}
+      {v.accessory === "Collar" ? <G fill="#E3B341">{[[43, 73.5], [46.5, 75.5], [50, 76.3], [53.5, 75.5], [57, 73.5]].map(([x, y]) => <Circle key={x} cx={x} cy={y} r={1.5} />)}</G> : null}
+      {v.accessory === "Flor" ? (
+        <G>
+          {[[69, 26], [73, 30], [69, 34], [65, 30]].map(([x, y]) => <Circle key={`${x}${y}`} cx={x} cy={y} r={3.2} fill="#F6BA91" />)}
+          <Circle cx={69} cy={30} r={2.4} fill="#F3DA83" />
         </G>
       ) : null}
       {v.accessory === "Lunar" ? <Circle cx={61} cy={54} r={1.3} fill={INK} /> : null}

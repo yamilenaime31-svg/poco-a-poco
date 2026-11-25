@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { fonts, useTheme } from "@/src/theme";
@@ -24,13 +24,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastCtx.Provider value={{ show }}>
       {children}
       {toast && (
-        <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 8 }]}>
+        <View pointerEvents="none" style={[styles.wrap, { bottom: insets.bottom + 96 }]}>
           <Animated.View
             key={toast.key}
-            entering={FadeInUp.duration(220)}
-            exiting={FadeOutUp.duration(180)}
+            entering={FadeInDown.duration(200)}
+            exiting={FadeOutDown.duration(160)}
             testID="toast-message"
-            style={[styles.toast, { backgroundColor: toast.tone === "error" ? colors.coral : colors.surfaceInverse }]}
+            style={[styles.toast, { backgroundColor: toast.tone === "error" ? colors.error : colors.surfaceInverse }]}
           >
             <Text style={[styles.text, { color: toast.tone === "error" ? colors.onError : colors.onSurfaceInverse }]}>{toast.msg}</Text>
           </Animated.View>
@@ -44,6 +44,6 @@ export const useToast = () => useContext(ToastCtx);
 
 const styles = StyleSheet.create({
   wrap: { position: "absolute", left: 16, right: 16, alignItems: "center" },
-  toast: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 16, maxWidth: 480 },
+  toast: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 22, maxWidth: 480 },
   text: { fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20 },
 });

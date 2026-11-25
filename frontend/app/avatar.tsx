@@ -19,7 +19,7 @@ const CATEGORIES: { key: string; label: string; icon: string; groups: string[] }
   { key: "hair", label: "Cabello", icon: "scissors", groups: ["hair", "hairColor"] },
   { key: "acc", label: "Accesorios", icon: "glasses", groups: ["headwear", "headColor", "glasses", "accessory"] },
   { key: "clothes", label: "Ropa", icon: "shirt", groups: ["clothes", "clothColor"] },
-  { key: "bg", label: "Fondo", icon: "image", groups: ["bg"] },
+  { key: "bg", label: "Fondo", icon: "image", groups: ["bg", "bgShape"] },
 ];
 
 const CROP: Record<string, Crop> = { face: "head", eyes: "eyes", brows: "eyes", mouth: "mouth", hair: "head", headwear: "head", glasses: "eyes", accessory: "face", clothes: "full" };

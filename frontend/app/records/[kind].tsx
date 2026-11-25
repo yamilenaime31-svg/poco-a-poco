@@ -4,10 +4,16 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { KINDS, fmtDate, money } from "@/src/constants";
+import { Spot } from "@/src/art";
+import { KINDS, fmtDate, money, tintOf } from "@/src/constants";
 import { Badge, Card, Chip, Empty, ErrorState, Fab, Ic, Loading, Row, Screen, Txt, tap } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const LOOK: Record<string, { spot: string; tint: string }> = {
+  treatments: { spot: "treatments", tint: "lavender" }, medications: { spot: "medications", tint: "coral" }, tasks: { spot: "tasks", tint: "sage" },
+  transfers: { spot: "transfers", tint: "butter" }, expenses: { spot: "expenses", tint: "sky" }, journal: { spot: "day", tint: "mauve" }, events: { spot: "calendar", tint: "lavender" },
+};
 
 function subtitleFor(kind: string, r: any) {
   switch (kind) {
@@ -46,6 +52,7 @@ export default function Records() {
   const ownerLink = linked.find((l: any) => l.patient_id === owner);
   const canAdd = assigned !== "me" && (!owner || ownerLink?.permissions?.edit);
   const title = assigned === "me" ? "Mis pendientes" : def.label;
+  const look = LOOK[kind] || LOOK.events;
 
   const toggle = async (t: any) => {
     tap();
@@ -92,6 +99,13 @@ export default function Records() {
           <Ic name="arrow-right" size={18} />
         </Pressable>
       ) : null}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, backgroundColor: tintOf(colors, look.tint).bg, borderRadius: 24, padding: space.lg, marginBottom: space.lg }} testID="records-hero">
+        <Spot name={look.spot} size={64} pop={look.tint === "butter" ? colors.lavender : colors.butter} />
+        <View style={{ flex: 1 }}>
+          <Txt v="section">{q.data ? `${items.length} ${items.length === 1 ? "registro" : "registros"}` : title}</Txt>
+          <Txt v="caption" color={colors.onSurface}>{def.empty}</Txt>
+        </View>
+      </View>
       {def.note ? (
         <Card style={{ marginBottom: space.lg }} testID="records-note">
           <View style={{ flexDirection: "row", gap: space.sm }}>
@@ -107,7 +121,7 @@ export default function Records() {
             { l: "Pagado", v: totals.paid },
             { l: "Pendiente", v: totals.all - totals.paid },
           ].map((x) => (
-            <Card key={x.l} style={{ flex: 1, padding: space.md }}>
+            <Card key={x.l} style={{ flex: 1, padding: space.md, borderRadius: 16 }}>
               <Txt v="label">{x.l}</Txt>
               <Txt v="title" style={{ marginTop: 4, fontSize: 14 }} testID={`expenses-total-${x.l}`}>
                 {money(x.v)}
@@ -120,16 +134,16 @@ export default function Records() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} /> : items.length === 0 ? (
         <Empty icon={def.icon} title={showDone ? "Nada marcado como hecho" : "Todavía no hay nada aquí"} text={def.empty} testID="records-empty" />
       ) : (
-        items.map((r, i) => (
+        items.map((r) => (
+          <View key={r.id} style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 20, paddingHorizontal: space.md, marginBottom: space.sm }}>
           <Row
-            key={r.id}
             icon={kind === "tasks" ? undefined : def.icon}
-            tint={i % 3 === 0 ? "sage" : i % 3 === 1 ? "lavender" : "coral"}
+            tint={look.tint}
             title={kind === "journal" ? fmtDate(r.date) : r[def.titleKey] || "Sin nombre"}
             subtitle={subtitleFor(kind, r)}
             onPress={() => router.push({ pathname: "/record-form", params: { kind, id: r.id } })}
             testID={`record-row-${r.id}`}
-            last={i === items.length - 1}
+            last
             right={
               kind === "tasks" ? (
                 <Pressable onPress={() => toggle(r)} hitSlop={10} testID={`record-check-${r.id}`} style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: r.done ? colors.sage : colors.borderStrong, backgroundColor: r.done ? colors.sage : "transparent", alignItems: "center", justifyContent: "center" }}>
@@ -140,6 +154,7 @@ export default function Records() {
               ) : undefined
             }
           />
+          </View>
         ))
       )}
       {kind === "tasks" && assigned !== "me" && user?.role === "caregiver" ? (
