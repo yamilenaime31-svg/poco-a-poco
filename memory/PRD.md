@@ -96,3 +96,9 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Identidad y estilo (Plus, /style, backend/style.py): colores (muestras), texturas, accesorios, estilos en profile.style; propuestas del catálogo con motivo; imagen de inspiración con IA (Gemini image, solo elecciones de estilo, cuenta como interacción de IA, máx. 8, guardada en object storage amodo/style/<uuid>.jpg servida por /api/media).
 - Accesos: Organiza → También; Perfil; Inicio (tile Próxima semana); plus-welcome; Inicio de acompañante (Listas de preparación).
 - Pendiente de fase 2: disponibilidad/coordinación de acompañantes, análisis avanzado de gastos, notas de voz/fotos en asistente, "Me interesa / Ya lo tengo".
+
+## Iteration 14 (Jun 2026)
+- Listas compartidas en Inicio: src/components/shared-lists.tsx (sección "Listas compartidas contigo") en CaregiverHome (filtrada por persona elegida) y en PatientHome (solo si hay), porque la cuenta demo de acompañante puede abrir el Inicio de paciente.
+- Análisis de gastos: /expense-analysis (cálculo en cliente sobre /records/expenses[?owner_id]): barras mes a mes pagado/pendiente (últimos 6), filtro por mes, diferencia vs mes anterior, quién pagó (monto y %), quién pagó mes a mes, categorías. Acceso: fila "Ver análisis" en Gastos.
+- Lista desde la cita: fila en /event/[id] que crea (POST /checklists {event_id}) o abre la lista ligada; acompañante solo abre si se la compartieron.
+- Solo verificado con capturas propias (sin testing agent).

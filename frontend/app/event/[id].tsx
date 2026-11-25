@@ -16,6 +16,23 @@ export default function EventDetail() {
   const { user } = useAuth();
   const q = useApi<any>(`/records/events/${id}`);
   const [confirm, setConfirm] = useState(false);
+  const [making, setMaking] = useState(false);
+  const lists = useApi<any>("/checklists");
+  const list = [...(lists.data?.mine || []), ...(lists.data?.shared || [])].find((c: any) => c.event_id === id);
+  const openList = async () => {
+    if (list) return router.push(`/checklist/${list.id}`);
+    if (making) return;
+    setMaking(true);
+    try {
+      const c = await api("/checklists", { method: "POST", body: { event_id: id } });
+      invalidate();
+      router.push(`/checklist/${c.id}`);
+    } catch (err: any) {
+      toast.show(err.message, "error");
+    } finally {
+      setMaking(false);
+    }
+  };
   const e = q.data;
   const mine = e?.owner_id === user?.id;
 
@@ -69,6 +86,10 @@ export default function EventDetail() {
           <Txt v="label" style={{ marginTop: space.xxl, marginBottom: space.sm }}>
             Preparar
           </Txt>
+          {list || mine ? (
+            <Row icon="clipboard-list" tint="sand" title={list ? list.title : "Crear lista de preparación"} testID="event-checklist" onPress={openList}
+              subtitle={list ? (list.total === 0 ? "Agrega lo que quieras tener listo" : list.done === list.total ? "Todo listo" : `${list.done} de ${list.total} listos`) : making ? "Creando…" : "Parte de una lista sugerida y ajústala"} />
+          ) : null}
           <Row icon="car" tint="lavender" title="Organizar traslado" subtitle="Crea un traslado para este día" onPress={() => router.push({ pathname: "/record-form", params: { kind: "transfers", date: e.date, title: `Traslado: ${e.title}`, destination: e.location || "", owner_id: owner_id || "" } })} testID="event-add-transfer" />
           {mine ? <Row icon="radio" tint="coral" title="Pedir compañía" subtitle="Envía una señal a tu red" onPress={() => router.push({ pathname: "/signals", params: { type: "compania", message: `Para: ${e.title} (${e.date || ""} ${e.time || ""})` } })} testID="event-request-company" /> : null}
           <Row icon="package" tint="sage" title="Preparar un kit" subtitle="Lo que te acompaña ese día" onPress={() => router.push({ pathname: "/kit-builder", params: { context: e.type === "Sesión de tratamiento" ? "Sesión de tratamiento" : "Traslados" } })} testID="event-prepare-kit" last />

@@ -116,6 +116,7 @@ export default function Records() {
           ))}
         </View>
       ) : null}
+      {totals && (q.data || []).length ? <Row icon="chart-no-axes-column" tint="sand" title="Ver análisis" subtitle="Comparativo por mes y por quién pagó" onPress={() => router.push({ pathname: "/expense-analysis", params: { owner_id: owner } })} testID="expenses-analysis-link" last /> : null}
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} /> : items.length === 0 ? (
         <Empty icon={def.icon} title={showDone ? "Nada marcado como hecho" : "Todavía no hay nada aquí"} text={def.empty} testID="records-empty" />
       ) : (

@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
+import { SharedLists } from "@/src/components/shared-lists";
 import { TabScreen } from "@/src/components/tab-screen";
 import { TileGrid } from "@/src/components/tile-grid";
 import { SIGNALS, fmtDate, fmtDateTime, today } from "@/src/constants";
@@ -72,6 +73,8 @@ export function CaregiverHome() {
             )}
           </Section>
 
+          <SharedLists ownerId={sel?.patient_id} ownerName={sel?.patient_name} />
+
           <Section title="Acompañar">
             <TileGrid tiles={[
                 { label: "Crear un kit", icon: "gift", onPress: () => router.push({ pathname: "/kit-builder", params: { for_name: sel?.patient_name, for_user_id: sel?.patient_id } }) },
@@ -81,7 +84,7 @@ export function CaregiverHome() {
                 { label: "Mi propia agenda", icon: "calendar-heart", onPress: () => router.push("/(tabs)/agenda") },
                 { label: "Personas vinculadas", icon: "users", onPress: () => router.push("/network") },
                 { label: "Solicitudes", icon: "inbox", onPress: () => router.push("/signals") },
-              ].map((a, i) => ({ ...a, key: a.label, tint: ["sage", "butter", "sky", "lavender", "coral", "sage"][i], testID: `caregiver-action-${a.label}` }))} />
+              ].map((a, i) => ({ ...a, key: a.label, tint: ["sage", "butter", "sky", "lavender", "coral", "sage", "butter"][i], testID: `caregiver-action-${a.label}` }))} />
           </Section>
 
           {d.own_events.length > 0 ? (

@@ -1,3 +1,4 @@
+import { SharedLists } from "@/src/components/shared-lists";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -215,6 +216,7 @@ export function PatientHome() {
             </View>
           </Section>
 
+          <SharedLists hideEmpty />
           <Section title="Pendientes" action="Todos" onAction={() => router.push("/pending")} testID="home-tasks-section">
             {d.tasks.length === 0 ? <Txt v="caption">Sin pendientes. Descansar también cuenta.</Txt> : d.tasks.slice(0, 3).map((task: any, i: number) => (
               <Row key={task.id} title={task.title} subtitle={task.date ? fmtDate(task.date) : undefined} onPress={() => router.push({ pathname: "/record-form", params: { kind: "tasks", id: task.id } })} testID={`home-task-${task.id}`} last={i === Math.min(2, d.tasks.length - 1)}
