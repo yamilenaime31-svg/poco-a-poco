@@ -141,3 +141,10 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - GET /process añade `finance` (compact) cuando hay gastos.
 - Frontend: /coverage (lista + formulario por tipo), /finances (tablero, filtros, permisos, reportes), /expense-form (secciones plegables), src/finance/shared.tsx (Fold, Docs). /records/expenses y /record-form?kind=expenses redirigen. Accesos en Perfil y Organiza. Recordatorios = pendiente prellenado en /record-form?kind=tasks.
 - No hecho: cifrado propio de archivos (se usa el del almacenamiento), categorías personalizadas persistentes, agrupación visual por siniestro, proyección de flujo de efectivo, comparación entre periodos financiera, tiempos de resolución.
+
+## Iteration 20 (Jun 2026) — Siniestros, flujo de efectivo, categorías propias, recordatorios de trámites
+- Por siniestro: src/finance/claims.tsx agrupa gastos por claim.claim_no en /finances (resumen, filtro, PDF Plus type=claim con claim_no). En el gasto se sugieren siniestros ya usados.
+- Flujo de efectivo (Plus): GET /api/finance/cashflow?today= → months[6], overdue, later, undated, in_review. Usa expense.due_date (nuevo, "Fecha límite de pago") y claim.expected_date. src/finance/cashflow.tsx. No Plus → 403 / tarjeta hacia /plus.
+- Categorías propias: db.finance_categories (se guardan al guardar el gasto); /finance/expenses devuelve `categories`; DELETE /api/finance/categories?name=.
+- Recordatorios: src/finance/reminders.tsx en el gasto; son tasks con expense_id + date + time (campo time añadido a KINDS.tasks). planner: tasks con expense_id y hora avisan también a la hora exacta (lead 0), respetando horas de silencio.
+- Autoprobado con script y capturas; sin pasada del testing agent.

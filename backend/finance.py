@@ -165,8 +165,9 @@ def _expense(body: dict, prev: dict | None, user: dict) -> dict:
     for k in ("amount", "discount"):
         if k in body:
             s[k] = num(body[k])
-    if "date" in body:
-        s["date"] = _date_or_empty(body["date"])
+    for k in ("date", "due_date"):
+        if k in body:
+            s[k] = _date_or_empty(body[k])
     if "payments" in body:
         s["payments"] = [p for p in _rows(body["payments"], ("amount", "date", "method", "by", "source", "coverage_id")) if p["amount"] > 0]
     if "supports" in body:
@@ -202,8 +203,54 @@ def _expense(body: dict, prev: dict | None, user: dict) -> dict:
 async def finance_expenses(owner_id: str | None = None, user=Depends(current_user)):
     owner = await access(user, owner_id, "view")
     items = await expenses_of(owner)
-    return {"items": items, "totals": totals(items), "claim_states": CLAIM_STATES, "doc_states": DOC_STATES,
+    cats = [c["name"] async for c in db.finance_categories.find({"owner_id": owner}).sort("name", 1)]
+    return {"items": items, "totals": totals(items), "claim_states": CLAIM_STATES, "doc_states": DOC_STATES, "categories": cats,
             "note": "AMODO solo organiza lo que registras. No está conectado con aseguradoras ni instituciones y no calcula coberturas definitivas."}
+
+
+async def remember_category(owner: str, name: str | None):
+    """Keeps every category the person used so a hand-written one can be picked again. The app hides its own defaults."""
+    if name and name.strip():
+        await db.finance_categories.update_one({"owner_id": owner, "name": name.strip()[:60]}, {"$setOnInsert": {"created_at": now_iso()}}, upsert=True)
+
+
+@api.delete("/finance/categories")
+async def forget_category(name: str, user=Depends(current_user)):
+    await db.finance_categories.delete_one({"owner_id": user["id"], "name": name})
+    return {"ok": True}
+
+
+@api.get("/finance/cashflow")
+async def cashflow(today: str, owner_id: str | None = None, user=Depends(require_plus)):
+    """Plus. Places what is still to pay and what was authorised but not received in the coming six months, using only the
+    dates the person registered. Always an estimate: nothing here is confirmed by an insurer or institution."""
+    owner = await access(user, owner_id, "view")
+    today = _date_or_empty(today)
+    if not today:
+        raise HTTPException(422, "Fecha no válida")
+    y, m = int(today[:4]), int(today[5:7])
+    keys = [f"{y + (m - 1 + i) // 12}-{(m - 1 + i) % 12 + 1:02d}" for i in range(6)]
+    buckets = {k: {"key": k, "pay": 0.0, "receive": 0.0, "items": []} for k in ["overdue", *keys, "later", "undated"]}
+    in_review = 0.0
+
+    def put(e, kind, amount, date):
+        k = "undated" if not date else "overdue" if date < today else date[:7] if date[:7] in buckets else "later"
+        buckets[k][kind] = round(buckets[k][kind] + amount, 2)
+        buckets[k]["items"].append({"id": e["id"], "title": e.get("title", ""), "kind": kind, "amount": amount, "date": date})
+
+    for e in await expenses_of(owner):
+        c, cl = e["calc"], e.get("claim") or {}
+        if c["pending_pay"] > 0:
+            put(e, "pay", c["pending_pay"], e.get("due_date") or (e["when"] if e["when"] >= today else ""))
+        if c["pending_receive"] > 0:
+            put(e, "receive", c["pending_receive"], cl.get("expected_date") or "")
+        if cl and not c["authorized"] and cl.get("status") not in ("Rechazado", "Trámite cerrado"):
+            in_review = round(in_review + c["requested"], 2)
+    for b in buckets.values():
+        b["items"].sort(key=lambda i: i["date"])
+    return {"months": [buckets[k] for k in keys], "overdue": buckets["overdue"], "later": buckets["later"], "undated": buckets["undated"], "in_review": in_review,
+            "has_any": any(b["items"] for b in buckets.values()),
+            "note": "Estimación con las fechas e importes que registraste. Las recuperaciones no están garantizadas y lo solicitado sin autorizar no se incluye."}
 
 
 @api.get("/finance/expenses/{eid}")
@@ -226,6 +273,7 @@ async def create_expense(body: dict = Body(...), user=Depends(current_user)):
     rec = {"id": uid(), "kind": "expenses", "owner_id": owner, "created_by": user["id"], "created_by_name": display_name(user), "created_at": now_iso(), "currency": "MXN", "payments": [],
            **_expense({"title": body.get("title", ""), **body}, None, user)}
     await db.records.insert_one(rec)
+    await remember_category(owner, rec.get("category"))
     await log(user, owner, "gasto creado", rec["id"], rec["title"])
     return clean(rec)
 
@@ -241,6 +289,7 @@ async def update_expense(eid: str, body: dict = Body(...), user=Depends(current_
     s = _expense(body, e, user)
     s.update(updated_at=now_iso(), updated_by=display_name(user))
     await db.records.update_one({"id": eid}, {"$set": s})
+    await remember_category(e["owner_id"], s.get("category"))
     await log(user, e["owner_id"], "gasto editado", eid, ", ".join(k for k in body if k != "owner_id"))
     return await finance_expense(eid, user)
 
@@ -512,7 +561,8 @@ async def finance_download(code: str):
     docs: dict[str, list] = {}
     async for d in db.finance_docs.find({"ref_id": {"$in": [e["id"] for e in items]}, "deleted_at": None}):
         docs.setdefault(d["ref_id"], []).append(d)
-    pdf = finance_pdf(REPORTS[p["type"]], display_name(owner) if p["include_name"] else "", items, p, docs)
+    title = f"Resumen del siniestro {p['claim_no']}" if p["type"] == "claim" and p.get("claim_no") and not p["hide_sensitive"] else REPORTS[p["type"]]
+    pdf = finance_pdf(title, display_name(owner) if p["include_name"] else "", items, p, docs)
     if p["type"] != "dossier":
         return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="amodo-{p["type"]}.pdf"', "Cache-Control": "no-store"})
     buf = io.BytesIO()

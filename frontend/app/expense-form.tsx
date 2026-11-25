@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { api, invalidate, useApi } from "@/src/api";
 import { fmtDate, money, today } from "@/src/constants";
 import { CATEGORIES, DOC_CATS, Docs, Fold, METHODS, MODES, OTHER_SOURCES } from "@/src/finance/shared";
+import { Reminders } from "@/src/finance/reminders";
 import { DateField } from "@/src/pickers";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Chip, ChipRow, ErrorState, Field, Ic, IconBtn, Loading, Row, Screen, Sheet, SwitchRow, Txt } from "@/src/ui";
@@ -34,6 +35,7 @@ export default function ExpenseForm() {
   const [entry, setEntry] = useState<any>(null); // { list, item }
   const [draft, setDraft] = useState<any>(null);
   const [newItem, setNewItem] = useState("");
+  const [editCats, setEditCats] = useState(false);
   useEffect(() => {
     if (q.data && !e) setE({ ...q.data, amount: String(q.data.amount ?? ""), payments: q.data.calc.payments, sources: q.data.sources || [], supports: q.data.supports || [], insurance: q.data.insurance || {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,6 +88,14 @@ export default function ExpenseForm() {
 
   if (q.isError || acc.isError) return <Screen title="Gasto"><ErrorState message={((q.error || acc.error) as Error)?.message} onRetry={() => q.refetch()} /></Screen>;
   if (!e || !acc.data) return <Screen title="Gasto"><Loading /></Screen>;
+  const myCats: string[] = [...new Set([...(meta.data?.categories || []), ...(e.category ? [e.category] : [])])].filter((x) => !CATEGORIES.includes(x));
+  const useCustom = () => { if (newItem.trim()) { set("category")(newItem.trim()); setNewItem(""); setSheet(""); } };
+  const forget = async (name: string) => {
+    await api(`/finance/categories?name=${encodeURIComponent(name)}`, { method: "DELETE" }).catch((err) => toast.show(err.message, "error"));
+    if (e.category === name) set("category")("");
+    meta.refetch();
+  };
+  const otherClaims: string[] = [...new Set((meta.data?.items || []).map((x: any) => String(x.claim?.claim_no || "").trim()).filter((x: string) => x && x !== e.claim?.claim_no))] as string[];
   const total = n(e.amount);
   const own = sum(e.payments.filter((x: any) => x.source !== "direct"));
   const direct = sum(e.payments.filter((x: any) => x.source === "direct"));
@@ -108,8 +118,18 @@ export default function ExpenseForm() {
       overlay={
         <>
           <Sheet visible={sheet === "category"} onClose={() => setSheet("")} title="Categoría" testID="expense-category-sheet">
-            <ChipRow>{[...CATEGORIES, ...(e.category && !CATEGORIES.includes(e.category) ? [e.category] : [])].map((x) => <Chip key={x} label={x} selected={e.category === x} onPress={() => { set("category")(x); setSheet(""); }} testID={`expense-category-${x}`} />)}</ChipRow>
-            <Field label="O escribe una propia" value={newItem} onChangeText={setNewItem} onSubmitEditing={() => { if (newItem.trim()) { set("category")(newItem.trim()); setNewItem(""); setSheet(""); } }} returnKeyType="done" testID="expense-category-custom" style={{ marginTop: space.md }} />
+            {myCats.length ? (
+              <View style={{ marginBottom: space.md }} testID="expense-my-categories">
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Txt v="label" color={colors.onSurface} style={{ flex: 1 }}>Tus categorías</Txt>
+                  {a.owner ? <Btn label={editCats ? "Listo" : "Quitar alguna"} small variant="ghost" onPress={() => setEditCats(!editCats)} testID="expense-category-edit" /> : null}
+                </View>
+                <ChipRow>{myCats.map((x) => <Chip key={x} label={x} icon={editCats ? "x" : undefined} selected={!editCats && e.category === x} onPress={() => (editCats ? forget(x) : (set("category")(x), setSheet("")))} testID={`expense-category-${x}`} />)}</ChipRow>
+              </View>
+            ) : null}
+            <ChipRow>{CATEGORIES.map((x) => <Chip key={x} label={x} selected={e.category === x} onPress={() => { set("category")(x); setSheet(""); }} testID={`expense-category-${x}`} />)}</ChipRow>
+            <Field label="O escribe una propia" hint="Se guarda con el gasto para que puedas elegirla después" value={newItem} onChangeText={setNewItem} onSubmitEditing={useCustom} returnKeyType="done" testID="expense-category-custom" style={{ marginTop: space.md }} />
+            {newItem.trim() ? <Btn label={`Usar «${newItem.trim()}»`} onPress={useCustom} testID="expense-category-custom-use" /> : null}
           </Sheet>
           <Sheet visible={sheet === "status"} onClose={() => setSheet("")} title="Estado del trámite" testID="expense-status-sheet">
             <Txt v="caption" style={{ marginBottom: space.sm }}>Tú lo actualizas: AMODO no está conectado con la aseguradora. Se guarda la fecha del cambio.</Txt>
@@ -145,7 +165,7 @@ export default function ExpenseForm() {
 
       <Fold title="Pagos" hint={`Pagado ${money(own)}${direct ? ` · pago directo ${money(direct)}` : ""} · pendiente ${money(pending)}`} open={!!p.id} testID="expense-fold-payments" tint="sageSoft">
         {moneyList("payments", "Agregar pago")}
-        {pending > 0 && e.date ? <Btn label="Recordarme este pago" small variant="ghost" icon="bell" testID="expense-remind-pay" style={{ alignSelf: "flex-start" }} onPress={() => router.push({ pathname: "/record-form", params: { kind: "tasks", title: `Pagar: ${e.title}`, date: e.date } })} /> : null}
+        {pending > 0 ? <DateField label="Fecha límite de pago (opcional)" value={e.due_date || ""} onChange={set("due_date")} testID="expense-due-date" /> : null}
       </Fold>
 
       <Fold title="¿Cómo se cubre este gasto?" hint={e.sources.map((s: any) => s.label).join(", ") || "Opcional. Puedes elegir varias o dejarlo para después"} testID="expense-fold-sources" tint="lavenderSoft">
@@ -176,7 +196,8 @@ export default function ExpenseForm() {
               {moneyList("deposits", "Agregar depósito")}
               <Fold title="Datos del trámite" testID="expense-fold-claim-data">
                 {(cov.data || []).length ? <><Txt v="label" color={colors.onSurface} style={{ marginBottom: 6 }}>Aseguradora o institución</Txt><ChipRow>{(cov.data || []).map((x) => <Chip key={x.id} label={x.name} selected={c.coverage_id === x.id} onPress={() => setE((s: any) => ({ ...s, claim: { ...s.claim, coverage_id: x.id, policy: s.claim.policy || x.data?.policy_number || "" } }))} testID={`expense-claim-cov-${x.id}`} />)}</ChipRow><View style={{ height: space.md }} /></> : null}
-                {CLAIM_TXT.map(([k, l]) => <Field key={k} label={l} value={c[k] || ""} onChangeText={setClaim(k)} testID={`expense-claim-${k}`} />)}
+                {CLAIM_TXT.map(([k, l]) => <Field key={k} label={l} value={c[k] || ""} onChangeText={setClaim(k)} testID={`expense-claim-${k}`} hint={k === "claim_no" ? "Los gastos con el mismo número se agrupan en Gastos" : undefined} />)}
+                {otherClaims.length ? <><Txt v="label" color={colors.onSurface} style={{ marginBottom: 6 }}>Usar un siniestro que ya registraste</Txt><ChipRow>{otherClaims.map((x) => <Chip key={x} label={x} onPress={() => setClaim("claim_no")(x)} testID={`expense-claim-no-${x}`} />)}</ChipRow><View style={{ height: space.md }} /></> : null}
                 {[["filed_date", "Fecha de presentación"], ["expected_date", "Fecha estimada de resolución (la que te dieron)"], ["authorized_date", "Fecha de autorización"]].map(([k, l]) => <DateField key={k} label={l} value={c[k] || ""} onChange={setClaim(k)} testID={`expense-claim-${k}`} />)}
                 <Field label="Motivo de rechazo (si aplica)" value={c.reject_reason || ""} onChangeText={setClaim("reject_reason")} testID="expense-claim-reject_reason" />
                 <Field label="Observaciones" value={c.notes || ""} onChangeText={setClaim("notes")} multiline testID="expense-claim-notes" />
@@ -194,8 +215,6 @@ export default function ExpenseForm() {
               ))}
               <ChipRow>{DOC_CATS.filter((d) => !(c.checklist || []).some((x: any) => x.label === d)).slice(0, 6).map((d) => <Chip key={d} label={d} icon="plus" onPress={() => setClaim("checklist")([...(c.checklist || []), { id: `n${Date.now()}`, label: d, status: "Pendiente" }])} testID={`expense-check-add-${d}`} />)}</ChipRow>
               <Field label="Otro requisito" value={newItem} onChangeText={setNewItem} returnKeyType="done" onSubmitEditing={() => { if (newItem.trim()) { setClaim("checklist")([...(c.checklist || []), { id: `n${Date.now()}`, label: newItem.trim(), status: "Pendiente" }]); setNewItem(""); } }} testID="expense-check-custom" style={{ marginTop: space.md }} />
-              <Btn label="Crear recordatorio de seguimiento" small variant="ghost" icon="bell" testID="expense-remind-claim" style={{ alignSelf: "flex-start" }}
-                onPress={() => router.push({ pathname: "/record-form", params: { kind: "tasks", title: `Seguimiento de reembolso: ${e.title}`, date: c.expected_date || "" } })} />
             </>
           ) : null}
         </Fold>
@@ -219,6 +238,10 @@ export default function ExpenseForm() {
 
       <Fold title="Documentos y comprobantes" hint={p.id ? undefined : "Guarda el gasto para adjuntar"} testID="expense-fold-docs">
         {!p.id ? <Btn label="Guardar y adjuntar" small variant="secondary" onPress={() => save(false)} testID="expense-save-attach" style={{ alignSelf: "flex-start" }} /> : a.docs || a.owner ? <Docs refId={p.id} cats={DOC_CATS} canAttach={a.attach || a.owner} plus={a.plus} extractKind="receipt" onExtract={canEdit ? setDraft : undefined} /> : <Txt v="caption">No tienes permiso para ver los documentos de este gasto.</Txt>}
+      </Fold>
+
+      <Fold title="Recordatorios" hint={p.id ? "Con fecha y hora, para pagos, documentos y seguimiento" : "Guarda el gasto para programar"} testID="expense-fold-reminders">
+        {p.id ? <Reminders expenseId={p.id} expenseTitle={e.title} ownerId={p.owner_id} canAdd={!!canEdit || canClaim} defaultDate={c?.expected_date || e.due_date} /> : <Btn label="Guardar y programar" small variant="secondary" onPress={() => save(false)} testID="expense-save-remind" style={{ alignSelf: "flex-start" }} />}
       </Fold>
 
       {(e.log || []).length ? <Fold title="Historial de cambios" testID="expense-fold-log">{e.log.map((l: any) => <Txt key={l.id} v="caption" style={{ marginBottom: 2 }}>{fmtDate(l.at.slice(0, 10))} · {l.by_name} · {l.action}</Txt>)}</Fold> : null}

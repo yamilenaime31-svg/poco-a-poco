@@ -76,6 +76,7 @@ export const KINDS: Record<string, KindDef> = {
     fields: [
       { key: "title", label: "¿Qué hay que hacer?", type: "text", required: true },
       { key: "date", label: "Para cuándo (opcional)", type: "date" },
+      { key: "time", label: "A qué hora (opcional)", type: "time" },
       { key: "assignee_id", label: "¿Quién se encarga?", type: "assignee" },
       { key: "notes", label: "Notas", type: "multiline" },
       { key: "done", label: "Hecho", type: "switch" },

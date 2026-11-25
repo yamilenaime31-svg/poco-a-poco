@@ -173,7 +173,7 @@ async def agenda_items(user: dict, owner: str, start: str, end: str) -> list[dic
                     "category": "transfers", "type": "Traslado", "confirmed": bool(t.get("confirmed")), "driver": t.get("driver", ""), "shared": bool(t.get("shared_with"))})
     for t in await visible("tasks", owner, user, rng):
         out.append({"key": f"tk-{t['id']}", "source": "tasks", "id": t["id"], "title": t.get("title", ""), "date": t["date"], "time": t.get("time", ""),
-                    "category": "tasks", "type": "Pendiente", "done": bool(t.get("done")), "shared": bool(t.get("shared_with"))})
+                    "category": "tasks", "type": "Pendiente", "done": bool(t.get("done")), "shared": bool(t.get("shared_with")), "exact": bool(t.get("expense_id") and t.get("time"))})
     for x in await visible("expenses", owner, user, {**rng, "status": {"$ne": "Pagado"}}):
         out.append({"key": f"ex-{x['id']}", "source": "expenses", "id": x["id"], "title": x.get("title", ""), "date": x["date"], "time": "",
                     "category": "payments", "type": "Pago pendiente", "amount": x.get("amount"), "shared": bool(x.get("shared_with"))})
@@ -279,7 +279,7 @@ def reminder_text(it: dict, lead: int, local_when: datetime, discreet: bool) -> 
         return "Medicamento programado", f"Es momento de revisar tu medicamento programado: {it['title']}."
     if it["category"] == "transfers" and not it.get("confirmed") and lead >= 720:
         return "Traslado por confirmar", f"Tu traslado de mañana sigue pendiente de confirmar: {it['title']}."
-    when = "Mañana tienes" if lead >= 720 else "Hoy tienes" if lead >= 60 else "Pronto:"
+    when = "Mañana tienes" if lead >= 720 else "Hoy tienes" if lead >= 60 else "Es momento:" if it.get("exact") else "Pronto:"
     return it["title"], f"{when} {label}{hour}: {it['title']}."
 
 
@@ -295,7 +295,7 @@ async def compute_reminders(user: dict, days: int = 7) -> list[dict]:
         if not p["cats"].get(it["category"], True) or it.get("done") or it.get("status") in ("realizado", "omitido"):
             continue
         at = datetime.strptime(f"{it['date']} {it['time'] or '09:00'}", "%Y-%m-%d %H:%M")
-        leads = [0] if it["category"] == "medications" else sorted({int(x) for x in p["leads"] if 0 <= int(x) <= 10080})
+        leads = [0] if it["category"] == "medications" else sorted({int(x) for x in p["leads"] if 0 <= int(x) <= 10080} | ({0} if it.get("exact") else set()))
         for lead in leads:
             fire_local = at - timedelta(minutes=lead)
             if in_quiet(fire_local, p["quiet"]) and it["category"] != "medications":

@@ -6,6 +6,8 @@ import { api, useApi } from "@/src/api";
 import { Spot } from "@/src/art";
 import { HBars, WeekBars } from "@/src/components/bars";
 import { MONTHS_LONG, addDays, fmtDate, money } from "@/src/constants";
+import { CashFlow } from "@/src/finance/cashflow";
+import { ClaimGroups, claimNo } from "@/src/finance/claims";
 import { fileUrl } from "@/src/finance/shared";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Chip, ChipRow, Empty, ErrorState, Loading, Row, Screen, Section, Sheet, SwitchRow, Txt } from "@/src/ui";
@@ -38,7 +40,7 @@ export default function Finances() {
   const acc = useApi<any>(`/finance/access${qs}`);
   const cov = useApi<any[]>(acc.data?.coverages ? `/coverages${qs}` : null);
   const perms = useApi<any[]>(acc.data?.owner ? "/finance/permissions" : null);
-  const [f, setF] = useState<any>({ period: 0, category: "", coverage: p.coverage || "", pay: "", claim: "", person: "" });
+  const [f, setF] = useState<any>({ period: 0, category: "", coverage: p.coverage || "", pay: "", claim: "", person: "", claimNo: "" });
   const [sheet, setSheet] = useState<"" | "filters" | "perms" | "report">("");
   const [info, setInfo] = useState("");
   const [rep, setRep] = useState<any>({ type: "financial", hide_sensitive: true, busy: false });
@@ -53,6 +55,7 @@ export default function Finances() {
     if (f.pay === "Pendiente" && c.pending_pay === 0) return false;
     if (f.claim === "Con reembolso" && !c.has_claim) return false;
     if (f.claim && f.claim !== "Con reembolso" && c.claim_status !== f.claim) return false;
+    if (f.claimNo && claimNo(e) !== f.claimNo) return false;
     if (f.person && (e.spent_by || e.paid_by || "Sin especificar") !== f.person) return false;
     return true;
   }), [q.data, f]);
@@ -74,10 +77,14 @@ export default function Finances() {
       toast.show(e.message, "error");
     }
   };
-  const report = async () => {
+  const openExpense = (id: string) => router.push({ pathname: "/expense-form", params: { id, owner_id: p.owner_id } });
+  const report = async (claim?: string) => {
+    if (!a.plus) return router.push("/plus");
     setRep({ ...rep, busy: true });
     try {
-      const r = await api("/finance/reports", { method: "POST", body: { type: rep.type, hide_sensitive: rep.hide_sensitive, owner_id: p.owner_id, coverage_id: f.coverage, categories: f.category ? [f.category] : [], ...(f.period ? { start: addDays(-f.period), end: addDays(0) } : {}) } });
+      const body = claim ? { type: "claim", claim_no: claim, hide_sensitive: false, owner_id: p.owner_id }
+        : { type: rep.type, hide_sensitive: rep.hide_sensitive, owner_id: p.owner_id, coverage_id: f.coverage, claim_no: f.claimNo, categories: f.category ? [f.category] : [], ...(f.period ? { start: addDays(-f.period), end: addDays(0) } : {}) };
+      const r = await api("/finance/reports", { method: "POST", body });
       await Linking.openURL(fileUrl(r.path));
     } catch (e: any) {
       toast.show(e.message, "error");
@@ -118,11 +125,11 @@ export default function Finances() {
             ))}
           </Sheet>
           <Sheet visible={sheet === "report"} onClose={() => setSheet("")} title="Reportes y expediente" testID="finances-report-sheet">
-            <Txt v="caption" style={{ marginBottom: space.sm }}>Usa los filtros activos (periodo, categoría, cobertura). Para el reporte general de tu proceso, entra a Mi proceso.</Txt>
+            <Txt v="caption" style={{ marginBottom: space.sm }}>Usa los filtros activos (periodo, categoría, cobertura, siniestro). Para el reporte general de tu proceso, entra a Mi proceso.</Txt>
             <ChipRow>{REPORTS.map(([k, l]) => <Chip key={k} label={l} selected={rep.type === k} onPress={() => setRep({ ...rep, type: k })} testID={`finances-report-${k}`} />)}</ChipRow>
             <SwitchRow label="Ocultar números de siniestro y folio" value={rep.hide_sensitive} onValueChange={(v) => setRep({ ...rep, hide_sensitive: v })} testID="finances-report-hide" />
             <Txt v="caption" style={{ marginVertical: space.sm }}>Incluirá {items.filter((e) => rep.type === "financial" || rep.type === "treatment" || e.calc.has_claim).length} movimiento(s). Se descarga en tu dispositivo; AMODO no lo envía a nadie.</Txt>
-            <Btn label="Generar y descargar" icon="download" loading={rep.busy} onPress={report} testID="finances-report-generate" />
+            <Btn label="Generar y descargar" icon="download" loading={rep.busy} onPress={() => report()} testID="finances-report-generate" />
           </Sheet>
         </>
       }>
@@ -130,6 +137,7 @@ export default function Finances() {
         <>
           <ChipRow>
             <Chip label={active ? `Filtros (${active})` : "Filtros"} icon="sliders-horizontal" selected={!!active} onPress={() => setSheet("filters")} testID="finances-filters" />
+            {f.claimNo ? <Chip label={`Siniestro ${f.claimNo} ✕`} selected onPress={() => setF({ ...f, claimNo: "" })} testID="finances-claim-clear" /> : null}
             {a.coverages ? <Chip label="Mi cobertura" icon="shield" onPress={() => router.push("/coverage")} testID="finances-coverage" /> : null}
             {a.owner ? <Chip label="Permisos" icon="users" onPress={() => setSheet("perms")} testID="finances-perms" /> : null}
             {a.reports ? <Chip label={a.plus ? "Reportes" : "Reportes · Plus"} icon="file-text" onPress={() => (a.plus ? setSheet("report") : router.push("/plus"))} testID="finances-reports" /> : null}
@@ -156,6 +164,8 @@ export default function Finances() {
               <Section title="Por categoría" testID="finances-categories">
                 <HBars rows={group((e) => e.category || "Otros gastos")} format={money} onPress={(l) => setF({ ...f, category: f.category === l ? "" : l })} testID="finances-cat" />
               </Section>
+              <ClaimGroups items={q.data.items} selected={f.claimNo} onFilter={(no) => setF({ ...f, claimNo: no })} onOpen={openExpense} onReport={report} canReport={a.reports} plus={a.plus} busy={rep.busy} />
+              <CashFlow ownerId={p.owner_id} plus={a.plus} onOpen={openExpense} onPlus={() => router.push("/plus")} />
               <Section title="Movimientos" testID="finances-list">
                 {items.length === 0 ? <Txt v="caption">Nada con estos filtros.</Txt> : items.map((e) => (
                   <View key={e.id} style={[styles.item, { backgroundColor: colors.surfaceSecondary }]}>
