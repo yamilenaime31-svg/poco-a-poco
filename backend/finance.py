@@ -583,3 +583,83 @@ async def compact(owner_id: str, today: str) -> dict | None:
     return {"totals": totals(items), "recent": [{"id": e["id"], "title": e.get("title", ""), "when": e["when"], "total": e["calc"]["total"]} for e in items[:3]],
             "attention": [{"id": e["id"], "title": e.get("title", ""), "status": e["calc"]["claim_status"]} for e in items if e["calc"]["claim_status"] in ATTENTION][:4],
             "to_pay": [{"id": e["id"], "title": e.get("title", ""), "when": e["when"], "amount": e["calc"]["pending_pay"]} for e in sorted(items, key=lambda e: e["when"]) if e["calc"]["pending_pay"] > 0][:3]}
+
+
+# ---------------------------------------------------------------- finance block for the Mi proceso report
+async def period_finance(owner_id: str, start: str, end: str) -> dict:
+    items = [e for e in await expenses_of(owner_id) if start <= e["when"] <= end]
+    claims = [{"title": e.get("title", ""), "status": e["calc"]["claim_status"], "requested": e["calc"]["requested"], "authorized": e["calc"]["authorized"], "received": e["calc"]["received"]}
+              for e in items if e["calc"]["has_claim"]]
+    return {"count": len(items), "totals": totals(items), "claims": claims}
+
+
+# ---------------------------------------------------------------- weekly summary the patient chooses to send to one companion
+async def week_summary(owner_id: str, today: str) -> dict:
+    end = (datetime.strptime(today, "%Y-%m-%d").date() + timedelta(days=6)).isoformat()
+    pays, claims = [], []
+    for e in await expenses_of(owner_id):
+        c, cl = e["calc"], e.get("claim") or {}
+        due = e.get("due_date") or e["when"]
+        if c["pending_pay"] > 0 and due <= end:
+            pays.append({"title": e.get("title", ""), "amount": c["pending_pay"], "date": due, "overdue": due < today})
+        exp = cl.get("expected_date") or ""
+        if cl and (cl.get("status") in ATTENTION or (exp and exp <= end and cl.get("status") not in ("Rechazado", "Reembolso recibido", "Trámite cerrado"))):
+            missing = [i["label"] for i in cl.get("checklist") or [] if i["status"] in ("Pendiente", "Requiere corrección")]
+            claims.append({"title": e.get("title", ""), "status": cl.get("status", ""), "date": exp, "missing": missing[:6], "amount": c["pending_receive"] or c["requested"]})
+    rems = [{"title": t.get("title", ""), "date": t.get("date", ""), "time": t.get("time", "")}
+            async for t in db.records.find({"kind": "tasks", "owner_id": owner_id, "expense_id": {"$exists": True, "$ne": ""}, "done": {"$ne": True}, "date": {"$gte": today, "$lte": end}})]
+    return {"start": today, "end": end, "payments": sorted(pays, key=lambda p: p["date"]), "claims": claims, "reminders": sorted(rems, key=lambda r: f"{r['date']} {r['time']}"),
+            "empty": not (pays or claims or rems)}
+
+
+@api.get("/finance/week-summary")
+async def get_week_summary(today: str, user=Depends(current_user)):
+    if not _date_or_empty(today):
+        raise HTTPException(422, "Fecha no válida")
+    return await week_summary(user["id"], today)
+
+
+@api.get("/finance/shares")
+async def list_shares(received: bool = False, owner_id: str | None = None, user=Depends(current_user)):
+    q = {"caregiver_id": user["id"], **({"owner_id": owner_id} if owner_id else {})} if received else {"owner_id": user["id"]}
+    return [clean(s) async for s in db.finance_shares.find({**q, "revoked_at": None}).sort("created_at", -1).limit(10)]
+
+
+@api.post("/finance/shares")
+async def share_week(body: dict = Body(...), user=Depends(current_user)):
+    """The patient sends a snapshot of this week's pending payments and paperwork to one linked companion.
+    It gives access to that snapshot only: expenses, coverages and documents stay closed unless permissions say otherwise."""
+    today = _date_or_empty(body.get("today"))
+    cid = str(body.get("caregiver_id") or "")
+    if not today:
+        raise HTTPException(422, "Fecha no válida")
+    if not cid or not await active_link(user["id"], cid):
+        raise HTTPException(404, "Esta persona no está en tu red")
+    s = await week_summary(user["id"], today)
+    if s["empty"]:
+        raise HTTPException(422, "No hay pagos ni trámites pendientes esta semana para compartir.")
+    if not body.get("include_amounts", True):
+        for row in s["payments"] + s["claims"]:
+            row["amount"] = None
+    c = await db.users.find_one({"id": cid})
+    doc = {"id": uid(), "owner_id": user["id"], "owner_name": display_name(user), "caregiver_id": cid, "caregiver_name": display_name(c) if c else "", "note": str(body.get("note") or "")[:300],
+           "include_amounts": bool(body.get("include_amounts", True)), **s, "created_at": now_iso(), "revoked_at": None}
+    await db.finance_shares.insert_one(doc)
+    await log(user, user["id"], "resumen compartido", cid, doc["caregiver_name"])
+    from server import notify
+    await notify(cid, f"{display_name(user)} te compartió un resumen", "Pagos y trámites pendientes de la semana.", "finance", f"/finance-summary?id={doc['id']}")
+    return clean(doc)
+
+
+@api.get("/finance/shares/{sid}")
+async def get_share(sid: str, user=Depends(current_user)):
+    s = await db.finance_shares.find_one({"id": sid, "revoked_at": None})
+    if not s or user["id"] not in (s["owner_id"], s["caregiver_id"]):
+        raise HTTPException(404, "Este resumen ya no está disponible")
+    return clean(s)
+
+
+@api.delete("/finance/shares/{sid}")
+async def revoke_share(sid: str, user=Depends(current_user)):
+    await db.finance_shares.update_one({"id": sid, "owner_id": user["id"]}, {"$set": {"revoked_at": now_iso()}})
+    return {"ok": True}

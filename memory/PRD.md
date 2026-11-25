@@ -148,3 +148,9 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - Categorías propias: db.finance_categories (se guardan al guardar el gasto); /finance/expenses devuelve `categories`; DELETE /api/finance/categories?name=.
 - Recordatorios: src/finance/reminders.tsx en el gasto; son tasks con expense_id + date + time (campo time añadido a KINDS.tasks). planner: tasks con expense_id y hora avisan también a la hora exacta (lead 0), respetando horas de silencio.
 - Autoprobado con script y capturas; sin pasada del testing agent.
+
+## Iteration 21 (Jun 2026) — Finanzas en reporte de Mi proceso + resumen semanal para acompañante
+- process.py: sección "finance" (Pagos, coberturas y reembolsos) en SECTIONS y en el PDF; GET /api/process/report-preview (Plus) devuelve blocks[{k,title,lines}] = vista previa real por sección, también para fechas personalizadas. La sección finance no viene marcada por defecto.
+- finance.py: week_summary (pagos pendientes con fecha ≤ hoy+6 o pasada, trámites en ATTENTION o con resolución estimada en la semana, recordatorios ligados a gastos); GET /finance/week-summary, POST/GET/DELETE /finance/shares (copia fija para un acompañante vinculado, con o sin importes, notificación con enlace /finance-summary?id=). No cambia link.finance.
+- Frontend: src/finance/week-share.tsx (hoja en /finances "Compartir semana", ReceivedSummaries en Inicio de acompañante), app/finance-summary.tsx.
+- Autoprobado con script y capturas; sin testing agent.

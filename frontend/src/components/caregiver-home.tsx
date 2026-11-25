@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { SharedLists } from "@/src/components/shared-lists";
+import { ReceivedSummaries } from "@/src/finance/week-share";
 import { TabScreen } from "@/src/components/tab-screen";
 import { TileGrid } from "@/src/components/tile-grid";
 import { SIGNALS, fmtDate, fmtDateTime, today } from "@/src/constants";
@@ -75,6 +76,7 @@ export function CaregiverHome() {
           </Section>
 
           <SharedLists ownerId={sel?.patient_id} ownerName={sel?.patient_name} />
+          <ReceivedSummaries ownerId={sel?.patient_id} />
 
           <Section title="Acompañar">
             <TileGrid tiles={[

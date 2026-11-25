@@ -9,6 +9,7 @@ import { MONTHS_LONG, addDays, fmtDate, money } from "@/src/constants";
 import { CashFlow } from "@/src/finance/cashflow";
 import { ClaimGroups, claimNo } from "@/src/finance/claims";
 import { fileUrl } from "@/src/finance/shared";
+import { WeekShareSheet } from "@/src/finance/week-share";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Chip, ChipRow, Empty, ErrorState, Loading, Row, Screen, Section, Sheet, SwitchRow, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -41,7 +42,7 @@ export default function Finances() {
   const cov = useApi<any[]>(acc.data?.coverages ? `/coverages${qs}` : null);
   const perms = useApi<any[]>(acc.data?.owner ? "/finance/permissions" : null);
   const [f, setF] = useState<any>({ period: 0, category: "", coverage: p.coverage || "", pay: "", claim: "", person: "", claimNo: "" });
-  const [sheet, setSheet] = useState<"" | "filters" | "perms" | "report">("");
+  const [sheet, setSheet] = useState<"" | "filters" | "perms" | "report" | "week">("");
   const [info, setInfo] = useState("");
   const [rep, setRep] = useState<any>({ type: "financial", hide_sensitive: true, busy: false });
   const a = acc.data || {};
@@ -124,6 +125,7 @@ export default function Finances() {
               </View>
             ))}
           </Sheet>
+          <WeekShareSheet visible={sheet === "week"} onClose={() => setSheet("")} people={perms.data || []} />
           <Sheet visible={sheet === "report"} onClose={() => setSheet("")} title="Reportes y expediente" testID="finances-report-sheet">
             <Txt v="caption" style={{ marginBottom: space.sm }}>Usa los filtros activos (periodo, categoría, cobertura, siniestro). Para el reporte general de tu proceso, entra a Mi proceso.</Txt>
             <ChipRow>{REPORTS.map(([k, l]) => <Chip key={k} label={l} selected={rep.type === k} onPress={() => setRep({ ...rep, type: k })} testID={`finances-report-${k}`} />)}</ChipRow>
@@ -140,6 +142,7 @@ export default function Finances() {
             {f.claimNo ? <Chip label={`Siniestro ${f.claimNo} ✕`} selected onPress={() => setF({ ...f, claimNo: "" })} testID="finances-claim-clear" /> : null}
             {a.coverages ? <Chip label="Mi cobertura" icon="shield" onPress={() => router.push("/coverage")} testID="finances-coverage" /> : null}
             {a.owner ? <Chip label="Permisos" icon="users" onPress={() => setSheet("perms")} testID="finances-perms" /> : null}
+            {a.owner ? <Chip label="Compartir semana" icon="send" onPress={() => setSheet("week")} testID="finances-week-share" /> : null}
             {a.reports ? <Chip label={a.plus ? "Reportes" : "Reportes · Plus"} icon="file-text" onPress={() => (a.plus ? setSheet("report") : router.push("/plus"))} testID="finances-reports" /> : null}
           </ChipRow>
           {(q.data.items || []).length === 0 ? <Empty icon="wallet" title="Aún no hay gastos" text="Registra un gasto cuando quieras. No necesitas seguro ni cobertura para usar esta sección." testID="finances-empty" /> : (

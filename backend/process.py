@@ -12,7 +12,7 @@ from business import is_plus, require_plus
 from server import _date_or_empty, api, clean, current_user, db, display_name, now_iso, uid
 
 CAT_LABEL = {"appointments": "Consultas", "treatments": "Sesiones de tratamiento", "studies": "Estudios", "personal": "Actividades y otros"}
-SECTIONS = ("feelings", "appointments", "treatments", "medications", "activities", "expenses", "notes")
+SECTIONS = ("feelings", "appointments", "treatments", "medications", "activities", "expenses", "finance", "notes")
 CAT_SECTION = {"appointments": "appointments", "studies": "appointments", "treatments": "treatments", "personal": "activities"}
 
 
@@ -293,6 +293,26 @@ def build_pdf(name: str, d: dict, sections: list[str]) -> bytes:
         else:
             line("Sin gastos registrados en este periodo.", 9, color=muted)
 
+    if "finance" in sections and d.get("finance"):
+        fin = d["finance"]
+        t = fin["totals"]
+        section("Pagos, coberturas y reembolsos")
+        if fin["count"]:
+            line("Importes reales (registrados por mí)", 9.5, True)
+            bars([{"label": l, "value": t[k]} for k, l in FIN_ROWS if t[k] > 0 or k in ("total", "net")], _money)
+            if t["has_estimate"]:
+                pdf.ln(1)
+                line("Estimaciones (no garantizadas)", 9.5, True)
+                line(f"Reembolsos autorizados aún por recibir: {_money(t['pending_receive'])} · gasto final estimado: {_money(t['estimated_final'])}.", 9.5)
+            if fin["claims"]:
+                pdf.ln(1)
+                line("Trámites de reembolso", 9.5, True)
+                for c in fin["claims"]:
+                    line(f"{c['title']}: {c['status']} · solicitado {_money(c['requested'])} · autorizado {_money(c['authorized'])} · recibido {_money(c['received'])}", 9, h=4.8)
+        else:
+            line("Sin gastos registrados en este periodo.", 9, color=muted)
+        line("Lo solicitado o autorizado no se resta hasta recibirlo. No es un estado de cuenta ni un dictamen de cobertura.", 8.5, color=muted)
+
     if "notes" in sections:
         section("Notas personales")
         for n in d["feelings"]["notes"]:
@@ -321,9 +341,41 @@ async def list_reports(user=Depends(current_user)):
     return [clean(r) async for r in db.process_reports.find({"user_id": user["id"]}).sort("created_at", -1).limit(20)]
 
 
-@api.post("/process/reports")
-async def create_report(body: dict = Body(...), user=Depends(require_plus)):
-    """Plus: a personal PDF summary with the period and categories the person chose. Nothing is shared automatically."""
+FIN_ROWS = [("total", "Costo total registrado"), ("paid_own", "Pagado por mí o mi red"), ("direct", "Pago directo de terceros"), ("pending_pay", "Pendiente de pago"),
+            ("requested", "Reembolso solicitado"), ("authorized", "Reembolso autorizado"), ("received", "Reembolso recibido"), ("supports", "Apoyos recibidos"), ("net", "Desembolso neto actual")]
+
+
+async def report_data(user: dict, r: dict) -> dict:
+    d = await process_data(user, r["today"], 30, r["start"], r["end"])
+    if "finance" in r["sections"]:
+        from finance import period_finance
+        d["finance"] = await period_finance(user["id"], r["start"], r["end"])
+    return d
+
+
+def preview_blocks(d: dict, sections: list[str]) -> list[dict]:
+    """What the PDF will say, section by section, so the person can check it before generating."""
+    f, a, m, x, c = d["feelings"], d["activities"], d["medications"], d["expenses"], d["activities"]["counts"]
+    out = {
+        "feelings": ("Cómo me he sentido", [f"Registro en {f['days_logged']} de {d['days']} días"] + ([f"Más frecuente: {', '.join(i['label'] for i in f['moods'][:3])}"] if f["moods"] else [])),
+        "appointments": ("Citas médicas", [f"{c.get('appointments', 0)} cita(s) y estudio(s)"]),
+        "treatments": ("Tratamientos", [f"{c.get('treatments', 0)} sesión(es)"] + [t if isinstance(t, str) else str(t.get("name", "")) for t in a["treatments"][:4]]),
+        "medications": ("Medicamentos", [f"{m['done']} toma(s) realizadas, {m['skipped']} omitidas"] + [f"{i['name']}: {i['realizado']} realizadas" for i in m["by_med"][:4]]),
+        "activities": ("Actividades", [f"{c.get('activities', 0)} actividad(es)"]),
+        "expenses": ("Gastos", [f"Total registrado {_money(x['total'])} · pagado {_money(x['paid'])} · pendiente {_money(x['pending'])}"] + [f"{i['label']}: {_money(i['value'])}" for i in x["by_category"][:5]]),
+        "notes": ("Notas personales", [f"{len(f['notes'])} nota(s)"] + [n["text"][:70] for n in f["notes"][:2]]),
+    }
+    if d.get("finance"):
+        t, fin = d["finance"]["totals"], d["finance"]
+        lines = [f"{l}: {_money(t[k])}" for k, l in FIN_ROWS if t[k] > 0 or k in ("total", "net")] if fin["count"] else ["Sin gastos registrados en este periodo"]
+        if t["has_estimate"]:
+            lines.append(f"Estimado, no garantizado: por recibir {_money(t['pending_receive'])} · gasto final {_money(t['estimated_final'])}")
+        lines += [f"{c_['title']}: {c_['status']}" for c_ in fin["claims"][:6]]
+        out["finance"] = ("Pagos, coberturas y reembolsos", lines)
+    return [{"k": k, "title": out[k][0], "lines": [l for l in out[k][1] if l]} for k in SECTIONS if k in sections and k in out]
+
+
+def _report_params(body: dict) -> dict:
     today, start, end = (_date_or_empty(body.get(k)) for k in ("today", "start", "end"))
     if not today:
         raise HTTPException(422, "Fecha no válida")
@@ -336,6 +388,20 @@ async def create_report(body: dict = Body(...), user=Depends(require_plus)):
     sections = [x for x in (body.get("sections") or []) if x in SECTIONS]
     if not sections:
         raise HTTPException(422, "Elige al menos una categoría para tu reporte.")
+    return {"today": today, "start": start, "end": end, "sections": sections, "period": f"Del {fmt_es(start)} al {fmt_es(end)} de {end[:4]}"}
+
+
+@api.get("/process/report-preview")
+async def report_preview(today: str, days: int = 30, start: str = "", end: str = "", sections: str = "", user=Depends(require_plus)):
+    r = _report_params({"today": today, "days": days, "start": start, "end": end, "sections": sections.split(",")})
+    return {"period": r["period"], "blocks": preview_blocks(await report_data(user, r), r["sections"])}
+
+
+@api.post("/process/reports")
+async def create_report(body: dict = Body(...), user=Depends(require_plus)):
+    """Plus: a personal PDF summary with the period and categories the person chose. Nothing is shared automatically."""
+    p = _report_params(body)
+    today, start, end, sections = p["today"], p["start"], p["end"], p["sections"]
     r = {"id": uid(), "user_id": user["id"], "today": today, "start": start, "end": end, "sections": sections, "include_name": bool(body.get("include_name", True)),
          "period": f"Del {fmt_es(start)} al {fmt_es(end)} de {end[:4]}", "created_at": now_iso()}
     await db.process_reports.insert_one(r)
@@ -359,5 +425,5 @@ async def process_download(code: str):
     r = await db.process_reports.find_one({"id": link["report_id"]})
     if not user or not r or not await is_plus(user):
         raise HTTPException(404, "No encontrado")
-    data = build_pdf(display_name(user) if r["include_name"] else "", await process_data(user, r["today"], 30, r["start"], r["end"]), r["sections"])
+    data = build_pdf(display_name(user) if r["include_name"] else "", await report_data(user, r), r["sections"])
     return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="amodo-mi-proceso-{r["end"]}.pdf"', "Cache-Control": "no-store"})
