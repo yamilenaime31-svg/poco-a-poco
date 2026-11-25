@@ -27,6 +27,7 @@ fastuuid==0.14.0
 filelock==4.2.10
 flake8==7.5.0
 fonttools==4.68.0
+fpdf2==2.9.0
 frozenlist==1.8.0
 fsspec==2026.9.0
 google-ai-generativelanguage==0.6.15

@@ -12,7 +12,8 @@ export default function PlusWelcome() {
   const { onboarding } = useLocalSearchParams<{ onboarding?: string }>();
   const w = useApi<any>("/wallet").data;
   const links = [
-    { t: "Mi próxima semana", s: "Lo que viene y lo que puedes preparar", i: "calendar-range", h: "/(tabs)/agenda" },
+    { t: "Mi próxima semana", s: "Lo que viene y lo que puedes preparar", i: "calendar-range", h: "/next-week" },
+    { t: "Identidad y estilo", s: "Colores, texturas y accesorios a tu modo", i: "palette", h: "/style" },
     { t: "Asistente personal", s: "Cuéntale lo que pasó en tu consulta", i: "wand-sparkles", h: "/treatment-assistant" },
     { t: "Mis créditos", s: w ? `${money(w.available)} disponibles` : "Tu saldo para kits", i: "wallet", h: "/credits" },
     { t: "Explorar mis beneficios", s: "Descuentos, créditos y más", i: "gift", h: "/benefits" },

@@ -77,6 +77,7 @@ export function CaregiverHome() {
                 { label: "Crear un kit", icon: "gift", onPress: () => router.push({ pathname: "/kit-builder", params: { for_name: sel?.patient_name, for_user_id: sel?.patient_id } }) },
                 { label: "Gastos compartidos", icon: "wallet", onPress: () => router.push({ pathname: "/records/[kind]", params: { kind: "expenses", owner_id: sel?.patient_id } }) },
                 { label: "Traslados", icon: "car", onPress: () => router.push({ pathname: "/records/[kind]", params: { kind: "transfers", owner_id: sel?.patient_id } }) },
+                { label: "Listas de preparación", icon: "clipboard-list", onPress: () => router.push("/checklists") },
                 { label: "Mi propia agenda", icon: "calendar-heart", onPress: () => router.push("/(tabs)/agenda") },
                 { label: "Personas vinculadas", icon: "users", onPress: () => router.push("/network") },
                 { label: "Solicitudes", icon: "inbox", onPress: () => router.push("/signals") },

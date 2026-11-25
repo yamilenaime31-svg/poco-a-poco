@@ -206,7 +206,7 @@ export function PatientHome() {
 
           <Section title="Accesos" testID="home-shortcuts">
             <View style={styles.grid}>
-              {[...ORGANIZE_TILES, { label: "Mis kits", icon: "package", href: "/(tabs)/mykits" }, { label: "Armar un kit", icon: "package-plus", href: "/kit-builder" }].map((o) => (
+              {[...ORGANIZE_TILES, { label: "Mis kits", icon: "package", href: "/(tabs)/mykits" }, { label: "Armar un kit", icon: "package-plus", href: "/kit-builder" }, { label: "Próxima semana", icon: "calendar-range", href: "/next-week" }].map((o) => (
                 <Pressable key={o.label} onPress={() => router.push(o.href as any)} testID={`home-organize-${o.label}`} style={({ pressed }) => [styles.tile, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
                   <Ic name={o.icon} size={18} />
                   <Txt v="caption" color={colors.onSurface} numberOfLines={1} style={{ fontSize: 12 }}>{o.label}</Txt>

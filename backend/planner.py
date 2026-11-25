@@ -346,7 +346,14 @@ async def warm_media():
 
 @api.get("/media/{path:path}")
 async def media(path: str):
-    if not path.startswith("amodo/products/") or ".." in path:
+    if ".." in path:
+        raise HTTPException(404, "No encontrado")
+    if path.startswith("amodo/style/"):  # personal inspiration boards: unguessable id, not listed anywhere public
+        if not await db.style_images.find_one({"path": path, "deleted_at": None}):
+            raise HTTPException(404, "No encontrado")
+        data, ctype = await run_in_threadpool(get_object, path)
+        return Response(content=data, media_type=ctype, headers={"Cache-Control": "private, max-age=86400"})
+    if not path.startswith("amodo/products/"):
         raise HTTPException(404, "No encontrado")
     if path not in _media_cache:
         if not await db.products.find_one({"image": f"/api/media/{path}"}):

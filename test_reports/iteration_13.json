@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 13 (Mi próxima semana, Identidad y estilo, Mi proceso, Listas de preparación). Backend: 17/17 new pytest cases pass (test_amodo_iter13.py). next-week: Plus-gates caregiver (403), 422 bad date, 7-day structure correct, 'Agregar traslado' + 'Crear lista' + 'Te faltan N cosas' prepare suggestions trigger as expected when an event has no transfer / no checklist / unchecked items. Checklists: templates (cita/sesion/estudio/hospitalizacion/blanco) listed; owner create+share-with-caregiver works; shared caregiver can GET and toggle (done_by name set); PUT/DELETE as caregiver -> 403; non-shared stranger -> 403; un-sharing removes caregiver access; PUT items preserves done state by item id; sharing creates a /checklist/{id} notification; reuse creates an unchecked copy owned by caller; soft-delete (deleted_at set, GET 404, disappears from lists). Process: 7/30/90 return aggregates (feelings, activities, medications, expenses, weeks); days=14 -> 422; invalid date -> 422; POST /process/pdf-link returns /api/process-download/{code} with no auth; first GET returns application/pdf starting %PDF; second GET -> 404 (one-shot); notes with accents+emoji (café ñ 😊) do not crash the encoder. Style: caregiver GET /style -> 403; patient GET returns options (colors/textures/accessories/styles); PUT persists prefs and returns proposals with why[]; POST /style/inspiration with no prefs -> 422; with prefs the real Gemini call (~20s) returns a /api/media/amodo/style/<id>.jpg that loads with 200 image/jpeg; DELETE then the image URL 404. Frontend (390x844, Expo web): login demo@amodo.app -> Home tile 'Próxima semana' opens /next-week; summary tiles + prepare cards render; Organiza tab exposes organiza-next-week, organiza-checklists, organiza-process. /checklists 'Nueva lista' sheet lists all 5 templates; create -> /checklist/[id] loads 8 items from 'cita'; tick, add item, rename, soft delete all work. Caregiver (acompanante@amodo.app): /next-week and /style show the Plus gate with 'Conocer Plus'; /checklists shows 'Compartidas conmigo'; the shared list has NO rename / delete / add-input / per-item edit controls (only tick + 'Guardar una copia para mí') — after reuse, the copy is owned and shows full edit controls. /process shows 7/30/90 chips and the 'Descargar resumen en PDF' button renders. /style shows swatches, textures, accessories, styles and the save CTA. No deprecated packages detected; no SafeAreaView issues detected. Red-flag warnings: expo-router/unstable-native-tabs is marked deprecated in web console (not iteration 13 scope but worth noting).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/next-week?today=YYYY-MM-DD", "issue": "When there are events with no time (date-only), the prepare card still shows 'Confirmar quién me acompaña' message text as '25 de noviembre. Aún no hay un traslado...' — good; but the date formatting does not include year, which is fine. No defect, flag only: '25 de noviembre' vs '27 de noviembre · 10:00' inconsistent time handling in prepare text."},
+      {"endpoint": "GET /api/checklists", "issue": "No pagination on mine/shared (hard-capped at 200). Not a bug for demo data but should be noted for large accounts."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Caregiver › Inicio", "issues": ["No visible 'Listas de preparación' tile / shortcut on the caregiver home screen; caregivers must go through Organiza → Listas de preparación (or /checklists directly). Review request listed 'Inicio tile Listas de preparación' for caregiver but it was not found in the home accesos section."]},
+      {"screen": "Checklists", "issues": ["Row has a 'Compartida' subtitle, but the share toggle switch is on the checklist detail (/checklist/[id]) under 'Compartir con...'. UX is fine; just noting that there is no visual badge on the list item showing which caregiver it is shared with."]}
+    ],
+    "react_native_issues": [
+      {"component": "expo-router/unstable-native-tabs", "issue": "Console warning: '`expo-router/unstable-native-tabs` is deprecated. Use `expo-router/native-tabs` instead.' Visible on every Expo web page. Reference: frontend/app/(tabs)/_layout.tsx (tab bar import)."}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter13.py", "/app/test_reports/pytest/pytest_iter13.xml"],
+  "action_items": [
+    "Minor: expose a 'Listas de preparación' entry on the caregiver Inicio screen (the review request mentions it); today caregivers only reach it via Organiza or /checklists.",
+    "Migrate tab bar import from `expo-router/unstable-native-tabs` to `expo-router/native-tabs` (frontend/app/(tabs)/_layout.tsx) to clear the deprecation warning."
+  ],
+  "critical_code_review_comments": [
+    "preparation.py _items(): when a raw item is a string, `old = (prev or {}).get(it.get('id'))` is never reached (str has no .get); currently guarded by isinstance check — OK. Note: if client sends an existing item as a bare string on PUT it will lose its id/done state. Clients correctly send objects.",
+    "process.py build_pdf() uses latin-1 replace for text, which drops many chars but will render as '?'. Accents are preserved by replace('–','-') etc. and most Spanish chars are in latin-1. Emoji become '?' — acceptable for a mobile-generated summary.",
+    "style.py `_generate` opens a new LlmChat per request, which is fine but expensive. Session id is random uid, so the chat has no history — correct for isolation.",
+    "server.py still 1369 lines; moving checklists/next-week/process/style to their own modules (done) improves maintainability. Consider also splitting records/events."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter13.py"],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "~95% (all requested iteration-13 flows verified; 1 minor missing caregiver-home shortcut)"},
+  "seed_data_creation": "Created and cleaned up: 1 TEST_iter13_cita event on demo patient, several test checklists (TEST_iter13_lista, TEST_UI_renamed, caregiver copy) — all soft-deleted via the normal DELETE endpoint. 1 TEST_iter13 journal entry on demo patient (deleted). 1 AI inspiration image (deleted). demo@amodo.app left on AMODO Plus (as instructed).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend tests need EXPO_PUBLIC_BACKEND_URL set (pytest.ini uses xdist, so pass -o addopts=''). Checklist share_with uses linked caregiver_id discovered from GET /api/network -> as_patient[0].caregiver_id. The AI /style/inspiration test actually hits Gemini and takes ~15-25s per call (be budget-aware).",
+  "rca_of_issue": "n/a — no critical issues found this iteration."
+}

@@ -1338,6 +1338,9 @@ import knowledge  # noqa: E402
 import business  # noqa: E402
 import membership  # noqa: E402
 import catalog_admin  # noqa: E402
+import preparation  # noqa: E402,F401
+import process  # noqa: E402,F401
+import style  # noqa: E402,F401
 
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

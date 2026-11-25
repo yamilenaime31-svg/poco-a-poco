@@ -66,6 +66,9 @@ export default function Organiza() {
       </Section>
 
       <Section title="También">
+        <Row icon="calendar-range" tint="sand" title="Mi próxima semana" subtitle="Lo que viene y lo que puedes preparar · Plus" onPress={() => router.push("/next-week")} testID="organiza-next-week" />
+        <Row icon="clipboard-list" tint="sand" title="Listas de preparación" subtitle="Para citas, estudios y hospitalizaciones" onPress={() => router.push("/checklists")} testID="organiza-checklists" />
+        <Row icon="chart-no-axes-column" tint="sand" title="Mi proceso" subtitle="Bienestar y actividades con resumen en PDF" onPress={() => router.push("/process")} testID="organiza-process" />
         <Row icon="sun" tint="coral" title="Mi día" onPress={() => router.push("/day")} testID="organiza-day" />
         <Row icon="radio" tint="lavender" title="Señales e historial" onPress={() => router.push("/signals")} testID="organiza-signals" />
         <Row icon="history" tint="butter" title="Historial personal" onPress={() => router.push("/history")} testID="organiza-history" last />

@@ -27,6 +27,7 @@ export default function Me() {
     { title: "Mi identidad", items: [
       { icon: "heart", title: "Mis gustos y actividades", href: edit("tastes"), tint: "coral" },
       { icon: "sparkles", title: "Mi estilo", href: edit("identity"), tint: "lavender" },
+      { icon: "palette", title: "Identidad y estilo (Plus)", href: "/style", tint: "lavender" },
       { icon: "sliders-horizontal", title: "Mis preferencias", href: edit(isCg ? "about" : "needs"), tint: "butter" },
       { icon: "smile", title: "Mi avatar", href: "/avatar", tint: "sky" },
     ] },
@@ -34,11 +35,14 @@ export default function Me() {
       { icon: "list-checks", title: "Mis pendientes asignados", href: { pathname: "/records/[kind]", params: { kind: "tasks", assigned: "me" } }, tint: "coral" },
       { icon: "inbox", title: "Solicitudes recibidas", href: "/signals", tint: "lavender" },
       { icon: "wallet", title: "Mis gastos", href: "/records/expenses", tint: "butter" },
+      { icon: "clipboard-list", title: "Listas de preparación", href: "/checklists", tint: "sage" },
     ] : [
       { icon: "layers", title: "Tratamientos registrados", href: "/records/treatments", tint: "sage" },
       { icon: "hand-helping", title: "Necesidades cotidianas", href: edit("needs"), tint: "coral" },
       { icon: "layout-grid", title: "Preferencias de organización", href: edit("treatment"), tint: "sky" },
       { icon: "package", title: "Preferencias de kits", href: edit("identity"), tint: "butter" },
+      { icon: "chart-no-axes-column", title: "Mi proceso", href: "/process", tint: "sage" },
+      { icon: "clipboard-list", title: "Listas de preparación", href: "/checklists", tint: "sage" },
       { icon: "history", title: "Historial personal", href: "/history", tint: "lavender" },
     ] },
     { title: "Mi red", items: [
