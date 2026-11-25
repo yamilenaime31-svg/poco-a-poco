@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 12 (redesign + simulated purchase + memberships + catalog admin). Backend: 12/12 new pytest cases pass (quote math w/ and w/o use_credit, discounts only on kit base, shipping 0, idempotent checkout by request_id, timeline, admin status flow, cancel blocked after En camino, user cancel refunds Plus credits, favorite/repeat, Plus activate idempotent/cancel keeps credits, AI usage 429 after limit, admin memberships/profitability, one-time export links xlsx+csv, import preview w/ invalid SKU errors, public price/supplement unchanged). Extra probes found 1 HIGH bug: cycling Plus activate→cancel→activate grants a new $20 credit every time (3 cycles = $60) — monthly credit is not idempotent per user/month. Medium: admin can move orders backwards, producing an inconsistent timeline; concurrent duplicate checkout may return the '_placing' placeholder. Frontend (390x844): Home compact sections, catalog tier tags + 'Imagen ilustrativa' (38/38), kit → cart → checkout ($419 free; Plus $369.10 all / $389.10 none / $384.10 custom 5), address-incomplete toast, double-tap confirm → exactly 1 order, /order-confirmed 'Tu kit está confirmado', /order/[id] 5-step timeline + favorite toast, /plus → /plus-welcome ($20), /credits, Perfil plan card, /plan cancel sheet (credits kept $15), admin catalog export popup + import preview via file chooser (confirm disabled when errors), profitability toggle, memberships dashboard, settings plans confirm sheet, admin orders status change — all working. No deprecated Expo packages detected; no SafeAreaView issues detected.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/me/plus/activate + POST /api/me/plus/cancel", "issue": "Monthly Plus credit is keyed by plan 'since' (membership.py:33 key=f'plus:{user}:{since}:{i}'). Each re-activation has a new 'since', so activate→cancel→activate grants another $20 immediately. Reproduced: 3 cycles in a few seconds → wallet plus $60 (earned $60). Credits are kept on cancel, so this is unlimited free credit. Fix: key credits per user + calendar period (e.g. plus:{user}:{YYYY-MM} or track last_credit_period on user and only grant if a new 30-day period since last grant).", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/admin/orders/{id}/status", "issue": "Backward transitions allowed (e.g. En preparación → Pedido confirmado returns 200). Timeline then keeps 'En preparación' done and 'Pedido confirmado' shows the newest timestamp (00:58) above 'En preparación' (00:57) because order_view builds reached={status:at} overwriting earlier entries (server.py:905). Either forbid moving backwards (only forward in ORDER_FLOW + Cancelado) or keep first timestamp. Admin UI also shows a 'Pedido confirmado' button for an order already in preparation."},
+      {"endpoint": "POST /api/orders/checkout (concurrent same request_id)", "issue": "3 parallel requests with the same request_id → 1 order (good) but one response returned the placeholder doc with status '_placing' and no items/total (business.py:375-379 returns prev while still placing). Also if place_order raises after inserting the placeholder, a '_placing' order remains forever and that request_id is burned. Suggest waiting/polling until status != '_placing' or returning 409 'procesando', and deleting the placeholder on failure."},
+      {"endpoint": "POST /api/treatments/parse (and server.py:1149 AI endpoint)", "issue": "use_ai() increments the monthly counter before the LLM call; if the LLM fails (503) the interaction is still consumed. Count only on success."},
+      {"endpoint": "GET /api/admin/memberships", "issue": "'Usuarios Plus' (17, from plan_view, excludes admins and moves Plus+institution users to institutional) vs 'Suscripciones activas' (26, raw count of plan.tier=plus & source=demo incl. any user) are inconsistent on the dashboard; also 'Créditos otorgados' is inflated by the activate/cancel exploit above."},
+      {"endpoint": "POST /api/orders/{id}/cancel — institutional refund", "issue": "Refund goes to the most recent credit benefit, not necessarily the benefit that was consumed (business.py:438). Low impact in demo."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Order detail timeline", "issue": "After an admin backward status move, timeline timestamps appear out of order (Pedido confirmado 00:58 above En preparación 00:57). Root cause backend (see minor issue).", "testID": "order-step-0", "priority": "low"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Checkout", "issues": ["Credit mode chips (checkout-credit-all/custom/none) are 40px tall (<44px touch target)", "Validation toast overlaps the header; the page does not scroll to the first invalid field (fields below the fold), so users still have to find them"]},
+      {"screen": "Order confirmed / Plus welcome", "issues": ["Empty 64px header bar with no title or back button at the top of /order-confirmed and /plus-welcome — looks like a blank strip"]},
+      {"screen": "Admin › Catálogo import preview", "issues": ["Changed fields are shown with raw keys (pack_price, units_per_pack, supplier_name, unit_cost, final_unit_cost) instead of the Spanish column labels used in the file"]},
+      {"screen": "Home", "issues": ["Quick-signal tile label 'Quiero estar a ...' is truncated (84px tiles, 2 lines)", "Mi día card shows 'Hoy —' with 'Próxima actividad: Cita' (no time) — dash looks like missing data"]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_amodo_iter12_purchase_membership.py", "/app/backend/tests/probe_iter12_plus_cycle.py", "/app/backend/tests/ui_setup_iter12.py", "/app/test_reports/pytest/iter12.xml"],
+  "action_items": [
+    "HIGH: Make Plus monthly credit idempotent per user per period across re-activations (membership.py accrue_plus key / activate_plus). Reproduce with tests/probe_iter12_plus_cycle.py (expect $20, currently $60).",
+    "Forbid backward order status transitions in set_order_status (or keep first timestamp in order_view) and hide past-state buttons in admin/orders.tsx.",
+    "place_order: don't return the '_placing' placeholder to duplicate concurrent requests; clean up placeholder on exceptions.",
+    "Count AI usage only after a successful LLM response.",
+    "Align admin memberships counts (Usuarios Plus vs Suscripciones activas).",
+    "Minor UI: credit chips minHeight 44; Spanish labels in import preview; header strip on order-confirmed/plus-welcome; scroll to first invalid checkout field."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1364 lines and business.py 730 lines (>700) — consider splitting orders/cart into their own module.",
+    "checkout.tsx sends use_credit: b?.credit — if the quote is still reloading after changing the custom amount, the previous quote's credit is sent (minor race).",
+    "import_catalog confirm=true: top-level product cost fields come from the first variant only while unit_cost uses max over variants — fine but undocumented.",
+    "Import confirm=true was NOT executed against seeded products (would modify seed cost data); preview + price-unchanged checks done. Apply step needs a manual check."
+  ],
+  "updated_files": ["/app/backend/tests/test_amodo_iter12_purchase_membership.py", "/app/backend/tests/probe_iter12_plus_cycle.py", "/app/backend/tests/ui_setup_iter12.py"],
+  "success_rate": {"backend": "92% (12/12 scripted tests pass; 1 HIGH bug found by probe)", "frontend": "100% of requested flows functional; minor design issues"},
+  "seed_data_creation": "Created TEST_ users (test_*@amodo.app, test_ui12_*@amodo.app) with kits/orders; all their orders cancelled except one test order left 'Entregado' (cannot be cancelled). Plans settings verified at defaults in DB after tests (UI save re-saved identical defaults). demo@amodo.app untouched (free, $20 credits).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0 to see prints (pytest.ini uses xdist). New users land on multi-step /onboarding ('Completar después' only advances one step). Order-confirmed page refetches /orders/{id}. Admin orders testIDs: admin-order-{number}-{status}.",
+  "rca_of_issue": "Plus credit exploit: accrue_plus uses key plus:{user_id}:{plan.since}:{period_index}; activate_plus sets a fresh 'since' on every activation, so period 0 of each new subscription is a new unique key → new +$20 move. cancel_plus keeps the balance. Mitigation: derive the key from user + period start independent of subscription (or store last_credit_at on the user and only grant when >=30 days passed)."
+}

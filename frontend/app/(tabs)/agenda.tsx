@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
-import { useAuth } from "@/src/auth";
 import { TabScreen } from "@/src/components/tab-screen";
 import { AGENDA_CATS, MONTHS_LONG, fmtDate, fmtLongDate, isoDate, tintOf, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
@@ -31,7 +30,6 @@ export default function Agenda() {
   const router = useRouter();
   const toast = useToast();
   const params = useLocalSearchParams<{ owner?: string }>();
-  const { user } = useAuth();
   const { colors } = useTheme();
   const net = useApi<any>("/network");
   const t = today();

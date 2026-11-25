@@ -15,19 +15,22 @@ export function PlanCard() {
   const { colors } = useTheme();
   const q = useApi<any>("/me/plan");
   const p = q.data;
+  const wallet = useApi<any>("/wallet").data;
+  const ai = useApi<any>("/me/ai-usage").data;
   if (!p) return null;
   const inst = p.access === "institutional";
   const title = inst ? (p.plus_by_institution ? "AMODO Plus — proporcionado por tu institución" : "Acceso institucional") : p.name;
   const sub = inst ? `Tu acceso es proporcionado por ${p.institution}` : p.tier === "plus" ? "Membresía activa (demostración, sin cobro)" : "Estás utilizando la versión gratuita";
   const facts = [
-    p.tier === "plus" && !inst ? `${money(p.prices.plus_price)}/mes · ilustrativo` : null,
-    p.until ? `${p.tier === "plus" && !inst ? "Vence" : "Vigente hasta"} el ${fmtDate(p.until)} · sin renovación automática` : null,
-    credits(p) ? `Créditos para kits: ${money(credits(p))}` : null,
+    p.tier === "plus" && !inst ? `${money(p.subscription?.price ?? p.prices.plus_price)} al mes · demostración` : null,
+    p.until ? `${p.tier === "plus" && !inst ? "Se renueva" : "Vigente hasta"} el ${fmtDate(p.until)}` : null,
+    wallet?.available ? `Créditos disponibles: ${money(wallet.available)}` : credits(p) ? `Créditos para kits: ${money(credits(p))}` : null,
+    p.tier !== "plus" && ai ? `Asistente: ${ai.used} de ${ai.limit} interacciones este mes` : null,
     discount(p) ? `Descuento en kits: ${discount(p)}%` : p.tier === "plus" ? `Descuento Plus en kits: ${p.prices.plus_kit_discount_pct}%` : null,
   ].filter(Boolean) as string[];
   const go = (h: string) => () => router.push(h as any);
   return (
-    <View style={[styles.card, { backgroundColor: p.tier === "plus" || inst ? colors.sageSoft : colors.surfaceSecondary, borderColor: colors.border }]} testID="profile-plan-card">
+    <View style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID="profile-plan-card">
       <Txt v="label">Mi plan AMODO</Txt>
       <Txt v="h2" style={{ marginTop: 4 }} testID="profile-plan-name">{title}</Txt>
       <Txt v="caption" color={colors.onSurface} testID="profile-plan-sub">{sub}</Txt>
@@ -36,6 +39,7 @@ export function PlanCard() {
       ))}
       <View style={styles.btns}>
         <Btn label="Ver mis beneficios" small onPress={go("/benefits")} testID="plan-card-benefits" style={styles.btn} />
+        <Btn label="Mis créditos" small variant="secondary" onPress={go("/credits")} testID="plan-card-credits" style={styles.btn} />
         {inst ? (
           <>
             <Btn label="Mi institución" small variant="secondary" onPress={go("/benefits")} testID="plan-card-institution" style={styles.btn} />
@@ -48,7 +52,8 @@ export function PlanCard() {
           </>
         ) : (
           <>
-            <Btn label="Conocer AMODO Plus" small variant="secondary" onPress={go("/plan")} testID="plan-card-plus" style={styles.btn} />
+            <Btn label="Conocer AMODO Plus" small variant="secondary" onPress={go("/plus")} testID="plan-card-plus" style={styles.btn} />
+            <Btn label="Comparar planes" small variant="ghost" onPress={go("/plan")} testID="plan-card-compare" style={styles.btn} />
             <Btn label="Tengo un código" small variant="ghost" onPress={go("/redeem")} testID="plan-card-code" style={styles.btn} />
           </>
         )}
@@ -58,7 +63,7 @@ export function PlanCard() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, padding: space.lg, marginTop: space.xl },
+  card: { borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, padding: space.lg, marginTop: space.xl },
   li: { flexDirection: "row", gap: 6, marginTop: 6 },
   btns: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.md },
   btn: { flexGrow: 1, minWidth: 140 },

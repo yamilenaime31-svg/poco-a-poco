@@ -35,14 +35,14 @@ export function Ic({ name, size = 20, color }: { name: string; size?: number; co
 }
 
 const VARIANTS: Record<string, TextStyle & { fontSize: number; lineHeight: number }> = {
-  display: { fontFamily: fonts.displayBold, fontSize: 32, lineHeight: 38, letterSpacing: -1 },
-  h1: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.6 },
-  h2: { fontFamily: fonts.display, fontSize: 18, lineHeight: 24, letterSpacing: -0.3 },
+  display: { fontFamily: fonts.displayBold, fontSize: 28, lineHeight: 34, letterSpacing: -0.6 },
+  h1: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.4 },
+  h2: { fontFamily: fonts.display, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
   title: { fontFamily: fonts.displayMedium, fontSize: 15, lineHeight: 21, letterSpacing: -0.1 },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   medium: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 22 },
   caption: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
-  label: { fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, textTransform: "uppercase" },
+  label: { fontFamily: fonts.bodyMedium, fontSize: 11, lineHeight: 16, letterSpacing: 0.9, textTransform: "uppercase" },
 };
 
 export function Txt({ v = "body", color, style, children, ...rest }: TextProps & { v?: keyof typeof VARIANTS | string; color?: string }) {
@@ -262,12 +262,12 @@ export function Card({ children, style, tint, testID, onPress }: { children: Rea
   const bg = tint ? tintOf(colors, tint).bg : colors.surfaceSecondary;
   if (onPress)
     return (
-      <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: bg, opacity: pressed ? 0.88 : 1 }, style]}>
+      <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [styles.card, !tint && { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, { backgroundColor: bg, opacity: pressed ? 0.88 : 1 }, style]}>
         {children}
       </Pressable>
     );
   return (
-    <View testID={testID} style={[styles.card, { backgroundColor: bg }, style]}>
+    <View testID={testID} style={[styles.card, !tint && { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, { backgroundColor: bg }, style]}>
       {children}
     </View>
   );
@@ -388,14 +388,11 @@ export function ProductImage({ product, height = 140, style }: { product?: { ima
   const cat = categoryOf(product?.category);
   const t = tintOf(colors, cat.tint);
   return (
-    <View style={[{ height, borderRadius: radius.md, backgroundColor: t.bg, alignItems: "center", justifyContent: "center", overflow: "hidden" }, style]}>
+    <View style={[{ height, borderRadius: radius.sm, backgroundColor: colors.surfaceTertiary, alignItems: "center", justifyContent: "center", overflow: "hidden" }, style]}>
       {product?.image ? (
         <Image source={{ uri: mediaUrl(product.image) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : (
-        <>
-          <View style={{ position: "absolute", width: height * 0.9, height: height * 0.9, borderRadius: height, backgroundColor: t.accent, opacity: 0.18, right: -height * 0.2, bottom: -height * 0.3 }} />
-          <Ic name={cat.icon} size={Math.min(40, height * 0.28)} />
-        </>
+        <Ic name={cat.icon} size={Math.min(32, height * 0.26)} />
       )}
     </View>
   );
@@ -459,25 +456,25 @@ export function ProgressBar({ value }: { value: number }) {
 }
 
 const styles = StyleSheet.create({
-  btn: { minHeight: 52, borderRadius: radius.pill, paddingHorizontal: space.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, borderWidth: 1 },
+  btn: { minHeight: 48, borderRadius: radius.md, paddingHorizontal: space.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, borderWidth: 1 },
   btnSmall: { minHeight: 44, paddingHorizontal: space.lg },
-  btnText: { fontFamily: fonts.bodyBold, fontSize: 15 },
-  chip: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
+  btnText: { fontFamily: fonts.bodyBold, fontSize: 15, letterSpacing: -0.1 },
+  chip: { minHeight: 36, paddingHorizontal: 12, borderRadius: radius.sm, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
   chipText: { fontFamily: fonts.bodyMedium, fontSize: 14 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: space.lg, fontFamily: fonts.body },
+  input: { minHeight: 48, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: space.lg, fontFamily: fonts.body },
   iconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   dot: { position: "absolute", top: 9, right: 10, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
   header: { paddingHorizontal: space.lg, paddingBottom: space.md, borderBottomWidth: StyleSheet.hairlineWidth },
   headerRow: { flexDirection: "row", alignItems: "center", minHeight: 44 },
   footer: { paddingHorizontal: space.xl, paddingTop: space.lg, borderTopWidth: StyleSheet.hairlineWidth, gap: space.sm },
-  card: { borderRadius: radius.lg, padding: space.lg, shadowColor: "#8A6A3F", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  card: { borderRadius: radius.md, padding: space.lg },
   sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.sm, minHeight: 28 },
   row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 14, minHeight: 56 },
   rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   empty: { alignItems: "center", paddingVertical: space.xxl, paddingHorizontal: space.lg },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", marginBottom: space.md },
-  badge: { paddingHorizontal: 10, height: 24, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },
+  badge: { paddingHorizontal: 8, height: 22, borderRadius: 6, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },
   badgeText: { fontFamily: fonts.bodyMedium, fontSize: 12 },
   fab: { position: "absolute", right: space.xl, height: 56, minWidth: 56, paddingHorizontal: 18, borderRadius: 28, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center" },
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: space.xl, maxHeight: "85%" },

@@ -71,3 +71,8 @@ export function invalidate() {
   afterInvalidate?.();
   return queryClient.invalidateQueries();
 }
+
+export function authHeader(): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+export const API_BASE = BASE;

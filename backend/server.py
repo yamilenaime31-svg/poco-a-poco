@@ -843,7 +843,8 @@ async def cart_view(user_id: str) -> dict:
                 continue
             kv = await kit_view(k)
             gift = f"Regalo para {k.get('for_name') or 'alguien'}" + (f" · «{k['note']}»" if k.get("note") else "") + " · " if k.get("gift") else ""
-            c.update({"name": kv["name"], "price": kv["total"], "gift": bool(k.get("gift")), "detail": gift + f"{kv['size_label']} · {len(kv['items'])} artículos" + (f" · incluye ${kv['supplements']} en suplementos" if kv["supplements"] else ""),
+            c.update({"name": kv["name"], "price": kv["total"], "base": kv["base_price"], "supplements": kv["supplements"], "size_label": kv["size_label"],
+                      "images": [it.get("product") for it in kv["items"][:6]], "gift": bool(k.get("gift")), "detail": gift + f"{kv['size_label']} · {len(kv['items'])} artículos" + (f" · incluye ${kv['supplements']} en suplementos" if kv["supplements"] else ""),
                       "category": "Kit", "product_ids": [i["product_id"] for i in kv["items"]], "image_product": kv["items"][0]["product"] if kv["items"] else None})
         else:
             p = await db.products.find_one({"id": c["ref_id"]})
@@ -895,16 +896,17 @@ SHIPPING = {"Estándar": 99, "Express": 179, "Recoger en punto AMODO": 0}
 STEPS = ["Confirmado", "Preparando tu kit", "En camino", "Entregado"]
 
 
-FLOW = ["Pendiente de confirmación", "Confirmado", "En preparación", "Enviado", "Entregado"]
+FLOW = ["Pedido confirmado", "En preparación", "Listo para envío", "En camino", "Entregado"]
 
 
 def order_view(o: dict) -> dict:
     o = clean(o)
-    status = o.get("status") or ("Cancelado" if o.get("cancelled") else "Confirmado")
-    idx = FLOW.index(status) if status in FLOW else -1
+    status = o.get("status") or ("Cancelado" if o.get("cancelled") else "Pedido confirmado")
+    reached = {h["status"]: h["at"] for h in o.get("history", [])}  # only states actually registered count as completed
     o["status"] = status
-    o["timeline"] = [{"label": s, "done": i <= idx} for i, s in enumerate(FLOW)]
+    o["timeline"] = [{"label": s, "done": s in reached, "at": reached.get(s)} for s in FLOW]
     o["active"] = status not in ("Entregado", "Cancelado")
+    o["cancellable"] = status in ("Pedido confirmado", "En preparación")
     return o
 
 
@@ -917,6 +919,8 @@ class CheckoutIn(BaseModel):
     notes: str = ""
     gift_note: str = ""
     shipping: str = "Estándar"
+    use_credit: Optional[float] = None
+    request_id: Optional[str] = None
 
 
 @api.post("/orders/checkout")
@@ -924,7 +928,8 @@ async def checkout(body: CheckoutIn, user=Depends(current_user)):
     from business import place_order
     if body.shipping not in ("Estándar", "Recoger en punto AMODO"):
         raise HTTPException(422, "Opción de envío no válida")
-    return order_view(await place_order(user, body.model_dump(), body.shipping))
+    addr = body.model_dump(exclude={"use_credit", "request_id"})
+    return order_view(await place_order(user, addr, body.shipping, body.use_credit, body.request_id))
 
 
 @api.get("/orders")
@@ -945,7 +950,7 @@ async def cancel_order(oid: str, user=Depends(current_user)):
     o = await db.orders.find_one({"id": oid, "user_id": user["id"]})
     if not o:
         raise HTTPException(404, "Pedido no encontrado")
-    if order_view(o)["status"] in ("Enviado", "Entregado", "Cancelado"):
+    if not order_view(o)["cancellable"]:
         raise HTTPException(400, "Este pedido ya salió y no se puede cancelar")
     from business import set_order_status
     await set_order_status({**o, "status": order_view(o)["status"]}, "Cancelado")
@@ -1141,6 +1146,8 @@ async def organize_parse(text: str = Body(..., embed=True), today: str = Body(..
     text = text.strip()[:2000]
     if len(text) < 3:
         raise HTTPException(422, "Escribe un poco más para poder ayudarte")
+    from membership import use_ai
+    await use_ai(user)
     base = datetime.strptime(_date_or_empty(today) or datetime.now(timezone.utc).date().isoformat(), "%Y-%m-%d")
     cal = ", ".join(f"{DAYS_ES[(base + timedelta(days=i)).weekday()]} {(base + timedelta(days=i)).date().isoformat()}" for i in range(14))
     # Only the text and a calendar are sent: no name, email or stored records.
@@ -1156,6 +1163,8 @@ async def organize_parse(text: str = Body(..., embed=True), today: str = Body(..
         data = json.loads(m.group(0)) if m else {}
     except Exception as exc:
         logger.error("organize_parse: %s", exc)
+        from membership import refund_ai
+        await refund_ai(user)
         raise HTTPException(503, "No pudimos interpretar el texto ahora. Intenta de nuevo en un momento.")
     items = clean_items(data.get("items"))
     return {"items": items, "engine": "ai"}
@@ -1327,6 +1336,8 @@ async def migrate_sharing():
 import planner  # noqa: E402  (registers routes on `api`)
 import knowledge  # noqa: E402
 import business  # noqa: E402
+import membership  # noqa: E402
+import catalog_admin  # noqa: E402
 
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

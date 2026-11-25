@@ -7,7 +7,7 @@ import { useToast } from "@/src/toast";
 import { Btn, Chip, Ic, Txt, tap } from "@/src/ui";
 import { fonts, radius, space, useTheme } from "@/src/theme";
 
-const VISIBLE = 5;
+const VISIBLE = 4;
 
 /** Optional, private mood check-in: several feelings and/or a free note, editable any time. No interpretation. */
 export function MoodCard({ journal, date }: { journal: any; date: string }) {
@@ -112,7 +112,7 @@ export function MoodCard({ journal, date }: { journal: any; date: string }) {
       ) : (
         <Pressable onPress={() => { setDraft(""); setWriting(true); }} hitSlop={6} testID="home-mood-add" style={styles.add}>
           <Ic name="plus" size={16} />
-          <Txt v="medium" style={{ fontSize: 14 }}>Agregar cómo me siento</Txt>
+          <Txt v="caption" color={colors.onSurface}>Agregar un estado propio</Txt>
         </Pressable>
       )}
     </View>
@@ -120,10 +120,10 @@ export function MoodCard({ journal, date }: { journal: any; date: string }) {
 }
 
 const styles = StyleSheet.create({
-  card: { marginTop: space.md, borderRadius: radius.lg, padding: space.lg, borderWidth: StyleSheet.hairlineWidth },
+  card: { marginTop: space.xl, borderRadius: radius.md, padding: space.md, borderWidth: StyleSheet.hairlineWidth },
   head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: space.sm },
-  wrap: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.md },
-  add: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: space.md, minHeight: 36, alignSelf: "flex-start" },
+  wrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: space.sm },
+  add: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: space.xs, minHeight: 40, alignSelf: "flex-start" },
   note: { flexDirection: "row", alignItems: "center", gap: space.sm, marginTop: space.md, borderRadius: radius.sm, padding: space.md },
   input: { minHeight: 72, borderRadius: radius.md, borderWidth: 1, padding: space.md, fontFamily: fonts.body, fontSize: 15, textAlignVertical: "top" },
 });

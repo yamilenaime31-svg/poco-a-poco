@@ -8,7 +8,6 @@ import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { Avatar } from "@/src/components/avatar";
 import { MoodCard } from "@/src/components/mood-card";
-import { TileGrid } from "@/src/components/tile-grid";
 import { TabScreen } from "@/src/components/tab-screen";
 import { DEFAULT_FAV_SIGNALS, SIGNALS, URGENCY, fmtDate, fmtLongDate, tintOf, today } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
@@ -152,60 +151,68 @@ export function PatientHome() {
         </>
       )}
     >
-      <Animated.View entering={FadeInDown.duration(400)}>
-        <Txt v="h1" style={{ marginTop: space.sm }} testID="home-greeting">Hola, {user?.preferred_name || user?.name}.</Txt>
-        <Txt v="caption">Un día a la vez, a tu modo.</Txt>
+      <Animated.View entering={FadeInDown.duration(300)} style={styles.greetRow}>
+        <Txt v="h2" testID="home-greeting" style={{ flex: 1 }} numberOfLines={1}>Hola, {properName(user?.preferred_name || user?.name)}</Txt>
+        <Txt v="caption">{fmtLongDate(t)}</Txt>
       </Animated.View>
 
       {q.isError ? <ErrorState onRetry={() => q.refetch()} /> : !d ? <Loading /> : (
         <>
-          <View style={[styles.day, { backgroundColor: colors.sageSoft }]} testID="home-my-day-card">
-            <View style={[styles.blob, { backgroundColor: colors.sage }]} />
-            <Txt v="label" color={colors.onSurface}>Mi día · {fmtLongDate(t)}</Txt>
-            {d.today_events.length ? d.today_events.slice(0, 2).map((e: any) => (
-              <Pressable key={e.id} onPress={() => router.push(`/event/${e.id}`)} testID={`home-today-${e.id}`}>
-                <Txt v="h2" style={{ marginTop: 6, paddingRight: space.xl }} numberOfLines={2}>{e.time ? `${e.time} · ` : ""}{e.title}</Txt>
-              </Pressable>
-            )) : <Txt v="h2" style={{ marginTop: 6 }}>Tu día está libre hoy.</Txt>}
-            <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>{d.tasks.length ? `${d.tasks.length} pendiente(s) por ahí, sin prisa` : "Sin pendientes"}</Txt>
-            <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
-              <Btn label="Ver mi día" small variant="secondary" onPress={() => router.push("/day")} testID="home-my-day-button" style={{ flex: 1 }} />
-              <Btn label="Agregar" small icon="plus" onPress={() => router.push({ pathname: "/record-form", params: { kind: "events", date: t } })} testID="home-add-button" style={{ flex: 1 }} />
+          <View style={[styles.day, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID="home-my-day-card">
+            <View style={styles.dayHead}>
+              <Txt v="label">Mi día</Txt>
+              <View style={{ flexDirection: "row", gap: space.xs }}>
+                <IconBtn icon="calendar-days" onPress={() => router.push("/day")} testID="home-my-day-button" />
+                <IconBtn icon="plus" onPress={() => router.push({ pathname: "/record-form", params: { kind: "events", date: t } })} testID="home-add-button" />
+              </View>
             </View>
+            {next ? (
+              <Pressable onPress={() => router.push(`/event/${next.id}`)} testID="home-next-card" style={styles.nextRow}>
+                <View style={[styles.dateBox, { backgroundColor: colors.sageSoft }]}>
+                  <Txt v="caption" color={colors.onSurface} style={{ fontSize: 11 }}>{next.date === t ? "Hoy" : fmtDate(next.date).split(" ").slice(0, 2).join(" ")}</Txt>
+                  <Txt v="title">{next.time || "—"}</Txt>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Txt v="caption">Próxima actividad</Txt>
+                  <Txt v="title" numberOfLines={2}>{next.title}</Txt>
+                </View>
+                <Ic name="chevron-right" size={16} color={colors.muted} />
+              </Pressable>
+            ) : <Txt v="title" style={{ marginTop: space.sm }}>Nada programado por ahora.</Txt>}
+            <Pressable onPress={() => router.push("/pending")} testID="home-pending-count" style={[styles.dayFoot, { borderTopColor: colors.divider }]}>
+              <Ic name="list-checks" size={15} color={colors.muted} />
+              <Txt v="caption" style={{ flex: 1 }}>{d.tasks.length ? `${d.tasks.length} pendiente${d.tasks.length === 1 ? "" : "s"}` : "Sin pendientes"}</Txt>
+              <Txt v="caption" color={colors.onSurface} style={{ textDecorationLine: "underline" }} onPress={() => router.push("/(tabs)/agenda")}>Agenda</Txt>
+            </Pressable>
           </View>
 
-          <MoodCard journal={d.journal} date={t} />
-
           <Section title="Señales rápidas" action="Personalizar" onAction={() => setEditSignals(true)} testID="home-signals-section">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl }} contentContainerStyle={{ gap: space.md, paddingHorizontal: space.xl }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.xl }}>
               {favs.map((s) => (
-                <Pressable key={s.type} onPress={() => { tap(); setUrgency("Cuando puedas"); setConfirm(s); }} testID={`home-signal-${s.type}`} style={({ pressed }) => ({ width: 70, alignItems: "center", transform: [{ scale: pressed ? 0.94 : 1 }] })}>
-                  <View style={[styles.circle, { backgroundColor: tintOf(colors, s.tint).bg, borderColor: tintOf(colors, s.tint).accent }]}><Ic name={s.icon} size={19} /></View>
-                  <Txt v="caption" color={colors.onSurface} style={{ textAlign: "center", marginTop: 6, fontSize: 12, lineHeight: 15 }} numberOfLines={3}>{s.label}</Txt>
+                <Pressable key={s.type} onPress={() => { tap(); setUrgency("Cuando puedas"); setConfirm(s); }} testID={`home-signal-${s.type}`} style={({ pressed }) => [styles.signal, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+                  <Ic name={s.icon} size={18} />
+                  <Txt v="caption" color={colors.onSurface} style={{ fontSize: 12, lineHeight: 15 }} numberOfLines={2}>{s.label}</Txt>
                 </Pressable>
               ))}
-              <Pressable onPress={() => router.push("/signals")} testID="home-signals-more" style={{ width: 70, alignItems: "center" }}>
-                <View style={[styles.circle, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}><Ic name="history" size={20} /></View>
-                <Txt v="caption" style={{ textAlign: "center", marginTop: 6 }}>Historial</Txt>
+              <Pressable onPress={() => router.push("/signals")} testID="home-signals-more" style={[styles.signal, { borderColor: colors.border }]}>
+                <Ic name="history" size={18} color={colors.muted} />
+                <Txt v="caption" style={{ fontSize: 12 }}>Historial</Txt>
               </Pressable>
             </ScrollView>
             {d.network_count === 0 ? <Txt v="caption" style={{ marginTop: space.sm }}>Vincula a alguien desde Perfil para que reciba tus señales.</Txt> : null}
           </Section>
 
-          <Section title="Próximo" action="Agenda" onAction={() => router.push("/(tabs)/agenda")} testID="home-upcoming-section">
-            {next ? (
-              <Pressable onPress={() => router.push(`/event/${next.id}`)} testID="home-next-card" style={[styles.next, { backgroundColor: colors.lavenderSoft }]}>
-                <View style={[styles.dateBox, { backgroundColor: colors.surfaceSecondary }]}>
-                  <Txt v="label" color={colors.onSurface}>{fmtDate(next.date).split(" ")[0]}</Txt>
-                  <Txt v="h2">{next.time || "—"}</Txt>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Txt v="title">{next.title}</Txt>
-                  <Txt v="caption" color={colors.onSurface}>{[fmtDate(next.date), next.location].filter(Boolean).join(" · ")}</Txt>
-                </View>
-                <Ic name="chevron-right" size={18} />
-              </Pressable>
-            ) : <Txt v="caption">Nada programado por ahora.</Txt>}
+          <MoodCard journal={d.journal} date={t} />
+
+          <Section title="Accesos" testID="home-shortcuts">
+            <View style={styles.grid}>
+              {[...ORGANIZE_TILES, { label: "Mis kits", icon: "package", href: "/(tabs)/mykits" }, { label: "Armar un kit", icon: "package-plus", href: "/kit-builder" }].map((o) => (
+                <Pressable key={o.label} onPress={() => router.push(o.href as any)} testID={`home-organize-${o.label}`} style={({ pressed }) => [styles.tile, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+                  <Ic name={o.icon} size={18} />
+                  <Txt v="caption" color={colors.onSurface} numberOfLines={1} style={{ fontSize: 12 }}>{o.label}</Txt>
+                </Pressable>
+              ))}
+            </View>
           </Section>
 
           <Section title="Pendientes" action="Todos" onAction={() => router.push("/pending")} testID="home-tasks-section">
@@ -215,28 +222,20 @@ export function PatientHome() {
             ))}
           </Section>
 
-          <Section title="Organiza" action="Abrir" onAction={() => router.push("/(tabs)/organiza")}>
-            <TileGrid tiles={ORGANIZE_TILES.map((o) => ({ key: o.label, label: o.label, icon: o.icon, tint: o.tint, onPress: () => router.push(o.href as any), testID: `home-organize-${o.label}` }))} />
-          </Section>
-
-          <Section title="Mi kit" testID="home-kit-section">
-            <View style={[styles.kit, { backgroundColor: colors.butterSoft }]}>
-              {kit ? (
-                <Pressable onPress={() => router.push(`/kit/${kit.id}`)} testID="home-kit-card" style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", width: 88, gap: 4 }}>
-                    {kit.items.slice(0, 4).map((i: any) => <ProductImage key={i.product_id} product={i.product} height={42} style={{ width: 42, borderRadius: 14 }} />)}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Txt v="title">{kit.name}</Txt>
-                    <Txt v="caption" color={colors.onSurface}>{kit.context} · {kit.items.length} artículos</Txt>
-                  </View>
-                </Pressable>
-              ) : <Txt v="title">Prepara lo que te acompaña en tu próxima cita.</Txt>}
-              <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
-                {kit ? <Btn label="Editar" small variant="secondary" icon="pencil" onPress={() => router.push({ pathname: "/kit-builder", params: { id: kit.id } })} testID="home-kit-edit" style={{ flex: 1 }} /> : null}
-                <Btn label="Crear nuevo" small icon="package-plus" onPress={() => router.push("/kit-builder")} testID="home-build-kit-button" style={{ flex: 1 }} />
-              </View>
-            </View>
+          <Section title="Mi kit" action={kit ? "Editar" : undefined} onAction={kit ? () => router.push({ pathname: "/kit-builder", params: { id: kit.id } }) : undefined} testID="home-kit-section">
+            {kit ? (
+              <Pressable onPress={() => router.push(`/kit/${kit.id}`)} testID="home-kit-card" style={[styles.kit, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+                <View style={{ flexDirection: "row", gap: 4 }}>
+                  {kit.items.slice(0, 3).map((i: any) => <ProductImage key={i.product_id} product={i.product} height={44} style={{ width: 44 }} />)}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Txt v="title" numberOfLines={1}>{kit.name}</Txt>
+                  <Txt v="caption" numberOfLines={1}>{kit.context} · {kit.items.length} artículos</Txt>
+                </View>
+                <Ic name="chevron-right" size={16} color={colors.muted} />
+              </Pressable>
+            ) : <Txt v="caption">Prepara lo que te acompaña en tu próxima cita.</Txt>}
+            <Btn label="Crear nuevo kit" small variant="secondary" icon="package-plus" onPress={() => router.push("/kit-builder")} testID="home-build-kit-button" style={{ marginTop: space.sm }} />
           </Section>
         </>
       )}
@@ -244,12 +243,23 @@ export function PatientHome() {
   );
 }
 
+/** Shows a name with natural capitalisation even if it was typed in lower or upper case. */
+function properName(n?: string) {
+  if (!n) return "";
+  return n.trim().split(/\s+/).map((w) => (w === w.toLowerCase() || w === w.toUpperCase() ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w)).join(" ");
+}
+
 const styles = StyleSheet.create({
-  day: { marginTop: space.lg, borderRadius: radius.lg, padding: space.lg, overflow: "hidden" },
-  blob: { position: "absolute", width: 72, height: 72, borderRadius: 36, right: -18, top: -22, opacity: 0.35 },
+  greetRow: { flexDirection: "row", alignItems: "baseline", gap: space.sm, marginTop: space.xs },
+  day: { marginTop: space.md, borderRadius: radius.md, paddingHorizontal: space.lg, paddingTop: space.sm, borderWidth: StyleSheet.hairlineWidth },
+  dayHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  nextRow: { flexDirection: "row", alignItems: "center", gap: space.md, paddingBottom: space.md },
+  dateBox: { width: 56, height: 52, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
+  dayFoot: { flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: 44, borderTopWidth: StyleSheet.hairlineWidth },
   circle: { width: 50, height: 50, borderRadius: 25, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  next: { flexDirection: "row", alignItems: "center", gap: space.md, borderRadius: radius.lg, padding: space.md },
-  dateBox: { width: 60, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  signal: { width: 84, minHeight: 72, borderRadius: radius.sm, borderWidth: StyleSheet.hairlineWidth, padding: space.sm, justifyContent: "space-between", gap: 6 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  tile: { width: "31.5%", minHeight: 60, borderRadius: radius.sm, borderWidth: StyleSheet.hairlineWidth, padding: space.sm, justifyContent: "space-between", gap: 4 },
   check: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  kit: { borderRadius: radius.lg, padding: space.lg },
+  kit: { flexDirection: "row", alignItems: "center", gap: space.md, borderRadius: radius.md, padding: space.md, borderWidth: StyleSheet.hairlineWidth },
 });

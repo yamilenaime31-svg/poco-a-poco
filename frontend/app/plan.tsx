@@ -20,13 +20,15 @@ export default function Plan() {
   const [confirm, setConfirm] = useState<"plus" | "free" | null>(null);
   const [busy, setBusy] = useState(false);
   const p = q.data;
+  const wallet = useApi<any>("/wallet").data;
+  const ai = useApi<any>("/me/ai-usage").data;
 
   const change = async () => {
     setBusy(true);
     try {
       await api("/me/plan", { method: "POST", body: { action: confirm } });
       invalidate();
-      toast.show(confirm === "plus" ? "Plus activado (demostración, sin cargo)" : "Volviste a AMODO Gratis");
+      toast.show("Cancelaste Plus. Tus créditos se conservan.");
       setConfirm(null);
     } catch (e: any) {
       toast.show(e.message, "error");
@@ -45,6 +47,15 @@ export default function Plan() {
         <Txt v="caption" color={colors.onSurface}>{p.until ? `Vigente hasta ${fmtDate(p.until)}${p.source ? ` · ${p.source}` : ""}` : "Sin vencimiento"}</Txt>
       </Card>
 
+      {isPlus && p.subscription ? (
+        <Section title="Membresía" testID="plan-subscription">
+          <Row icon="calendar-check" tint="sand" title={`${money(p.subscription.price)} al mes`} subtitle={`Próxima renovación: ${fmtDate(p.until)} · demostración, sin cobro`} />
+        </Section>
+      ) : null}
+      <Section title="Créditos y asistente">
+        <Row icon="wallet" tint="sand" title="Mis créditos" subtitle={wallet ? `${money(wallet.available)} disponibles` : ""} onPress={() => router.push("/credits")} testID="plan-credits-link" />
+        {ai ? <Row icon="wand-sparkles" tint="sand" title="Uso del asistente este mes" subtitle={`${ai.used} de ${ai.limit} interacciones`} testID="plan-ai-usage" last /> : null}
+      </Section>
       <Section title="Beneficios activos">
         {p.benefits.length ? p.benefits.map((b: any, i: number) => (
           <Row key={b.id} icon="gift" tint="lavender" title={KIND[b.kind]} last={i === p.benefits.length - 1} testID={`plan-benefit-${b.kind}`}
@@ -76,7 +87,7 @@ export default function Plan() {
         </View>
         <Txt v="caption" style={{ marginTop: space.md }}>Plus es opcional: no mejora ningún tratamiento ni restringe la información de seguridad. Los kits se compran por separado. Precio ilustrativo; en este prototipo Plus se activa sin cobro y puedes cancelarlo cuando quieras.</Txt>
         {p.source !== "Institucional" ? (
-          <Btn label={isPlus ? "Volver a Gratis" : "Probar Plus (demostración)"} variant={isPlus ? "ghost" : "primary"} onPress={() => setConfirm(isPlus ? "free" : "plus")} testID="plan-change-button" style={{ marginTop: space.md }} />
+          <Btn label={isPlus ? "Cancelar membresía" : "Conocer AMODO Plus"} variant={isPlus ? "ghost" : "primary"} onPress={() => (isPlus ? setConfirm("free") : router.push("/plus"))} testID="plan-change-button" style={{ marginTop: space.md }} />
         ) : null}
       </Section>
 
@@ -84,8 +95,8 @@ export default function Plan() {
         {p.history.length ? p.history.map((h: any, i: number) => <Row key={h.id} icon="history" tint="sand" title={h.text} subtitle={fmtDateTime(h.at)} last={i === p.history.length - 1} />) : <Txt v="caption">Sin movimientos todavía.</Txt>}
       </Section>
 
-      <Sheet visible={!!confirm} onClose={() => setConfirm(null)} title={confirm === "plus" ? "¿Activar AMODO Plus?" : "¿Volver a AMODO Gratis?"} testID="plan-confirm-sheet">
-        <Txt style={{ marginBottom: space.lg }}>{confirm === "plus" ? "Es una activación de demostración por 30 días, sin ningún cargo. Puedes cancelarla cuando quieras." : "Conservas todas tus funciones esenciales y tu información."}</Txt>
+      <Sheet visible={!!confirm} onClose={() => setConfirm(null)} title={confirm === "plus" ? "¿Activar AMODO Plus?" : "¿Cancelar AMODO Plus?"} testID="plan-confirm-sheet">
+        <Txt style={{ marginBottom: space.lg }}>{confirm === "plus" ? "Es una activación de demostración por 30 días, sin ningún cargo. Puedes cancelarla cuando quieras." : "Sigues con AMODO Gratis. Conservas toda tu información y los créditos que ya recibiste."}</Txt>
         <Btn label="Confirmar" loading={busy} onPress={change} testID="plan-confirm-button" />
       </Sheet>
     </Screen>

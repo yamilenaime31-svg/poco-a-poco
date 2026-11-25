@@ -13,8 +13,10 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage  # noqa: E402
 
 from storage import APP_NAME, put_object  # noqa: E402
 
-STYLE = ("Soft editorial product illustration of {name} ({desc}). Single object centered, gentle hand-drawn gouache style, "
-         "muted warm palette of sage green, cream, sand and soft peach, plain warm cream background (#F8F5F0), soft shadow, no text, no logos, no people.")
+STYLE = ("Minimal editorial studio product photograph of a single {name} ({desc}), unbranded generic object, centered, shot from a slight top angle, "
+         "soft natural daylight, muted neutral tones (ivory, sand, warm grey, soft sage), plain warm ivory background (#F7F5F0), gentle shadow, "
+         "calm Scandinavian / MUJI-like aesthetic, no text, no logos, no labels, no people, no hands.")
+FORCE = os.environ.get("FORCE") == "1"
 
 
 async def main():
@@ -37,14 +39,15 @@ async def main():
                     data, ctype, ext = buf.getvalue(), "image/jpeg", "jpg"
                 except Exception:
                     ctype, ext = "image/png", "png"
-                path = f"{APP_NAME}/products/{p['id']}.{ext}"
+                path = f"{APP_NAME}/products/{p['id']}-v2.{ext}"
                 res = await asyncio.to_thread(put_object, path, data, ctype)
-                await db.products.update_one({"id": p["id"]}, {"$set": {"image": f"/api/media/{res['path']}", "image_kind": "illustration"}})
+                await db.products.update_one({"id": p["id"]}, {"$set": {"image": f"/api/media/{res['path']}", "image_kind": "illustrative_photo"}})
                 print("ok", p["id"], flush=True)
             except Exception as e:
                 print("fail", p["id"], e, flush=True)
 
-    todo = [p async for p in db.products.find({"$or": [{"image": None}, {"image": {"$exists": False}}]})]
+    q = {"image_kind": {"$ne": "illustrative_photo"}} if FORCE else {"$or": [{"image": None}, {"image": {"$exists": False}}]}
+    todo = [p async for p in db.products.find(q)]
     print("todo", len(todo), flush=True)
     await asyncio.gather(*(one(p) for p in todo))
 

@@ -28,7 +28,7 @@ export default function Catalog() {
   };
 
   return (
-    <Screen title="Catálogo" testID="catalog-screen" scroll={false} right={user ? <IconBtn icon="shopping-bag" onPress={() => router.push("/cart")} testID="catalog-cart-button" /> : undefined}>
+    <Screen title="Catálogo" subtitle="Precios provisionales · imágenes ilustrativas, no fotos de proveedor" testID="catalog-screen" scroll={false} right={user ? <IconBtn icon="shopping-bag" onPress={() => router.push("/cart")} testID="catalog-cart-button" /> : undefined}>
       <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
         <View style={[styles.search, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
           <Ic name="search" size={18} color={colors.muted} />
@@ -57,6 +57,6 @@ export default function Catalog() {
 }
 
 const styles = StyleSheet.create({
-  search: { flexDirection: "row", alignItems: "center", gap: space.sm, height: 48, borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: space.lg },
+  search: { flexDirection: "row", alignItems: "center", gap: space.sm, height: 44, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: space.lg },
   searchInput: { flex: 1, minWidth: 0, height: 46, fontFamily: fonts.body, fontSize: 15 },
 });

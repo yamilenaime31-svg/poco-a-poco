@@ -20,6 +20,7 @@ export default function ChoosePlan() {
   const price = useApi<any>("/me/plan").data?.prices?.plus_price ?? 79;
 
   const choose = async (action: "free" | "plus") => {
+    if (action === "plus") return router.push({ pathname: "/plus", params: { onboarding: "1" } });
     setBusy(action);
     try {
       await api("/me/plan", { method: "POST", body: { action } });
@@ -48,25 +49,26 @@ export default function ChoosePlan() {
   );
 
   return (
-    <Screen back={false} title="¿Cómo quieres comenzar con AMODO?" subtitle="Elige la opción que mejor se adapte a ti. Puedes cambiarla después." testID="choose-plan-screen">
-      <Card title="AMODO Gratis" price="$0" list={FREE_FEATURES} testID="choose-plan-free">
-        <Btn label="Comenzar gratis" loading={busy === "free"} onPress={() => choose("free")} testID="choose-plan-free-button" />
+    <Screen back={false} title="Encuentra la forma de acompañamiento que va contigo." subtitle="Puedes cambiarla después. Nada está preseleccionado." testID="choose-plan-screen">
+      <Card title="AMODO Gratis" price="$0" list={["Organiza tu proceso a tu ritmo.", ...FREE_FEATURES.slice(0, 3)]} testID="choose-plan-free">
+        <Btn label="Continuar gratis" loading={busy === "free"} onPress={() => choose("free")} testID="choose-plan-free-button" />
       </Card>
-      <Card title="AMODO Plus" price={`${money(price)}/mes`} list={PLUS_FEATURES} testID="choose-plan-plus">
-        <Txt v="caption" style={{ marginBottom: space.sm }}>Precio ilustrativo. En este prototipo se activa en modo demostración por 30 días, sin cobro ni datos bancarios.</Txt>
+      <Card title="AMODO Plus" price={`${money(price)} al mes`} list={["Una experiencia que te ayuda a anticiparte, organizarte y personalizar tu proceso.", ...PLUS_FEATURES.slice(1)]} testID="choose-plan-plus">
+        <Txt v="caption" style={{ marginBottom: space.sm }}>Activación de demostración, sin cobro ni datos bancarios.</Txt>
         <Btn label="Elegir Plus" variant="secondary" loading={busy === "plus"} onPress={() => choose("plus")} testID="choose-plan-plus-button" />
       </Card>
       <Card title="Tengo un código" testID="choose-plan-code">
-        <Txt v="caption" color={colors.onSurface} style={{ marginTop: -space.sm, marginBottom: space.sm }}>Activa los beneficios que tu hospital o institución tiene para ti.</Txt>
+        <Txt v="caption" color={colors.onSurface} style={{ marginTop: -space.sm, marginBottom: space.sm }}>Activa los beneficios que tu hospital, asociación o institución tiene disponibles para ti.</Txt>
         <Btn label="Ingresar código" variant="secondary" icon="ticket" onPress={() => router.push({ pathname: "/redeem", params: { onboarding: "1" } })} testID="choose-plan-code-button" />
       </Card>
-      <Txt v="caption" style={{ textAlign: "center" }}>Las funciones esenciales de apoyo siempre son gratuitas.</Txt>
+      <Btn label="Comparar planes" variant="ghost" small onPress={() => router.push("/plan")} testID="choose-plan-compare" />
+      <Txt v="caption" style={{ textAlign: "center" }}>Las funciones esenciales siempre son gratuitas.</Txt>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, padding: space.lg, marginBottom: space.md },
+  card: { borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, padding: space.lg, marginBottom: space.md },
   head: { flexDirection: "row", alignItems: "baseline", gap: space.sm, marginBottom: space.sm },
   li: { flexDirection: "row", gap: 6, marginTop: 4 },
 });

@@ -274,5 +274,13 @@ export function money(n: number) {
 export const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 export const isTime = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
-export const FREE_FEATURES = ["Perfil y avatar", "Tratamientos, medicamentos, agenda y pendientes", "Recordatorios esenciales y señales rápidas", "Acompañantes y privacidad", "Catálogo, kits y recomendaciones básicas"];
-export const PLUS_FEATURES = ["Todo lo de Gratis", "Asistente de IA para organizar tratamientos y recurrencias", "Recomendaciones según tu tratamiento, con explicaciones ampliadas", "Reportes personales exportables", "Descuento en kits cuando esté activo"];
+export const FREE_FEATURES = ["Agenda, citas, tratamientos, medicamentos y estudios", "Recordatorios, pendientes, gastos y traslados", "Acompañantes, señales rápidas y control de privacidad", "Avatar, registro de bienestar y preferencias", "Catálogo completo, kits, favoritos y seguimiento de pedidos", "Asistente de IA con interacciones limitadas al mes"];
+export const PLUS_FEATURES = ["Todo lo de AMODO Gratis", "Registra lo que pasó en tu consulta sin llenar cada formulario por separado", "Prepárate para tus próximas citas sin tener que recordar todo", "Recomendaciones de kits que explican por qué aparecen", "Organiza el apoyo de las personas que te acompañan", "Cada mes recibes $20 para personalizar tus próximos kits", "10% de descuento en el precio base de los kits"];
+export const PLUS_BENEFITS = (c: any) => [
+  { i: "wand-sparkles", t: "Registra lo que pasó en tu consulta", s: "Escribe o dicta lo que te dijeron y revisa cada registro antes de guardarlo." },
+  { i: "calendar-range", t: "Prepárate sin tener que recordar todo", s: "Una vista de tu próxima semana con lo que puedes preparar." },
+  { i: "users", t: "Organiza el apoyo de quien te acompaña", s: "Tus acompañantes participan sin pagar otra membresía." },
+  { i: "sparkles", t: "Recomendaciones que explican por qué", s: "Según lo que registras y lo que te gusta, siempre con precauciones." },
+  { i: "wallet", t: `Cada mes recibes $${c.monthly_credit} para tus kits`, s: "Se acumulan y los usas cuando quieras." },
+  { i: "percent", t: `${c.plus_kit_discount_pct}% de descuento en kits`, s: "Sobre el precio base; no aplica a suplementos premium." },
+];

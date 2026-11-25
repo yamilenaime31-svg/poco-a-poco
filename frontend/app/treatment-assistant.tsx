@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { api, invalidate } from "@/src/api";
-import { PlusGate } from "@/src/components/plus-gate";
+import { api, invalidate, useApi } from "@/src/api";
 import { ShareWith } from "@/src/components/share-with";
 import { TREATMENT_TYPES, fmtLongDate, isDate, isTime, isoDate, today } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
@@ -40,6 +39,7 @@ export default function TreatmentAssistant() {
   const { colors } = useTheme();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const ai = useApi<any>("/me/ai-usage").data;
   const [plan, setPlan] = useState<Plan | null>(null);
   const [share, setShare] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -86,8 +86,8 @@ export default function TreatmentAssistant() {
         </View>
       ) : undefined}>
       {!plan ? (
-        <PlusGate title="Asistente de tratamientos con AMODO Plus" text="Escribe lo que te indicaron y se convierte en sesiones recurrentes editables. Con cualquier plan puedes registrar tratamientos y citas manualmente desde Tratamientos y Agenda."
-          testID="ta-plus-gate" preview={<Txt v="caption">“Quimioterapia cada 21 días, empezando el 25 de noviembre, seis sesiones a las 9:00” → Sesión 1, Sesión 2…</Txt>}>
+        <View>
+          {ai ? <Txt v="caption" style={{ marginBottom: space.sm }} testID="ta-ai-usage">Asistente: {ai.used} de {ai.limit} interacciones este mes{ai.plus ? "" : " · con Plus tienes más"}. Siempre puedes registrar todo de forma manual.</Txt> : null}
           <TextInput testID="ta-input" value={text} onChangeText={setText} multiline placeholderTextColor={colors.muted}
             placeholder="Ej. Voy a tener quimioterapia cada 21 días, empezando el 25 de noviembre. Son seis sesiones y tengo que llegar a las 9 de la mañana."
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.onSurface }]} />
@@ -96,7 +96,7 @@ export default function TreatmentAssistant() {
             <Ic name="shield-check" size={14} color={colors.muted} />
             <Txt v="caption" style={{ flex: 1 }}>Solo organizo lo que escribes. No decido dosis, frecuencias ni duración, y nada se guarda hasta que confirmes.</Txt>
           </View>
-</PlusGate>
+</View>
       ) : (
         <>
           <Txt v="h2" style={{ marginBottom: space.md }}>Así quedaría organizado tu tratamiento</Txt>

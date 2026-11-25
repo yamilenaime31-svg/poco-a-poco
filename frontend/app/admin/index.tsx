@@ -14,6 +14,9 @@ const LINKS = [
   { t: "Proveedores", s: "Mayoristas y condiciones de compra", i: "truck", h: "/admin/suppliers" },
   { t: "Códigos institucionales", s: "Beneficios, vigencia y activaciones", i: "ticket", h: "/admin/codes" },
   { t: "Pedidos", s: "Estados y reservas de inventario", i: "receipt", h: "/admin/orders" },
+  { t: "Catálogo: exportar e importar costos", s: "CSV o Excel con todos los artículos y variantes", i: "file-spreadsheet", h: "/admin/catalog" },
+  { t: "Rentabilidad de kits", s: "Combinaciones económica, mediana y de mayor costo", i: "chart-column", h: "/admin/profitability" },
+  { t: "Membresías", s: "Planes, créditos, descuentos y uso de IA", i: "users", h: "/admin/memberships" },
   { t: "Ajustes", s: "Tamaños, precios base, costos y planes", i: "settings", h: "/admin/settings" },
 ];
 

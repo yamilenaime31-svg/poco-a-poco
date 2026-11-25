@@ -18,7 +18,8 @@ DEFAULT_SIZES = [
 SIZE_ALIAS = {"Pequeño": "Chico"}
 DEFAULT_COSTS = {"packaging": 20, "assembly": 12, "labels": 0, "protection": 0, "storage": 0, "logistics": 0, "shipping": 85, "incidents": 8,
                  "payment_fee_pct": 3.5, "tax_pct": 16, "min_margin_pct": 30}
-DEFAULT_PLANS = {"plus_price": 79, "plus_kit_discount_pct": 10, "stacking": "best", "max_discount_pct": 25,
+DEFAULT_PLANS = {"plus_price": 79, "plus_kit_discount_pct": 10, "monthly_credit": 20, "ai_limit_free": 15, "ai_limit_plus": 300, "ai_cost_estimate": None,
+                 "stacking": "best", "max_discount_pct": 25,
                  "shipping": {"Estándar": 0, "Recoger en punto AMODO": 0}}  # shipping is included in kit prices
 # New illustrative items for the "kit chico" example (included vs premium).
 EXTRA = [
@@ -40,7 +41,10 @@ SUPPLIERS = [
 ]
 SUPPLIER_BY_CAT = {"Comodidad": "s1", "Identidad y estilo": "s1", "Entretenimiento": "s2", "Organización": "s2", "Detalles": "s2",
                    "Cuidado personal": "s3", "Antojos y preferencias": "s3"}
-ORDER_STATUSES = ["Borrador", "Pendiente de confirmación", "Confirmado", "En preparación", "Enviado", "Entregado", "Cancelado"]
+ORDER_FLOW = ["Pedido confirmado", "En preparación", "Listo para envío", "En camino", "Entregado"]
+ORDER_STATUSES = ORDER_FLOW + ["Cancelado"]
+LEGACY_STATUS = {"Borrador": "Pedido confirmado", "Pendiente de confirmación": "Pedido confirmado", "Confirmado": "Pedido confirmado", "Enviado": "En camino"}
+USER_CANCELLABLE = ("Pedido confirmado", "En preparación")
 
 
 def now() -> datetime:
@@ -106,6 +110,17 @@ async def seed_business():
                                    "benefits": {"plus_months": 0, "kit_discount_pct": 0, "credit": 0, "funded_kit": None, **ben}, "valid_from": f"{y}-01-01",
                                    "valid_until": f"{y + 1}-12-31", "max_uses": 200, "uses": 0, "budget": None, "budget_used": 0, "status": "activo", "demo": True,
                                    "conditions": "Convenio de ejemplo para el prototipo; no representa un acuerdo real."}}, upsert=True)
+    async for o in db.orders.find({"$or": [{"status": {"$in": list(LEGACY_STATUS)}}, {"history.status": {"$in": list(LEGACY_STATUS)}}]}):
+        hist, seen = [], set()
+        for h in o.get("history", []):
+            s = LEGACY_STATUS.get(h["status"], h["status"])
+            if s not in seen:
+                seen.add(s)
+                hist.append({**h, "status": s})
+        await db.orders.update_one({"id": o["id"]}, {"$set": {"status": LEGACY_STATUS.get(o["status"], o["status"]), "history": hist,
+                                                             "shipped": o.get("shipped") or o["status"] in ("Enviado", "Entregado")}})
+    from membership import ensure_indexes
+    await ensure_indexes()
     if not await db.users.find_one({"is_admin": True}):
         await db.users.update_one({"email": "demo@amodo.app"}, {"$set": {"is_admin": True}})
 
@@ -126,6 +141,8 @@ async def active_benefits(user_id: str) -> list[dict]:
 
 
 async def plan_view(user: dict) -> dict:
+    from membership import accrue_plus
+    user = {**user, "plan": await accrue_plus(user)}
     today = now().date().isoformat()
     bens = await active_benefits(user["id"])
     p = user.get("plan") or {}
@@ -141,6 +158,7 @@ async def plan_view(user: dict) -> dict:
     institution = (inst_plus or next(iter(bens), None) or {}).get("institution") or ""
     access = "institutional" if bens and (inst_plus or not demo_plus) else "plus" if demo_plus else "free"
     return {"tier": tier, "access": access, "name": "AMODO Plus" if tier == "plus" else "AMODO Gratis", "source": source, "until": until,
+            "subscription": {k: p.get(k) for k in ("since", "price", "monthly_credit", "kit_discount_pct", "status")} if demo_plus else None,
             "institution": institution, "plus_by_institution": bool(inst_plus) and not demo_plus,
             "benefits": bens, "expired": expired, "history": history, "prices": await setting("plans", DEFAULT_PLANS)}
 
@@ -153,13 +171,13 @@ async def my_plan(user=Depends(current_user)):
 @api.post("/me/plan")
 async def change_plan(action: str = Body(..., embed=True), user=Depends(current_user)):
     """Demo only: Plus activates without any charge and can be cancelled any time."""
+    from membership import activate_plus, cancel_plus
     if action == "plus":
-        until = (now() + timedelta(days=30)).date().isoformat()
-        await db.users.update_one({"id": user["id"]}, {"$set": {"plan": {"tier": "plus", "source": "demo", "since": now_iso(), "until": until}, "plan_chosen": True}})
-        await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": "Activaste AMODO Plus (demostración, sin cargo)."})
+        await activate_plus(user)
     elif action == "free":
-        await db.users.update_one({"id": user["id"]}, {"$set": {"plan": {"tier": "free"}, "plan_chosen": True}})
-        await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": "Volviste a AMODO Gratis."})
+        if (user.get("plan") or {}).get("tier") == "plus":
+            await cancel_plus(user)
+        await db.users.update_one({"id": user["id"]}, {"$set": {"plan_chosen": True}})
     else:
         raise HTTPException(422, "Opción no válida")
     return await plan_view(await db.users.find_one({"id": user["id"]}))
@@ -260,36 +278,47 @@ async def price_kit(size: str, items: list[dict], pm: Optional[dict] = None) -> 
             "base": s["base"], "supplements": supp, "subtotal": s["base"] + supp, "lines": lines, "unavailable": [x["name"] for x in lines if not x["available"]]}
 
 
-async def breakdown(user: dict, kit_subtotal: int, other_subtotal: int, shipping: Optional[int]) -> dict:
+async def breakdown(user: dict, kit_base: float, kit_supp: float, other_subtotal: float, use_credit=None) -> dict:
+    """Order: base price → discounts (on kit base prices only, never on premium supplements) → credits chosen by the person.
+    Shipping is always included. The total is never negative."""
+    from membership import plus_balance
     cfg = await setting("plans", DEFAULT_PLANS)
     plan = await plan_view(user)
     pcts = []
-    if plan["tier"] == "plus" and cfg["plus_kit_discount_pct"]:
-        pcts.append(("Descuento AMODO Plus en kits", cfg["plus_kit_discount_pct"], 0))
-    for b in plan["benefits"]:
-        if b["kind"] == "kit_discount_pct":
-            pcts.append((f"Descuento de {b['institution']} en kits", b["value"], 1))
+    if plan["tier"] == "plus":
+        pct_plus = (plan.get("subscription") or {}).get("kit_discount_pct") or cfg["plus_kit_discount_pct"]
+        if pct_plus:
+            pcts.append(("Descuento AMODO Plus", pct_plus, 0))
+    for bn in plan["benefits"]:
+        if bn["kind"] == "kit_discount_pct":
+            pcts.append((f"Descuento de {bn['institution']}", bn["value"], 1))
     discounts = []
-    if pcts:
+    if pcts and kit_base:
         if cfg["stacking"] == "sum":
             pct = min(cfg["max_discount_pct"], sum(p for _, p, _ in pcts))
             label = " + ".join(lbl for lbl, _, _ in pcts)
         else:  # "best": only the single best discount applies, never duplicated
             label, pct, _ = max(pcts, key=lambda x: (x[1], x[2]))  # on a tie, credit the institution
-        discounts.append({"label": f"{label} ({pct}%)", "amount": round(kit_subtotal * pct / 100, 2)})
+        discounts.append({"label": f"{label} ({pct}%)", "pct": pct, "amount": round(kit_base * pct / 100, 2)})
     disc = sum(d["amount"] for d in discounts)
-    credits = [b for b in plan["benefits"] if b["kind"] == "credit"]
-    kit_left = max(0, kit_subtotal - disc)
-    goods = max(0, kit_subtotal + other_subtotal - disc)
-    kit_credit = min(sum(b.get("remaining", 0) for b in credits if b.get("scope") == "kits"), kit_left)  # funded kits apply to kits only
-    any_credit = min(sum(b.get("remaining", 0) for b in credits if b.get("scope") != "kits"), goods - kit_credit)
-    credit_avail = sum(b.get("remaining", 0) for b in credits)
-    credit = round(kit_credit + any_credit, 2)
-    total_goods = round(goods - credit, 2)
+    kit_left = max(0, kit_base + kit_supp - disc)
+    goods = round(max(0, kit_base + kit_supp + other_subtotal - disc), 2)
+    inst = [bn for bn in plan["benefits"] if bn["kind"] == "credit"]
+    inst_kits = min(sum(bn.get("remaining", 0) for bn in inst if bn.get("scope") == "kits"), kit_left)  # funded kits apply to kits only
+    inst_any = min(sum(bn.get("remaining", 0) for bn in inst if bn.get("scope") != "kits"), goods - inst_kits)
+    plus_av = await plus_balance(user["id"])
+    max_credit = round(min(goods, inst_kits + inst_any + plus_av), 2)
+    want = max_credit if use_credit is None else max(0.0, min(float(use_credit), max_credit))
+    use_inst = round(min(want, inst_kits + inst_any), 2)  # institutional credit first (it has an expiry date)
+    use_plus = round(min(want - use_inst, plus_av), 2)
+    credit = round(use_inst + use_plus, 2)
+    total = round(max(0, goods - credit), 2)
     rule = "Se aplica solo el mayor descuento disponible; no se combinan." if cfg["stacking"] == "best" else f"Los descuentos se suman hasta un máximo de {cfg['max_discount_pct']}%."
-    return {"kits": kit_subtotal, "others": other_subtotal, "discounts": discounts, "credit_available": credit_avail, "credit": credit,
-            "items_total": total_goods, "shipping": 0, "shipping_included": True, "total": total_goods,
-            "plan": plan["name"], "rule": rule, "tax_note": "Precios ilustrativos con IVA incluido.", "demo": True}
+    return {"kits": round(kit_base + kit_supp, 2), "kit_base": kit_base, "supplements": kit_supp, "others": other_subtotal, "discounts": discounts,
+            "subtotal_after_discounts": goods, "credit_available": round(sum(bn.get("remaining", 0) for bn in inst) + plus_av, 2), "credit_max": max_credit,
+            "credit": credit, "credit_institution": use_inst, "credit_plus": use_plus, "items_total": total, "shipping": 0, "shipping_included": True, "total": total,
+            "plan": plan["name"], "rule": rule + " Los descuentos aplican al precio base de los kits, no a los suplementos premium.",
+            "tax_note": "Precios provisionales con IVA incluido.", "demo": True}
 
 
 @api.get("/kit-sizes")
@@ -302,14 +331,17 @@ async def kit_quote(size: str = Body(..., embed=True), items: list = Body(..., e
     q = await price_kit(size, [i for i in items if isinstance(i, dict) and i.get("product_id")])
     if q["count"] > q["capacity"]:
         raise HTTPException(422, f"Este tamaño admite {q['capacity']} artículos")
-    return {**q, "breakdown": await breakdown(user, q["subtotal"], 0, None)}
+    return {**q, "breakdown": await breakdown(user, q["base"], q["supplements"], 0)}
 
 
 @api.get("/checkout/quote")
-async def checkout_quote(shipping: str = "Estándar", user=Depends(current_user)):
+async def checkout_quote(shipping: str = "Estándar", use_credit: Optional[float] = None, user=Depends(current_user)):
     cart = await cart_view(user["id"])
-    kits = sum(i["subtotal"] for i in cart["items"] if i["type"] == "kit")
-    return await breakdown(user, kits, cart["subtotal"] - kits, 0)
+    kits = [i for i in cart["items"] if i["type"] == "kit"]
+    base = sum((i.get("base") or 0) * i["qty"] for i in kits)
+    supp = sum(i["subtotal"] for i in kits) - base
+    q = await breakdown(user, base, supp, cart["subtotal"] - base - supp, use_credit)
+    return {**q, "items": cart["items"]}
 
 
 async def order_lines_stock(cart: dict) -> dict[str, int]:
@@ -323,8 +355,12 @@ async def order_lines_stock(cart: dict) -> dict[str, int]:
     return need
 
 
-async def place_order(user: dict, address: dict, shipping: str) -> dict:
+async def place_order(user: dict, address: dict, shipping: str, use_credit=None, request_id: Optional[str] = None) -> dict:
     """Creates a demo order: no payment is processed. Stock is reserved (not discounted) until it ships; cancelling releases it."""
+    if request_id:
+        prev = await db.orders.find_one({"user_id": user["id"], "request_id": request_id})
+        if prev:
+            return prev  # the same confirmation tapped twice never creates a second order
     cart = await cart_view(user["id"])
     if not cart["items"]:
         raise HTTPException(400, "Tu carrito está vacío")
@@ -333,27 +369,39 @@ async def place_order(user: dict, address: dict, shipping: str) -> dict:
     short = [pm[p]["name"] for p, q in need.items() if p in pm and (pm[p].get("status", "activo") != "activo" or pm[p].get("stock", 0) - pm[p].get("stock_reserved", 0) < q)]
     if short:
         raise HTTPException(409, f"Sin inventario suficiente: {', '.join(short)}. Cambia esos artículos para continuar.")
-    q = await checkout_quote(shipping, user)
+    q = await checkout_quote(shipping, use_credit, user)
+    order_id = uid()
+    try:
+        await db.orders.insert_one({"id": order_id, "user_id": user["id"], "request_id": request_id, "status": "_placing", "created_at": now_iso()})
+    except Exception:
+        prev = await db.orders.find_one({"user_id": user["id"], "request_id": request_id})
+        if prev:
+            return prev
+        raise
     for p, n in need.items():
         await db.products.update_one({"id": p}, {"$inc": {"stock_reserved": n}})
         await db.inventory.insert_one({"id": uid(), "product_id": p, "type": "reserva", "qty": n, "note": "Reserva por pedido (simulado)", "simulated": True, "at": now_iso()})
-    left = q["credit"]
+    left = q["credit_institution"]
     async for b in db.benefits.find({"user_id": user["id"], "kind": "credit", "status": "activo", "remaining": {"$gt": 0}}).sort("scope", -1):
         if left <= 0:
             break
         use = min(left, b["remaining"])
         await db.benefits.update_one({"id": b["id"]}, {"$inc": {"remaining": -use}})
         left -= use
-    order = {"id": uid(), "user_id": user["id"], "number": f"AM-{random.randint(10000, 99999)}", "status": "Pendiente de confirmación",
+    if q["credit_plus"]:
+        await db.credit_moves.insert_one({"id": uid(), "user_id": user["id"], "source": "plus", "amount": -q["credit_plus"], "order_id": order_id, "at": now_iso(),
+                                          "text": "Créditos usados en un pedido"})
+    order = {"id": order_id, "user_id": user["id"], "request_id": request_id, "number": f"AM-{random.randint(10000, 99999)}", "status": "Pedido confirmado",
              "items": [{k: i.get(k) for k in ("type", "ref_id", "name", "detail", "qty", "price", "subtotal", "options", "product_ids")} for i in cart["items"]],
-             "subtotal": cart["subtotal"], "discounts": q["discounts"], "credit": q["credit"], "shipping_cost": q["shipping"], "total": q["total"],
+             "subtotal": cart["subtotal"], "kit_base": q["kit_base"], "supplements": q["supplements"], "discounts": q["discounts"], "credit": q["credit"],
+             "credit_institution": q["credit_institution"], "credit_plus": q["credit_plus"], "plan": q["plan"], "shipping_cost": 0, "total": q["total"],
              "reserved": need, "address": address, "payment": {"method": "Demostración", "status": "No procesado — pedido de demostración sin cargo"},
-             "history": [{"status": "Pendiente de confirmación", "at": now_iso()}], "created_at": now_iso()}
-    await db.orders.insert_one(order)
+             "history": [{"status": "Pedido confirmado", "at": now_iso()}], "created_at": now_iso(), "demo": True}
+    await db.orders.replace_one({"id": order_id}, order)
     await db.cart.delete_many({"user_id": user["id"]})
     if q["credit"]:
         await db.benefit_history.insert_one({"id": uid(), "user_id": user["id"], "at": now_iso(), "text": f"Usaste ${q['credit']} de crédito en el pedido {order['number']}."})
-    await notify(user["id"], "Pedido registrado", f"Tu pedido {order['number']} quedó pendiente de confirmación (demostración).", "order", f"/order/{order['id']}")
+    await notify(user["id"], "Pedido registrado", f"Tu pedido de demostración {order['number']} está confirmado.", "order", f"/order/{order['id']}")
     for i in cart["items"]:
         k = await db.kits.find_one({"id": i["ref_id"], "gift": True}) if i["type"] == "kit" else None
         if k and k.get("for_user_id") and k["for_user_id"] not in (k.get("shared_with") or []):
@@ -369,19 +417,30 @@ async def set_order_status(o: dict, status: str):
     prev = o.get("status")
     if prev in ("Cancelado", "Entregado"):
         raise HTTPException(400, "Este pedido ya está cerrado")
+    if status == prev:
+        raise HTTPException(400, "El pedido ya está en ese estado")
+    if status != "Cancelado" and prev in ORDER_FLOW and ORDER_FLOW.index(status) < ORDER_FLOW.index(prev):
+        raise HTTPException(400, "El seguimiento solo avanza: no se puede regresar a un estado anterior")
+    if status == "Cancelado" and o.get("shipped"):
+        raise HTTPException(400, "Este pedido ya salió y no se puede cancelar")
+    ship_now = status in ("En camino", "Entregado") and not o.get("shipped")
     for p, n in (o.get("reserved") or {}).items():
-        if status == "Cancelado" and prev not in ("Enviado",):
+        if status == "Cancelado":
             await db.products.update_one({"id": p}, {"$inc": {"stock_reserved": -n}})
             await db.inventory.insert_one({"id": uid(), "product_id": p, "type": "liberación", "qty": n, "note": f"Pedido {o['number']} cancelado (simulado)", "simulated": True, "at": now_iso()})
-        if status == "Enviado" and prev != "Enviado":
+        if ship_now:
             await db.products.update_one({"id": p}, {"$inc": {"stock_reserved": -n, "stock": -n}})
-            await db.inventory.insert_one({"id": uid(), "product_id": p, "type": "salida", "qty": n, "note": f"Pedido {o['number']} enviado (simulado)", "simulated": True, "at": now_iso()})
-    if status == "Cancelado" and o.get("credit"):
+            await db.inventory.insert_one({"id": uid(), "product_id": p, "type": "salida", "qty": n, "note": f"Pedido {o['number']} en camino (simulado)", "simulated": True, "at": now_iso()})
+    if status == "Cancelado" and o.get("credit_plus"):
+        await db.credit_moves.insert_one({"id": uid(), "user_id": o["user_id"], "source": "refund", "amount": o["credit_plus"], "order_id": o["id"], "at": now_iso(),
+                                          "text": f"Devolución de créditos por cancelar el pedido {o['number']}"})
+    inst_used = o.get("credit_institution", o.get("credit") if "credit_plus" not in o else 0)
+    if status == "Cancelado" and inst_used:
         # Refund the institutional credit used by this order (to the most recent active credit benefit).
         b = await db.benefits.find_one({"user_id": o["user_id"], "kind": "credit"}, sort=[("created_at", -1)])
         if b:
-            await db.benefits.update_one({"id": b["id"]}, {"$inc": {"remaining": min(o["credit"], b["value"] - b.get("remaining", 0))}})
-            await db.benefit_history.insert_one({"id": uid(), "user_id": o["user_id"], "at": now_iso(), "text": f"Se devolvieron ${o['credit']} de crédito por cancelar el pedido {o['number']}."})
+            await db.benefits.update_one({"id": b["id"]}, {"$inc": {"remaining": min(inst_used, b["value"] - b.get("remaining", 0))}})
+            await db.benefit_history.insert_one({"id": uid(), "user_id": o["user_id"], "at": now_iso(), "text": f"Se devolvieron ${inst_used} de crédito institucional por cancelar el pedido {o['number']}."})
     if status == "Cancelado":
         for i in o.get("items", []):
             k = await db.kits.find_one({"id": i["ref_id"], "gift": True}) if i["type"] == "kit" else None
@@ -390,7 +449,8 @@ async def set_order_status(o: dict, status: str):
                 await db.kits.update_one({"id": k["id"]}, {"$pull": {"shared_with": k["for_user_id"]}})
                 sender = await db.users.find_one({"id": o["user_id"]})
                 await notify(k["for_user_id"], "Un envío se canceló", f"El kit «{k['name'].replace(' · regalo', '')}» que te preparó {display_name(sender) if sender else 'alguien de tu red'} ya no se enviará.", "order", "/notifications")
-    await db.orders.update_one({"id": o["id"]}, {"$set": {"status": status, "cancelled": status == "Cancelado"}, "$push": {"history": {"status": status, "at": now_iso()}}})
+    await db.orders.update_one({"id": o["id"]}, {"$set": {"status": status, "cancelled": status == "Cancelado", "shipped": bool(o.get("shipped") or ship_now)},
+                                                 "$push": {"history": {"status": status, "at": now_iso()}}})
     await notify(o["user_id"], "Tu pedido cambió de estado", f"{o['number']}: {status}.", "order", f"/order/{o['id']}")
 
 
@@ -402,6 +462,35 @@ async def repeat_order(oid: str, user=Depends(current_user)):
     for i in o["items"]:
         await db.cart.insert_one({"id": uid(), "user_id": user["id"], "type": i["type"], "ref_id": i["ref_id"], "qty": i["qty"], "options": i.get("options") or {}})
     return {"ok": True}
+
+
+@api.post("/orders/{oid}/favorite")
+async def favorite_order(oid: str, user=Depends(current_user)):
+    """Saves the kits of an order in «Mis kits» as favourites (own kits are marked; suggested kits are copied)."""
+    from server import find_template
+    o = await db.orders.find_one({"id": oid, "user_id": user["id"]})
+    if not o:
+        raise HTTPException(404, "Pedido no encontrado")
+    saved = []
+    for i in o["items"]:
+        if i["type"] != "kit":
+            continue
+        k = await db.kits.find_one({"id": i["ref_id"], "owner_id": user["id"]})
+        if k:
+            await db.kits.update_one({"id": k["id"]}, {"$set": {"favorite": True}})
+            saved.append(k["id"])
+        elif (t := find_template(i["ref_id"])):
+            exists = await db.kits.find_one({"owner_id": user["id"], "from_template": t["id"], "favorite": True})
+            if exists:
+                saved.append(exists["id"])
+                continue
+            nk = {"id": uid(), "owner_id": user["id"], "name": t["name"], "context": t.get("context", ""), "size": t["size"], "categories": [],
+                  "items": [{"product_id": x, "options": {}} for x in t["items"]], "favorite": True, "from_template": t["id"], "shared_with": [],
+                  "created_at": now_iso(), "updated_at": now_iso()}
+            await db.kits.insert_one(nk)
+            saved.append(nk["id"])
+    await db.orders.update_one({"id": oid}, {"$set": {"favorite": True}})
+    return {"saved": saved}
 
 
 @api.post("/kits/{kid}/duplicate")

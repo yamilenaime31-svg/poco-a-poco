@@ -27,7 +27,7 @@ export function PlusGate({ title, text, preview, children, testID }: { title: st
           <Txt v="title" style={{ flex: 1 }}>{title}</Txt>
         </View>
         <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>{text}</Txt>
-        <Btn label="Conocer Plus" small variant="secondary" onPress={() => router.push("/plan")} testID="plus-gate-know" style={{ marginTop: space.md, alignSelf: "flex-start" }} />
+        <Btn label="Conocer Plus" small variant="secondary" onPress={() => router.push("/plus")} testID="plus-gate-know" style={{ marginTop: space.md, alignSelf: "flex-start" }} />
       </View>
     </View>
   );

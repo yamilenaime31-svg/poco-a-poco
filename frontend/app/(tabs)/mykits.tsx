@@ -2,21 +2,19 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
-import { useAuth } from "@/src/auth";
 import { TabScreen } from "@/src/components/tab-screen";
 import { RecoCard, NeedsPrompt } from "@/src/components/reco-card";
 import { TileGrid } from "@/src/components/tile-grid";
 import { GuideCard } from "@/src/components/guide-info";
-import { CATEGORIES, money, tintOf, today } from "@/src/constants";
+import { CATEGORIES, money, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
-import { Btn, Ic, IconBtn, Loading, ProductImage, Row, Section, Txt } from "@/src/ui";
+import { Ic, IconBtn, Loading, ProductImage, Row, Section, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
 export default function MyKits() {
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();
-  const { user } = useAuth();
   const kits = useApi<any[]>("/kits");
   const favs = useApi<any[]>("/favorites");
   const reco = useApi<any>(`/recommendations?today=${today()}`);
@@ -43,7 +41,7 @@ export default function MyKits() {
         <Ic name="arrow-right" size={18} />
       </Pressable>
       <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.sm }}>
-        {[{ l: "Catálogo", i: "store", h: "/catalog" }, { l: "Favoritos", i: "heart", h: "/favorites" }, { l: "Pedidos", i: "truck", h: "/orders" }].map((x) => (
+        {[{ l: "Catálogo", i: "store", h: "/catalog" }, { l: "Favoritos", i: "heart", h: "/favorites" }, { l: "Pedidos", i: "truck", h: "/orders" }, { l: "Mis créditos", i: "wallet", h: "/credits" }].map((x) => (
           <Pressable key={x.l} accessibilityRole="button" accessibilityLabel={x.l} onPress={() => router.push(x.h as any)} testID={`kits-link-${x.l}`}
             style={({ pressed }) => [styles.quick, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
             <Ic name={x.i} size={18} />

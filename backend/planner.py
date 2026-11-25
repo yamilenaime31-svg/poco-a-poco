@@ -59,18 +59,19 @@ def build_sessions(start: str, interval: Optional[int], weekdays: list, count: O
 
 @api.post("/treatments/parse")
 async def treatment_parse(text: str = Body(..., embed=True), today: str = Body(..., embed=True), user=Depends(current_user)):
-    from business import is_plus
-    if not await is_plus(user):
-        raise HTTPException(403, "El asistente de tratamientos es parte de AMODO Plus.")
+    from membership import use_ai
     text = text.strip()[:2000]
     if len(text) < 3:
         raise HTTPException(422, "Escribe un poco más para poder ayudarte")
+    await use_ai(user)
     base = datetime.strptime(_date_or_empty(today) or date.today().isoformat(), "%Y-%m-%d")
     cal = ", ".join(f"{DAYS_ES[(base + timedelta(days=i)).weekday()]} {(base + timedelta(days=i)).date().isoformat()}" for i in range(60))
     try:
         data = await llm_json(TREAT_PROMPT, f"Hoy es {cal.split(',')[0]}. Calendario: {cal}.\nTexto: {text}", "treat")
     except Exception as exc:
         logger.error("treatment_parse: %s", exc)
+        from membership import refund_ai
+        await refund_ai(user)
         raise HTTPException(503, "No pudimos interpretar el texto ahora. Intenta de nuevo en un momento.")
 
     def num(v):

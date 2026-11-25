@@ -7,7 +7,7 @@ import { useToast } from "@/src/toast";
 import { Badge, Card, Chip, Loading, Txt } from "@/src/ui";
 import { space } from "@/src/theme";
 
-const NEXT = ["Confirmado", "En preparación", "Enviado", "Entregado", "Cancelado"];
+const NEXT = ["Pedido confirmado", "En preparación", "Listo para envío", "En camino", "Entregado", "Cancelado"];
 
 export default function AdminOrders() {
   const toast = useToast();
@@ -24,7 +24,7 @@ export default function AdminOrders() {
   return (
     <AdminScreen title="Pedidos" subtitle="Pedidos de demostración · ningún pago se procesa" testID="admin-orders">
       {q.isLoading ? <Loading /> : (q.data || []).map((o) => {
-        const status = o.status || (o.cancelled ? "Cancelado" : "Confirmado");
+        const status = o.status || (o.cancelled ? "Cancelado" : "Pedido confirmado");
         const closed = ["Entregado", "Cancelado"].includes(status);
         return (
           <Card key={o.id} style={{ marginBottom: space.md }} testID={`admin-order-${o.number}`}>
@@ -36,7 +36,7 @@ export default function AdminOrders() {
             {o.reserved ? <Txt v="caption">Reserva: {Object.values(o.reserved).reduce((a: number, b: any) => a + b, 0)} artículo(s)</Txt> : null}
             {!closed ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: space.sm, flexGrow: 0 }} contentContainerStyle={{ gap: space.sm }}>
-                {NEXT.filter((s) => s !== status).map((s) => <Chip key={s} label={s} onPress={() => move(o.id, s)} testID={`admin-order-${o.number}-${s}`} />)}
+                {NEXT.filter((s, i) => (s === "Cancelado" ? !o.shipped : i > NEXT.indexOf(status))).map((s) => <Chip key={s} label={s} onPress={() => move(o.id, s)} testID={`admin-order-${o.number}-${s}`} />)}
               </ScrollView>
             ) : null}
           </Card>
