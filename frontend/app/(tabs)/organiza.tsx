@@ -72,6 +72,7 @@ export default function Organiza() {
         <TileGrid tiles={[
           { key: "next-week", label: "Mi próxima semana", hint: "Con Plus", tint: "sky", spot: "week", href: "/next-week" },
           { key: "checklists", label: "Listas de preparación", tint: "lavender", spot: "checklist", href: "/checklists" },
+          { key: "coverage", label: "Mi cobertura médica", tint: "mauve", spot: "heart", href: "/coverage" },
           { key: "process", label: "Mi proceso", tint: "sage", spot: "process", href: "/process" },
           { key: "day", label: "Mi día", tint: "butter", spot: "day", href: "/day" },
           { key: "signals", label: "Señales e historial", tint: "mauve", spot: "signals", href: "/signals" },

@@ -1,16 +1,16 @@
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
 /** Horizontal bars: label · proportional bar · value. Purely descriptive, no scores. */
-export function HBars({ rows, format, testID }: { rows: { label: string; value: number }[]; format?: (v: number) => string; testID?: string }) {
+export function HBars({ rows, format, testID, onPress }: { rows: { label: string; value: number }[]; format?: (v: number) => string; testID?: string; onPress?: (label: string) => void }) {
   const { colors } = useTheme();
   const top = Math.max(1, ...rows.map((r) => r.value));
   return (
     <View style={{ gap: space.sm }} testID={testID}>
       {rows.map((r) => (
-        <View key={r.label}>
+        <Pressable key={r.label} onPress={onPress ? () => onPress(r.label) : undefined} disabled={!onPress} style={onPress ? { minHeight: 44, justifyContent: "center" } : undefined} testID={testID ? `${testID}-${r.label}` : undefined}>
           <View style={styles.head}>
             <Txt v="caption" color={colors.onSurface} numberOfLines={1} style={{ flex: 1 }}>{r.label}</Txt>
             <Txt v="caption">{format ? format(r.value) : r.value}</Txt>
@@ -18,7 +18,7 @@ export function HBars({ rows, format, testID }: { rows: { label: string; value: 
           <View style={[styles.track, { backgroundColor: colors.surfaceTertiary }]}>
             <View style={[styles.fill, { backgroundColor: colors.sage, width: `${Math.max(3, (r.value / top) * 100)}%` }]} />
           </View>
-        </View>
+        </Pressable>
       ))}
     </View>
   );

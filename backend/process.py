@@ -143,6 +143,8 @@ async def process(today: str = Query(...), days: int = 30, user=Depends(current_
         raise HTTPException(422, "Fecha no válida")
     d = await process_data(user, today, _days(days))
     d["plus"] = await is_plus(user)
+    from finance import compact
+    d["finance"] = await compact(user["id"], today)
     if d["plus"]:
         prev_end = (datetime.strptime(d["start"], "%Y-%m-%d").date() - timedelta(days=1)).isoformat()
         d["compare"] = {"now": _totals(d), "before": _totals(await process_data(user, today, days, end_s=prev_end))}

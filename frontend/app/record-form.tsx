@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
@@ -11,7 +11,14 @@ import { useToast } from "@/src/toast";
 import { Btn, Chip, ChipRow, Field, Loading, Screen, Sheet, SwitchRow, Txt } from "@/src/ui";
 import { space } from "@/src/theme";
 
-export default function RecordForm() {
+export default function RecordFormRoute() {
+  const p = useLocalSearchParams<any>();
+  // Expenses have their own progressive form (payments, coverage, refunds, documents).
+  if (p.kind === "expenses") return <Redirect href={{ pathname: "/expense-form", params: { id: p.id, owner_id: p.owner_id, date: p.date } }} />;
+  return <RecordForm />;
+}
+
+function RecordForm() {
   const params = useLocalSearchParams<Record<string, string>>();
   const { kind, id, owner_id } = params;
   const def = KINDS[kind] || KINDS.events;

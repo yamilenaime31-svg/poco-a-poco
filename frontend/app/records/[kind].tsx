@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
@@ -34,7 +34,13 @@ function subtitleFor(kind: string, r: any) {
   }
 }
 
-export default function Records() {
+export default function RecordsRoute() {
+  const p = useLocalSearchParams<any>();
+  if (p.kind === "expenses") return <Redirect href={{ pathname: "/finances", params: { owner_id: p.owner_id } }} />;
+  return <Records />;
+}
+
+function Records() {
   const { kind, owner_id, assigned } = useLocalSearchParams<{ kind: string; owner_id?: string; assigned?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();

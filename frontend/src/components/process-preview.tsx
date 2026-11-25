@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
 import { Spot } from "@/src/art";
-import { today } from "@/src/constants";
+import { money, today } from "@/src/constants";
 import { DaySheet, WellbeingDays } from "@/src/components/process-parts";
 import { Btn, Section, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -45,6 +45,14 @@ export function ProcessPreview() {
               </Pressable>
             ))}
           </View>
+          {d.finance ? (
+            <Pressable onPress={() => router.push("/finances")} testID="home-process-finance" style={[styles.report, { backgroundColor: colors.skySoft, marginTop: space.sm }]}>
+              <View style={{ flex: 1 }}>
+                <Txt v="title">Gastos · desembolso neto {money(d.finance.totals.net)}</Txt>
+                <Txt v="caption" color={colors.onSurface}>{[d.finance.totals.pending_receive ? `Reembolsos por recibir ${money(d.finance.totals.pending_receive)}` : "", d.finance.to_pay.length ? `${d.finance.to_pay.length} pago(s) pendiente(s)` : "", d.finance.attention.length ? `${d.finance.attention.length} trámite(s) por atender` : ""].filter(Boolean).join(" · ") || "Toca para ver el detalle"}</Txt>
+              </View>
+            </Pressable>
+          ) : null}
           {d.plus ? (
             <View style={[styles.report, { backgroundColor: colors.butter }]} testID="home-process-report">
               <Spot name="report" size={60} pop={colors.lavender} />

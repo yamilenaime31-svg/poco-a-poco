@@ -268,6 +268,8 @@ async def resolve_owner(me: dict, owner_id: Optional[str], kind: str, write=Fals
     link = await active_link(owner_id, me["id"])
     if not link:
         raise HTTPException(403, "No tienes permiso para ver esta información")
+    if kind == "expenses" and not (link.get("finance") or {}).get("edit" if write else "view"):
+        raise HTTPException(403, "Esta persona no te ha dado permiso para ver sus gastos")
     if write and not link["permissions"].get("edit"):
         raise HTTPException(403, "Esta persona no te ha dado permiso para editar")
     return owner_id
@@ -1341,6 +1343,7 @@ import catalog_admin  # noqa: E402
 import preparation  # noqa: E402,F401
 import process  # noqa: E402,F401
 import style  # noqa: E402,F401
+import finance  # noqa: E402,F401
 
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

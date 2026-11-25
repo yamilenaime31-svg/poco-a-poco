@@ -42,6 +42,7 @@ export default function Me() {
       { icon: "hand-helping", title: "Necesidades cotidianas", href: edit("needs"), tint: "coral" },
       { icon: "layout-grid", title: "Preferencias de organización", href: edit("treatment"), tint: "sky" },
       { icon: "package", title: "Preferencias de kits", href: edit("identity"), tint: "butter" },
+      { icon: "shield", title: "Mi cobertura médica", href: "/coverage", tint: "lavender" },
       { icon: "chart-no-axes-column", title: "Mi proceso", href: "/process", tint: "sage" },
       { icon: "clipboard-list", title: "Listas de preparación", href: "/checklists", tint: "sage" },
       { icon: "history", title: "Historial personal", href: "/history", tint: "lavender" },

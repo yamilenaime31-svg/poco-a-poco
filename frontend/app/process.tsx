@@ -168,6 +168,15 @@ export default function Process() {
                   <HBars rows={d.expenses.by_category} format={money} testID="process-expense-cats" />
                 </>
               ) : <Txt v="caption">Sin gastos registrados en este periodo.</Txt>}
+              {d.finance ? (
+                <View style={[styles.card, { backgroundColor: colors.skySoft, marginTop: space.md }]} testID="process-finance">
+                  <Txt v="title">En total: desembolso neto {money(d.finance.totals.net)}</Txt>
+                  {d.finance.totals.pending_receive ? <Txt v="caption" color={colors.onSurface}>Reembolsos por recibir (estimado): {money(d.finance.totals.pending_receive)}</Txt> : null}
+                  {d.finance.to_pay.map((x: any) => <Row key={x.id} title={`Por pagar: ${x.title}`} subtitle={`${cap(fmtDate(x.when))} · ${money(x.amount)}`} onPress={() => router.push({ pathname: "/expense-form", params: { id: x.id } })} last />)}
+                  {d.finance.attention.map((x: any) => <Row key={x.id} title={`Trámite: ${x.title}`} subtitle={x.status} onPress={() => router.push({ pathname: "/expense-form", params: { id: x.id } })} last />)}
+                  <Btn label="Ver Gastos" small variant="secondary" onPress={() => router.push("/finances")} testID="process-finance-open" style={{ alignSelf: "flex-start", marginTop: space.sm }} />
+                </View>
+              ) : null}
             </Section>
           ) : null}
 
