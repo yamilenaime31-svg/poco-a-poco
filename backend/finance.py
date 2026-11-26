@@ -601,11 +601,11 @@ async def week_summary(owner_id: str, today: str) -> dict:
         c, cl = e["calc"], e.get("claim") or {}
         due = e.get("due_date") or e["when"]
         if c["pending_pay"] > 0 and due <= end:
-            pays.append({"title": e.get("title", ""), "amount": c["pending_pay"], "date": due, "overdue": due < today})
+            pays.append({"id": e["id"], "title": e.get("title", ""), "amount": c["pending_pay"], "date": due, "overdue": due < today})
         exp = cl.get("expected_date") or ""
         if cl and (cl.get("status") in ATTENTION or (exp and exp <= end and cl.get("status") not in ("Rechazado", "Reembolso recibido", "Trámite cerrado"))):
             missing = [i["label"] for i in cl.get("checklist") or [] if i["status"] in ("Pendiente", "Requiere corrección")]
-            claims.append({"title": e.get("title", ""), "status": cl.get("status", ""), "date": exp, "missing": missing[:6], "amount": c["pending_receive"] or c["requested"]})
+            claims.append({"id": e["id"], "title": e.get("title", ""), "status": cl.get("status", ""), "date": exp, "missing": missing[:6], "amount": c["pending_receive"] or c["requested"]})
     rems = [{"title": t.get("title", ""), "date": t.get("date", ""), "time": t.get("time", "")}
             async for t in db.records.find({"kind": "tasks", "owner_id": owner_id, "expense_id": {"$exists": True, "$ne": ""}, "done": {"$ne": True}, "date": {"$gte": today, "$lte": end}})]
     return {"start": today, "end": end, "payments": sorted(pays, key=lambda p: p["date"]), "claims": claims, "reminders": sorted(rems, key=lambda r: f"{r['date']} {r['time']}"),
@@ -663,3 +663,44 @@ async def get_share(sid: str, user=Depends(current_user)):
 async def revoke_share(sid: str, user=Depends(current_user)):
     await db.finance_shares.update_one({"id": sid, "owner_id": user["id"]}, {"$set": {"revoked_at": now_iso()}})
     return {"ok": True}
+
+
+@api.post("/finance/shares/{sid}/take")
+async def take_item(sid: str, body: dict = Body(...), user=Depends(current_user)):
+    """The companion who received the summary says "yo me encargo" on one payment or claim (or withdraws it). The patient is told."""
+    s = await db.finance_shares.find_one({"id": sid, "caregiver_id": user["id"], "revoked_at": None})
+    kind = body.get("kind")
+    if not s or kind not in ("payments", "claims"):
+        raise HTTPException(404, "Este resumen ya no está disponible")
+    row = next((r for r in s[kind] if r.get("id") == body.get("item_id")), None)
+    if not row:
+        raise HTTPException(404, "No encontramos ese elemento")
+    take = bool(body.get("take", True))
+    row["taken"] = {"name": display_name(user), "at": now_iso()} if take else None
+    await db.finance_shares.update_one({"id": sid}, {"$set": {kind: s[kind]}})
+    await log(user, s["owner_id"], "yo me encargo" if take else "ya no se encarga", row["id"], row["title"])
+    from server import notify
+    what = "el pago" if kind == "payments" else "el trámite"
+    await notify(s["owner_id"], f"{display_name(user)}: yo me encargo" if take else f"{display_name(user)} ya no puede encargarse",
+                 f"{'Se ofreció a ver' if take else 'Retiró su ofrecimiento para'} {what} «{row['title']}».", "finance", f"/finance-summary?id={sid}")
+    return clean(await db.finance_shares.find_one({"id": sid}))
+
+
+async def weekly_prepare(u: dict, now_utc: datetime):
+    """On the weekday the person chose, from 9:00 local, tell them their weekly summary is ready to review. Nothing is sent to anyone."""
+    cfg = (u.get("settings") or {}).get("finance_weekly") or {}
+    if cfg.get("day") is None:
+        return
+    local = now_utc + timedelta(minutes=int((u.get("settings") or {}).get("tz_offset", 0)))
+    if local.weekday() != int(cfg["day"]) or local.hour < 9:
+        return
+    today = local.date().isoformat()
+    try:
+        await db.reminders_sent.insert_one({"key": f"{u['id']}-finweek-{today}", "at": now_iso()})
+    except Exception:
+        return
+    if (await week_summary(u["id"], today))["empty"]:
+        return
+    c = await db.users.find_one({"id": cfg.get("caregiver_id")}) if cfg.get("caregiver_id") else None
+    from server import notify
+    await notify(u["id"], "Tu resumen de la semana está listo", f"Revísalo y decide si lo envías{' a ' + display_name(c) if c else ''}. No se comparte hasta que lo apruebes.", "finance", "/finances?week=1")

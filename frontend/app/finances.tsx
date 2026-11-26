@@ -32,7 +32,7 @@ const REPORTS: [string, string][] = [["financial", "Reporte financiero"], ["trea
 
 /** Gastos: a personal financial view of the process. Real amounts and estimates are always kept apart. */
 export default function Finances() {
-  const p = useLocalSearchParams<{ owner_id?: string; coverage?: string }>();
+  const p = useLocalSearchParams<{ owner_id?: string; coverage?: string; week?: string }>();
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();
@@ -42,7 +42,7 @@ export default function Finances() {
   const cov = useApi<any[]>(acc.data?.coverages ? `/coverages${qs}` : null);
   const perms = useApi<any[]>(acc.data?.owner ? "/finance/permissions" : null);
   const [f, setF] = useState<any>({ period: 0, category: "", coverage: p.coverage || "", pay: "", claim: "", person: "", claimNo: "" });
-  const [sheet, setSheet] = useState<"" | "filters" | "perms" | "report" | "week">("");
+  const [sheet, setSheet] = useState<"" | "filters" | "perms" | "report" | "week">(p.week ? "week" : "");
   const [info, setInfo] = useState("");
   const [rep, setRep] = useState<any>({ type: "financial", hide_sensitive: true, busy: false });
   const a = acc.data || {};

@@ -154,3 +154,9 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - finance.py: week_summary (pagos pendientes con fecha ≤ hoy+6 o pasada, trámites en ATTENTION o con resolución estimada en la semana, recordatorios ligados a gastos); GET /finance/week-summary, POST/GET/DELETE /finance/shares (copia fija para un acompañante vinculado, con o sin importes, notificación con enlace /finance-summary?id=). No cambia link.finance.
 - Frontend: src/finance/week-share.tsx (hoja en /finances "Compartir semana", ReceivedSummaries en Inicio de acompañante), app/finance-summary.tsx.
 - Autoprobado con script y capturas; sin testing agent.
+
+## Iteration 22 (Jun 2026) — Resumen semanal automático + "yo me encargo"
+- settings.finance_weekly {day 0-6 (lun=0) | null, caregiver_id, include_amounts}. finance.weekly_prepare (llamado desde planner.reminder_loop): ese día desde las 9:00 hora local (tz_offset) avisa al paciente con enlace /finances?week=1; una vez por día (reminders_sent), no avisa si no hay pendientes, nunca envía solo.
+- POST /api/finance/shares/{sid}/take {kind payments|claims, item_id, take} solo el acompañante receptor; marca row.taken {name, at}, avisa al paciente, no registra pagos. Filas del resumen llevan id del gasto.
+- UI: selector de día en la hoja "Compartir semana"; botones "Yo me encargo" en /finance-summary; el paciente abre sus resúmenes enviados y ve quién se encarga.
+- Autoprobado con script y capturas; sin testing agent.

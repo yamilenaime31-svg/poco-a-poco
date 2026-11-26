@@ -320,7 +320,9 @@ async def reminder_loop():
     while True:
         try:
             now = datetime.now(timezone.utc)
+            from finance import weekly_prepare
             async for u in db.users.find({}):
+                await weekly_prepare(u, now)
                 for r in await compute_reminders(u, days=1):
                     if datetime.fromisoformat(r["fire_at"]) <= now + timedelta(seconds=60):
                         try:

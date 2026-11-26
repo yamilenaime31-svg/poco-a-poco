@@ -1,28 +1,43 @@
 // This week's pending payments and paperwork: the patient previews it and sends a snapshot to one companion.
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
+import { useAuth } from "@/src/auth";
 import { fmtDate, fmtDateTime, money, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Chip, ChipRow, Field, IconBtn, Row, Section, Sheet, SwitchRow, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
 /** The summary itself. `amounts` false hides every figure. */
-export function WeekSummary({ s, amounts = true }: { s: any; amounts?: boolean }) {
+const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+export function WeekSummary({ s, amounts = true, onTake }: { s: any; amounts?: boolean; onTake?: (kind: string, id: string, take: boolean) => void }) {
   const { colors } = useTheme();
+  const taken = (kind: string, r: any) => (
+    <>
+      {r.taken ? <View style={{ marginLeft: 60, marginBottom: 6 }}><Badge label={`${r.taken.name} se encarga`} tint="sage" /></View> : null}
+      {onTake ? <Btn label={r.taken ? "Ya no puedo encargarme" : "Yo me encargo"} small variant={r.taken ? "ghost" : "secondary"} icon={r.taken ? "undo-2" : "hand-heart"} onPress={() => onTake(kind, r.id, !r.taken)} testID={`week-take-${kind}-${r.id}`} style={{ alignSelf: "flex-start", marginLeft: 60, marginBottom: space.sm }} /> : null}
+    </>
+  );
   const amt = (v: any) => (amounts && v ? ` · ${money(v)}` : "");
   return (
     <View testID="week-summary">
       <Txt v="label" color={colors.onSurface}>Pagos pendientes</Txt>
       {s.payments.length === 0 ? <Txt v="caption" style={{ marginBottom: space.sm }}>Ninguno esta semana.</Txt> : s.payments.map((p: any, i: number) => (
-        <Row key={i} icon="banknote" tint="coral" title={p.title} subtitle={`${fmtDate(p.date)}${amt(p.amount)}`} right={p.overdue ? <Badge label="Fecha pasada" tint="coral" /> : undefined} last />
+        <View key={i}>
+          <Row icon="banknote" tint="coral" title={p.title} subtitle={`${fmtDate(p.date)}${amt(p.amount)}`} right={p.overdue ? <Badge label="Fecha pasada" tint="coral" /> : undefined} last />
+          {taken("payments", p)}
+        </View>
       ))}
       <Txt v="label" color={colors.onSurface} style={{ marginTop: space.sm }}>Trámites de reembolso</Txt>
       {s.claims.length === 0 ? <Txt v="caption" style={{ marginBottom: space.sm }}>Ninguno requiere atención esta semana.</Txt> : s.claims.map((c: any, i: number) => (
-        <Row key={i} icon="file-check" tint="butter" title={c.title} last
-          subtitle={[c.status, c.date ? `resolución estimada ${fmtDate(c.date)}` : "", c.missing.length ? `falta: ${c.missing.join(", ")}` : ""].filter(Boolean).join(" · ") + amt(c.amount)} />
+        <View key={i}>
+          <Row icon="file-check" tint="butter" title={c.title} last
+            subtitle={[c.status, c.date ? `resolución estimada ${fmtDate(c.date)}` : "", c.missing.length ? `falta: ${c.missing.join(", ")}` : ""].filter(Boolean).join(" · ") + amt(c.amount)} />
+          {taken("claims", c)}
+        </View>
       ))}
       {s.reminders.length ? (
         <>
@@ -36,10 +51,18 @@ export function WeekSummary({ s, amounts = true }: { s: any; amounts?: boolean }
 
 export function WeekShareSheet({ visible, onClose, people }: { visible: boolean; onClose: () => void; people: { caregiver_id: string; name: string }[] }) {
   const toast = useToast();
+  const router = useRouter();
+  const { user, updateMe } = useAuth();
+  const cfg = (user?.settings as any)?.finance_weekly || {};
   const q = useApi<any>(visible ? `/finance/week-summary?today=${today()}` : null);
   const sent = useApi<any[]>(visible ? "/finance/shares" : null);
-  const [to, setTo] = useState("");
-  const [amounts, setAmounts] = useState(true);
+  const [to, setTo] = useState<string>(cfg.caregiver_id || "");
+  const [amounts, setAmounts] = useState(cfg.include_amounts ?? true);
+  const day: number | null = cfg.day ?? null;
+  const setDay = async (d: number | null) => {
+    await updateMe({ settings: { finance_weekly: { day: d, caregiver_id: to, include_amounts: amounts } } }).catch((e) => toast.show(e.message, "error"));
+    toast.show(d === null ? "Ya no prepararemos el resumen automáticamente" : "Listo. Ese día te avisamos para que lo revises");
+  };
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const s = q.data;
@@ -75,12 +98,23 @@ export function WeekShareSheet({ visible, onClose, people }: { visible: boolean;
           <Btn label="Enviar resumen" icon="send" loading={busy} disabled={!to} onPress={send} testID="week-share-send" />
         </>
       )}
+      <View style={{ marginTop: space.lg }} testID="week-auto">
+        <Txt v="label">Prepararlo cada semana</Txt>
+        <Txt v="caption" style={{ marginBottom: 6 }}>El día que elijas, a partir de las 9:00, te avisamos que tu resumen está listo{to && day !== null ? ` para ${people.find((p) => p.caregiver_id === to)?.name || "la persona elegida"}` : ""}. Nunca se envía solo: tú lo revisas y tocas Enviar. Si esa semana no hay nada pendiente, no te avisamos.</Txt>
+        <ChipRow>
+          <Chip label="No preparar" selected={day === null} onPress={() => setDay(null)} testID="week-auto-off" />
+          {DAYS.map((d, i) => <Chip key={d} label={d} selected={day === i} onPress={() => setDay(i)} testID={`week-auto-${i}`} />)}
+        </ChipRow>
+      </View>
       {(sent.data || []).length ? (
         <View style={{ marginTop: space.lg }} testID="week-share-sent">
           <Txt v="label">Resúmenes que compartiste</Txt>
           {(sent.data || []).map((x) => (
             <View key={x.id} style={{ flexDirection: "row", alignItems: "center", minHeight: 48 }}>
-              <Txt style={{ flex: 1 }} numberOfLines={1}>{x.caregiver_name} · {fmtDateTime(x.created_at)}</Txt>
+              <Pressable style={{ flex: 1, minHeight: 44, justifyContent: "center" }} onPress={() => { onClose(); router.push({ pathname: "/finance-summary", params: { id: x.id } }); }} testID={`week-share-open-${x.id}`} accessibilityRole="button">
+                <Txt numberOfLines={1}>{x.caregiver_name} · {fmtDateTime(x.created_at)}</Txt>
+                {[...x.payments, ...x.claims].some((r: any) => r.taken) ? <Txt v="caption">Respondió «yo me encargo» · toca para ver</Txt> : null}
+              </Pressable>
               <IconBtn icon="trash-2" onPress={() => revoke(x.id)} testID={`week-share-revoke-${x.id}`} />
             </View>
           ))}
