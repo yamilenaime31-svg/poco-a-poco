@@ -34,7 +34,7 @@ export default function NextWeek() {
 
   return (
     <Screen title="Mi próxima semana" subtitle="Lo que viene y lo que puedes preparar" testID="next-week-screen" refreshing={q.isRefetching} onRefresh={plus ? q.refetch : undefined}>
-      <PlusGate title="Anticípate con AMODO Plus" text="Una vista de tus próximos siete días con citas, traslados y lo que conviene preparar. Tu agenda completa sigue disponible con cualquier plan."
+      <PlusGate why="Incluido en tu membresía: tu semana anticipada y lo que conviene preparar, sin revisar día por día." title="Anticípate con AMODO Plus" text="Una vista de tus próximos siete días con citas, traslados y lo que conviene preparar. Tu agenda completa sigue disponible con cualquier plan."
         preview={<Card><Txt v="title">Jueves · Consulta 10:00</Txt><Txt v="caption">Organiza cómo llegar · Arma tu lista</Txt></Card>}>
         {q.isError ? <ErrorState onRetry={() => q.refetch()} /> : !d ? <Loading /> : (
           <>

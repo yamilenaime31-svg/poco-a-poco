@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
+import { PlusTag } from "@/src/components/plus-gate";
 import { ShareWith } from "@/src/components/share-with";
 import { TREATMENT_TYPES, fmtLongDate, isDate, isTime, isoDate, today } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
@@ -89,6 +90,7 @@ export default function TreatmentAssistant() {
       {!plan ? (
         <View>
           {ai ? <Txt v="caption" style={{ marginBottom: space.sm }} testID="ta-ai-usage">Asistente: {ai.used} de {ai.limit} interacciones este mes{ai.plus ? "" : " · con Plus tienes más"}. Siempre puedes registrar todo de forma manual.</Txt> : null}
+          {ai?.plus ? <PlusTag why={`Tu membresía te da ${ai.limit} interacciones con el asistente cada mes.`} testID="ta-plus" style={{ marginTop: 0, marginBottom: space.sm }} /> : null}
           <TextInput testID="ta-input" value={text} onChangeText={setText} multiline placeholderTextColor={colors.muted}
             placeholder="Ej. Voy a tener quimioterapia cada 21 días, empezando el 25 de noviembre. Son seis sesiones y tengo que llegar a las 9 de la mañana."
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.onSurface }]} />

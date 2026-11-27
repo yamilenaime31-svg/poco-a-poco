@@ -6,6 +6,7 @@ import { api, useApi } from "@/src/api";
 import { Spot } from "@/src/art";
 import { HBars, WeekBars } from "@/src/components/bars";
 import { MONTHS_LONG, addDays, fmtDate, money } from "@/src/constants";
+import { PlusTag } from "@/src/components/plus-gate";
 import { CashFlow } from "@/src/finance/cashflow";
 import { ClaimGroups, claimNo } from "@/src/finance/claims";
 import { fileUrl } from "@/src/finance/shared";
@@ -127,6 +128,7 @@ export default function Finances() {
           </Sheet>
           <WeekShareSheet visible={sheet === "week"} onClose={() => setSheet("")} people={perms.data || []} />
           <Sheet visible={sheet === "report"} onClose={() => setSheet("")} title="Reportes y expediente" testID="finances-report-sheet">
+            <PlusTag why="Reportes y expedientes en PDF, parte de tu membresía." testID="finances-report-plus" style={{ marginTop: 0, marginBottom: space.sm }} />
             <Txt v="caption" style={{ marginBottom: space.sm }}>Usa los filtros activos (periodo, categoría, cobertura, siniestro). Para el reporte general de tu proceso, entra a Mi proceso.</Txt>
             <ChipRow>{REPORTS.map(([k, l]) => <Chip key={k} label={l} selected={rep.type === k} onPress={() => setRep({ ...rep, type: k })} testID={`finances-report-${k}`} />)}</ChipRow>
             <SwitchRow label="Ocultar números de siniestro y folio" value={rep.hide_sensitive} onValueChange={(v) => setRep({ ...rep, hide_sensitive: v })} testID="finances-report-hide" />
@@ -143,7 +145,7 @@ export default function Finances() {
             {a.coverages ? <Chip label="Mi cobertura" icon="shield" onPress={() => router.push("/coverage")} testID="finances-coverage" /> : null}
             {a.owner ? <Chip label="Permisos" icon="users" onPress={() => setSheet("perms")} testID="finances-perms" /> : null}
             {a.owner ? <Chip label="Compartir semana" icon="send" onPress={() => setSheet("week")} testID="finances-week-share" /> : null}
-            {a.reports ? <Chip label={a.plus ? "Reportes" : "Reportes · Plus"} icon="file-text" onPress={() => (a.plus ? setSheet("report") : router.push("/plus"))} testID="finances-reports" /> : null}
+            {a.reports ? <Chip label="Reportes · Plus" icon="file-text" onPress={() => (a.plus ? setSheet("report") : router.push("/plus"))} testID="finances-reports" /> : null}
           </ChipRow>
           {(q.data.items || []).length === 0 ? <Empty icon="wallet" title="Aún no hay gastos" text="Registra un gasto cuando quieras. No necesitas seguro ni cobertura para usar esta sección." testID="finances-empty" /> : (
             <>

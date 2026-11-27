@@ -63,7 +63,7 @@ export default function ProcessReport() {
 
   return (
     <Screen title="Mi reporte" subtitle="Un resumen personal de tus registros" testID="process-report-screen">
-      <PlusGate title="Reportes con AMODO Plus" text="Crea un PDF con el periodo y las categorías que elijas. Tus registros y «Mi proceso» siguen disponibles con cualquier plan.">
+      <PlusGate why="Incluido en tu membresía: reportes en PDF con el periodo y las secciones que tú elijas." title="Reportes con AMODO Plus" text="Crea un PDF con el periodo y las categorías que elijas. Tus registros y «Mi proceso» siguen disponibles con cualquier plan.">
         <Txt v="label" color={colors.onSurface} style={{ marginBottom: space.sm }}>Periodo</Txt>
         <ChipRow>
           {[7, 30, 90].map((d) => <Chip key={d} label={`Últimos ${d} días`} selected={period === d} onPress={() => { setPeriod(d); setMade(null); }} testID={`report-period-${d}`} />)}

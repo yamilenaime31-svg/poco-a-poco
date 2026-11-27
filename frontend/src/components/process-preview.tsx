@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
+import { PlusTag } from "@/src/components/plus-gate";
 import { Spot } from "@/src/art";
 import { money, today } from "@/src/constants";
 import { DaySheet, WellbeingDays } from "@/src/components/process-parts";
@@ -60,6 +61,7 @@ export function ProcessPreview() {
                 <Txt v="title">Tu proceso, en un reporte</Txt>
                 <Txt v="caption" color={colors.onSurface}>Un resumen en PDF de lo que tú elijas, para ti o para compartirlo.</Txt>
                 <Btn label="Generar mi reporte" small icon="file-text" onPress={() => router.push("/process-report")} testID="home-process-report-button" style={{ alignSelf: "flex-start", marginTop: space.sm }} />
+                <PlusTag why="Los reportes en PDF son parte de tu membresía." testID="home-process-report-plus" />
               </View>
             </View>
           ) : (

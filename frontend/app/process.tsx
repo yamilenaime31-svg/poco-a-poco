@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
+import { PlusTag } from "@/src/components/plus-gate";
 import { useApi } from "@/src/api";
 import { Company, MoodFigure, Spot } from "@/src/art";
 import { HBars, WeekBars } from "@/src/components/bars";
@@ -119,8 +120,8 @@ export default function Process() {
           {filter === "all" ? (
             d.compare ? (
               <View style={[styles.card, { backgroundColor: colors.surfaceSecondary }]} testID="process-compare">
-                <Badge label="Plus" tint="lavender" />
-                <Txt v="title" style={{ marginTop: 6 }}>Comparado con los {d.days} días anteriores</Txt>
+                <Txt v="title">Comparado con los {d.days} días anteriores</Txt>
+                <PlusTag why="Tu membresía compara este periodo con el anterior." testID="process-compare-plus" style={{ marginTop: 4, marginBottom: 6 }} />
                 {[`Bienestar: registraste ${d.compare.now.feel_days} día(s), ${diff(d.compare.now.feel_days, d.compare.before.feel_days)}.`,
                   `Agenda: ${d.compare.now.activities} actividad(es), ${diff(d.compare.now.activities, d.compare.before.activities)}.`,
                   `Tomas marcadas: ${d.compare.now.doses_done}, ${diff(d.compare.now.doses_done, d.compare.before.doses_done)}.`,
@@ -197,6 +198,7 @@ export default function Process() {
               <Txt v="title">Tu proceso, en un reporte</Txt>
               <Txt v="caption" color={colors.onSurface}>{d.plus ? "Elige periodo y categorías, revisa la vista previa y descarga tu PDF." : "Con AMODO Plus puedes crear reportes en PDF. Todo lo que ves aquí sigue disponible con cualquier plan."}</Txt>
               <Btn label={d.plus ? "Generar mi reporte" : "Conocer Plus"} small variant={d.plus ? "primary" : "secondary"} icon={d.plus ? "file-text" : undefined} onPress={() => router.push(d.plus ? "/process-report" : "/plus")} testID="process-pdf" style={{ alignSelf: "flex-start", marginTop: space.sm }} />
+              {d.plus ? <PlusTag why="Los reportes en PDF son parte de tu membresía." testID="process-pdf-plus" /> : null}
             </View>
           </View>
           <Row icon="history" tint="sand" title="Historial personal" subtitle="Cada registro, en orden" onPress={() => router.push("/history")} testID="process-history" last />

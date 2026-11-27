@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
+import { PlusTag } from "@/src/components/plus-gate";
 import { useAuth } from "@/src/auth";
 import { money } from "@/src/constants";
 import { useToast } from "@/src/toast";
@@ -105,6 +106,7 @@ export default function Checkout() {
         <Section title="Beneficios y créditos" testID="checkout-benefits">
           <Txt v="caption" style={{ marginBottom: space.sm }}>Plan: {b.plan}</Txt>
           {b.discounts.length ? b.discounts.map((d: any) => <Line key={d.label} l={d.label} r={`−${money(d.amount)}`} testID="checkout-discount" />) : <Txt v="caption">Sin descuentos activos.</Txt>}
+          {b.discounts.some((d: any) => /plus/i.test(d.label)) ? <PlusTag why="Este descuento en tu kit viene de tu membresía." testID="checkout-plus-discount" style={{ marginTop: 4 }} /> : null}
           {b.credit_available > 0 ? (
             <View style={{ marginTop: space.md }}>
               <Txt v="medium">Tienes {money(b.credit_available)} en créditos</Txt>
@@ -116,6 +118,7 @@ export default function Checkout() {
                 ))}
               </View>
               {mode === "custom" ? <Field label={`Monto a usar (máximo ${money(b.credit_max)})`} value={custom} onChangeText={setCustom} keyboardType="decimal-pad" testID="checkout-credit-amount" /> : null}
+              {b.credit_plus ? <PlusTag why="Parte de estos créditos los recibes cada mes por tu membresía." testID="checkout-plus-credit" style={{ marginTop: 0, marginBottom: 6 }} /> : null}
               {b.credit ? <Line l={`Créditos utilizados${b.credit_institution ? " (incluye institucionales)" : ""}`} r={`−${money(b.credit)}`} testID="checkout-credit-line" /> : null}
             </View>
           ) : null}

@@ -11,7 +11,7 @@ import { useToast } from "@/src/toast";
 import { Badge, Btn, Field, Ic, Row, Section, Sheet, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
-type Item = { icon: string; title: string; href: any; tint?: string };
+type Item = { icon: string; title: string; href: any; tint?: string; plus?: string };
 const edit = (step: string) => ({ pathname: "/onboarding", params: { edit: "1", step } });
 
 export default function Me() {
@@ -28,7 +28,7 @@ export default function Me() {
     { title: "Mi identidad", items: [
       { icon: "heart", title: "Mis gustos y actividades", href: edit("tastes"), tint: "coral" },
       { icon: "sparkles", title: "Mi estilo", href: edit("identity"), tint: "lavender" },
-      { icon: "palette", title: "Identidad y estilo (Plus)", href: "/style", tint: "lavender" },
+      { icon: "palette", title: "Identidad y estilo", plus: "Plus · propuestas visuales con tus colores", href: "/style", tint: "lavender" },
       { icon: "sliders-horizontal", title: "Mis preferencias", href: edit(isCg ? "about" : "needs"), tint: "butter" },
       { icon: "smile", title: "Mi avatar", href: "/avatar", tint: "sky" },
     ] },
@@ -54,7 +54,7 @@ export default function Me() {
     { title: "Compras", items: [
       { icon: "heart", title: "Biblioteca y favoritos", href: "/favorites", tint: "coral" },
       { icon: "truck", title: "Mis pedidos e historial", href: "/orders", tint: "sky" },
-      { icon: "file-text", title: "Reporte personal (Plus)", href: "/report" },
+      { icon: "file-text", title: "Reporte personal", plus: "Plus · tu resumen listo para compartir", href: "/report" },
     ] },
     { title: "Configuración", items: [
       { icon: "bell", title: "Notificaciones", href: "/notifications" },
@@ -108,7 +108,7 @@ export default function Me() {
 
       {groups.map((g) => (
         <Section key={g.title} title={g.title}>
-          {g.items.map((it, i) => <Row key={it.title} icon={it.icon} tint={it.tint || "sand"} title={it.title} onPress={() => router.push(it.href)} testID={`profile-row-${it.title}`} last={i === g.items.length - 1} />)}
+          {g.items.map((it, i) => <Row key={it.title} icon={it.icon} tint={it.tint || "sand"} title={it.title} subtitle={it.plus} onPress={() => router.push(it.href)} testID={`profile-row-${it.title}`} last={i === g.items.length - 1} />)}
         </Section>
       ))}
       <PlanCard />

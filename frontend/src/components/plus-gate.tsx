@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
@@ -11,13 +11,27 @@ export function usePlus() {
   return { plus: q.data?.tier === "plus", loading: q.isLoading };
 }
 
+/** Small line under a Plus benefit so the person always knows what their membership gives them, also when Plus is already active. */
+export function PlusTag({ why, testID, style }: { why: string; testID?: string; style?: StyleProp<ViewStyle> }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.tag, style]} testID={testID || "plus-tag"} accessibilityLabel={`Beneficio Plus: ${why}`}>
+      <View style={[styles.pill, { backgroundColor: colors.lavender }]}>
+        <Ic name="sparkles" size={11} />
+        <Txt v="medium" style={{ fontSize: 11, lineHeight: 14 }}>Plus</Txt>
+      </View>
+      <Txt v="caption" color={colors.onSurface} style={{ flex: 1, fontSize: 12, lineHeight: 16 }}>{why}</Txt>
+    </View>
+  );
+}
+
 /** Shows the Plus tool when active; otherwise a calm preview with "Conocer Plus" (never blocks the rest of the app). */
-export function PlusGate({ title, text, preview, children, testID }: { title: string; text: string; preview?: React.ReactNode; children: React.ReactNode; testID?: string }) {
+export function PlusGate({ title, text, why, preview, children, testID }: { title: string; text: string; why?: string; preview?: React.ReactNode; children: React.ReactNode; testID?: string }) {
   const { plus, loading } = usePlus();
   const router = useRouter();
   const { colors } = useTheme();
   if (loading) return null;
-  if (plus) return <>{children}</>;
+  if (plus) return <>{why ? <PlusTag why={why} style={{ marginTop: 0, marginBottom: space.md }} /> : null}{children}</>;
   return (
     <View testID={testID || "plus-gate"}>
       {preview ? <View style={{ opacity: 0.55 }} pointerEvents="none">{preview}</View> : null}
@@ -33,4 +47,8 @@ export function PlusGate({ title, text, preview, children, testID }: { title: st
   );
 }
 
-const styles = StyleSheet.create({ box: { borderRadius: radius.md, padding: space.lg, marginTop: space.md } });
+const styles = StyleSheet.create({
+  tag: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: space.sm },
+  pill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  box: { borderRadius: radius.md, padding: space.lg, marginTop: space.md },
+});

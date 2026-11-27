@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { api, invalidate, useApi } from "@/src/api";
 import { DEMO_PRICE, money, today } from "@/src/constants";
 import { useToast } from "@/src/toast";
-import { PlusGate } from "@/src/components/plus-gate";
+import { PlusGate, PlusTag } from "@/src/components/plus-gate";
 import { Btn, Chip, ChipRow, Ic, Loading, ProductImage, Sheet, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
@@ -61,6 +61,7 @@ function WhySheet({ p, onClose }: { p: any; onClose: () => void }) {
               ))}
             </View>
           ))}
+          {q.data?.plus ? <PlusTag why="Explicación ampliada, parte de tu membresía." testID="reco-why-plus" /> : null}
           {q.data && q.data.plus === false ? <Txt v="caption" style={{ marginTop: space.sm }} testID="reco-why-basic">Explicación básica. Con AMODO Plus verás una explicación ampliada.</Txt> : null}
           <Txt v="caption" style={{ marginTop: space.sm }}>Solo sugerimos artículos del catálogo. No afirmamos que prevengan o alivien síntomas. El precio es de ejemplo.</Txt>
         </>
@@ -89,6 +90,7 @@ export function NeedsPrompt() {
   };
   return (
     <View style={[styles.prompt, { backgroundColor: colors.lavenderSoft }]} testID="reco-needs-prompt">
+      <PlusTag why="Sugerencias según tu tratamiento y los temas que elijas." testID="reco-needs-plus" style={{ marginTop: 0, marginBottom: space.sm }} />
       <Txt v="medium" style={{ fontSize: 14 }}>
         {q.data.asked ? `Ideas según tu tratamiento: ${chosen.length === 1 ? "1 tema elegido" : chosen.length ? `${chosen.length} temas elegidos` : "ninguno elegido"}` : `¿Te gustaría explorar artículos relacionados con molestias que algunas personas experimentan durante ${names}?`}
       </Txt>

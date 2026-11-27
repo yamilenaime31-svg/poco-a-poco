@@ -24,7 +24,7 @@ export default function Report() {
   };
   return (
     <Screen title="Reporte personal" subtitle="Un resumen de tus próximos 30 días para compartir con quien elijas" testID="report-screen">
-      <PlusGate title="Reportes exportables con AMODO Plus" text="Genera un resumen de tu agenda y medicamentos registrados para compartirlo o guardarlo. Tus datos siguen disponibles en Agenda con cualquier plan."
+      <PlusGate why="Incluido en tu membresía: tu agenda y medicamentos en un resumen listo para compartir." title="Reportes exportables con AMODO Plus" text="Genera un resumen de tu agenda y medicamentos registrados para compartirlo o guardarlo. Tus datos siguen disponibles en Agenda con cualquier plan."
         preview={<Card><Txt v="caption">AMODO · Resumen personal{"\n"}AGENDA{"\n"}- 25 nov · Sesión de tratamiento…</Txt></Card>}>
         <Btn label="Generar reporte" icon="file-text" loading={busy} onPress={make} testID="report-generate" />
         {text ? (

@@ -70,7 +70,7 @@ export default function Organiza() {
 
       <Section title="Prepara y mira atrás">
         <TileGrid tiles={[
-          { key: "next-week", label: "Mi próxima semana", hint: "Con Plus", tint: "sky", spot: "week", href: "/next-week" },
+          { key: "next-week", label: "Mi próxima semana", hint: "Plus · anticípate", tint: "sky", spot: "week", href: "/next-week" },
           { key: "checklists", label: "Listas de preparación", tint: "lavender", spot: "checklist", href: "/checklists" },
           { key: "coverage", label: "Mi cobertura médica", tint: "mauve", spot: "heart", href: "/coverage" },
           { key: "process", label: "Mi proceso", tint: "sage", spot: "process", href: "/process" },

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { useApi } from "@/src/api";
+import { PlusTag } from "@/src/components/plus-gate";
 import { MONTHS_LONG, fmtDate, money, today } from "@/src/constants";
 import { Badge, Row, Section, Sheet, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -28,6 +29,7 @@ export function CashFlow({ ownerId, plus, onOpen, onPlus }: { ownerId?: string; 
 
   return (
     <Section title="Próximos meses · estimación" testID="finances-cashflow">
+      <PlusTag why="Con tu membresía ves lo que viene por pagar y recuperar, mes a mes." testID="finances-cashflow-plus-tag" style={{ marginTop: 0, marginBottom: space.sm }} />
       {rows.map((b) => (
         <Pressable key={b.key} onPress={() => setOpen(b)} testID={`finances-cashflow-${b.key}`} accessibilityRole="button" style={{ backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: space.md, marginBottom: space.sm }}>
           <Txt v="medium" style={{ textTransform: "capitalize", marginBottom: 6 }}>{label(b.key)}</Txt>

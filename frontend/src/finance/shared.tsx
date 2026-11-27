@@ -4,6 +4,7 @@ import { Linking, Pressable, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 
 import { API_BASE, api, authHeader, useApi } from "@/src/api";
+import { PlusTag } from "@/src/components/plus-gate";
 import { useToast } from "@/src/toast";
 import { uploadForm } from "@/src/utils/upload";
 import { Btn, Chip, ChipRow, Ic, IconBtn, Sheet, Txt } from "@/src/ui";
@@ -102,6 +103,7 @@ export function Docs({ refId, refType = "expense", cats, canAttach = true, plus,
       ))}
       {q.data && q.data.length === 0 ? <Txt v="caption" style={{ marginBottom: space.sm }}>Sin documentos todavía. Se guardan de forma privada y solo se abren con un enlace temporal.</Txt> : null}
       {canAttach ? <Btn label="Adjuntar documento" small variant="secondary" icon="paperclip" loading={busy === "up"} onPress={() => setCat("pick")} testID="docs-attach" style={{ alignSelf: "flex-start" }} /> : null}
+      {onExtract && plus ? <PlusTag why="Toca ✦ en un documento y la IA te propone los datos para revisar." testID="docs-plus" /> : null}
       {onExtract && !plus ? <Txt v="caption" style={{ marginTop: space.sm }}>Con AMODO Plus puedes pedir a la IA que lea un comprobante y te proponga los datos para revisar.</Txt> : null}
       <Sheet visible={!!cat} onClose={() => setCat("")} title="¿Qué documento es?" testID="docs-category-sheet">
         <ChipRow>{cats.map((c) => <Chip key={c} label={c} onPress={() => attach(c)} testID={`docs-cat-${c}`} />)}</ChipRow>

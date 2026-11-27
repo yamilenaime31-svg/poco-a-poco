@@ -65,7 +65,7 @@ export default function Style() {
 
   return (
     <Screen title="Identidad y estilo" subtitle="Colores, texturas y accesorios, a tu modo" testID="style-screen">
-      <PlusGate title="Tu estilo con AMODO Plus" text="Elige colores, texturas y accesorios y recibe propuestas visuales: artículos del catálogo que combinan y una imagen de inspiración. El catálogo completo sigue disponible con cualquier plan."
+      <PlusGate why="Incluido en tu membresía: propuestas del catálogo e imágenes de inspiración hechas con tus colores y texturas." title="Tu estilo con AMODO Plus" text="Elige colores, texturas y accesorios y recibe propuestas visuales: artículos del catálogo que combinan y una imagen de inspiración. El catálogo completo sigue disponible con cualquier plan."
         preview={<Card><Txt v="title">Salvia · Algodón · Pañuelos</Txt><Txt v="caption">3 artículos que combinan contigo</Txt></Card>}>
         {q.isError ? <ErrorState onRetry={() => q.refetch()} /> : !d ? <Loading /> : (
           <>

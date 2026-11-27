@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useApi } from "@/src/api";
+import { PlusTag } from "@/src/components/plus-gate";
 import { fmtDate, fmtDateTime, money } from "@/src/constants";
 import { Btn, ErrorState, Loading, Row, Screen, Section, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -22,6 +23,7 @@ export default function Credits() {
           </View>
           <Section title="Créditos AMODO Plus">
             <Row icon="calendar-check" tint="sand" title={`${money(w.plus)} disponibles`} subtitle={`Recibidos: ${money(w.earned)} · Usados: ${money(w.used)}`} testID="credits-plus" />
+            {w.next_credit ? <PlusTag why="Estos créditos llegan cada mes por tu membresía." testID="credits-plus-tag" style={{ marginTop: 0, marginBottom: 6 }} /> : null}
             {w.next_credit ? <Txt v="caption" testID="credits-next">Cada mes con AMODO Plus recibes {money(w.monthly_credit)} para personalizar tus próximos kits. Próxima acreditación: {fmtDate(w.next_credit)}.</Txt>
               : <View><Txt v="caption">Con AMODO Plus recibes créditos cada mes para personalizar tus kits.</Txt><Btn label="Conocer AMODO Plus" small variant="secondary" onPress={() => router.push("/plus")} testID="credits-know-plus" style={{ alignSelf: "flex-start", marginTop: space.sm }} /></View>}
           </Section>

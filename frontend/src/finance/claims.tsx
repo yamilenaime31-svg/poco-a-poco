@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
+import { PlusTag } from "@/src/components/plus-gate";
 import { fmtDate, money } from "@/src/constants";
 import { Badge, Btn, Row, Section, Sheet, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
@@ -50,6 +51,7 @@ export function ClaimGroups({ items, selected, onFilter, onOpen, onReport, canRe
         <View style={{ gap: space.sm, marginTop: space.md }}>
           <Btn label={selected === open ? "Quitar filtro de este siniestro" : "Ver solo este siniestro"} variant="secondary" icon="filter" onPress={() => { onFilter(selected === open ? "" : open); setOpen(""); }} testID="finances-claim-filter" />
           {canReport ? <Btn label={plus ? "Descargar resumen en PDF" : "Resumen en PDF · Plus"} icon="download" loading={busy} onPress={() => onReport(open)} testID="finances-claim-report" /> : null}
+          {canReport && plus ? <PlusTag why="El resumen en PDF del siniestro es parte de tu membresía." testID="finances-claim-plus" style={{ marginTop: 0 }} /> : null}
         </View>
       </Sheet>
     </Section>
