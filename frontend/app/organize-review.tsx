@@ -8,7 +8,7 @@ import { fmtLongDate, isDate } from "@/src/constants";
 import { DateField, SingleChoice, TimeField } from "@/src/form";
 import { organizeDraft } from "@/src/organize-store";
 import { useToast } from "@/src/toast";
-import { Badge, Btn, Card, Empty, Field, Ic, Screen, Txt } from "@/src/ui";
+import { Badge, Btn, Card, Chip, ChipRow, Empty, Field, Ic, Screen, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
 
 const CATS: Record<string, { label: string; icon: string; tint: string; dest: string }> = {
@@ -98,6 +98,16 @@ export default function OrganizeReview() {
                       {[it.date && isDate(it.date) ? fmtLongDate(it.date) : null, it.time, it.responsible ? `Responsable: ${it.responsible}` : null, it.amount ? `$${it.amount}` : null, it.location].filter(Boolean).join(" · ") || "Sin fecha"}
                     </Txt>
                     {rel ? <Txt v="caption">Vinculado con: {rel.title}</Txt> : null}
+                    {it.existing ? (
+                      <View style={{ marginTop: 6 }} testID={`review-existing-${i}`}>
+                        <Txt v="caption" color={colors.onSurface}>Ya tienes registrado: «{it.existing.title}»{it.existing.time ? ` · ${it.existing.time}` : ""}</Txt>
+                        <ChipRow>
+                          {([["keep", "Conservar el que tengo"], ["update", "Actualizarlo"], ["new", "Guardar como nuevo"]] as const).map(([k, l]) => (
+                            <Chip key={k} label={l} selected={(it.on_existing || "keep") === k} onPress={() => set(i, "on_existing", k)} testID={`review-existing-${i}-${k}`} />
+                          ))}
+                        </ChipRow>
+                      </View>
+                    ) : null}
                   </View>
                   <Btn label={open === i ? "Listo" : "Editar"} small variant="ghost" onPress={() => setOpen(open === i ? null : i)} testID={`review-edit-${i}`} />
                 </View>

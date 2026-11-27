@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { setFixedDate } from "@/src/constants";
 import { api, loadToken, setToken } from "@/src/api";
 import { queryClient } from "@/src/query-client";
 
@@ -31,7 +32,11 @@ type Ctx = {
 const AuthContext = createContext<Ctx>({} as Ctx);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
+  const setUser = useCallback((u: User | null) => {
+    setFixedDate((u as any)?.demo_clock);  // before any screen asks for "today"
+    setUserState(u);
+  }, []);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

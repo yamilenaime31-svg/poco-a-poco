@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 21 — tested the new 'Perfil de demostración' (Sofía Méndez + Diego/Laura/Mariana) with fixed date 27 Nov 2026. Backend: 19/19 pytest cases green (demo accounts/flags, /demo/people+switch+reset, caregiver permissions for expenses, process numbers 30d/90d, finance Nov paid non-kit = 28720, plan=plus until 2026-12-27, plus-usage reports=3/credits_received=20/kit_savings=49.9, wallet.available=60, organize parse marks existing items, commit with on_existing=keep does not duplicate, 403 on /demo/* for non-demo accounts). Frontend walk-through on 390x844: login → Home greets 'Hola, Sofía' with 'Viernes 27 de noviembre', mood card and 'Mi día' render; Agenda month Noviembre/Diciembre 2026 with day 27 selected; /day shows 'viernes 27 de noviembre'; /process 30d filter visible (23/8/1 counts); /process-report preview + generate; /next-week pending items including 'Descargar estudios recientes' and 'Confirma el traslado … Laura'; /finances shows SIN-DEMO cluster and cashflow; expense 'Sesión de tratamiento, ciclo 4' detail shows 'En revisión' and 14000; /coverage lists 'Cobertura Demo Integral'; /records/* (treatments, medications, tasks, transfers) populated; /checklists shows all four lists with progress bars; /network has Diego/Laura/Mariana; /orders → En curso = AM-DEMO-1121 'En camino', Historial = AM-DEMO-1014 + AM-DEMO-0915 'Entregado'; /credits $60 MXN with three $20 monthly deposits; /plan Plus. Perfil shows 'Demostración' badge (profile-demo-badge) and 'Perfil de demostración' row → /demo screen with the 4 demo-switch-* buttons, demo-reset-button + sheet with demo-reset-confirm/-cancel. Switch to Diego lands on his caregiver home. Organize dedupe: parsed phrase routes to /organize-review, 8 review-existing-* blocks rendered with -keep/-update/-new chips and 'Ya tienes registrado' copy; 'Confirmar y guardar' with keep creates no duplicate events on 2026-11-30 (verified by backend). Non-demo account regression: GET /api/me has no demo_set/demo_clock, /api/demo/people=403, home+agenda load. Demo left in original state (final /api/demo/reset ran).\n\nONE UI DEFECT FOUND: /finances tiles truncate the amount (textOverflow:ellipsis) — '$135,727.20' renders as '$135,727…' and '$113,877.20' as '$113,877…'. User explicitly requested amounts fit in one line.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FinanceTile (Desembolso neto + Gastos registrados + Pagado por ti o tu red)",
+        "issue": "Amounts above ~$100,000 MXN overflow the tile width and are clipped with text-overflow: ellipsis. Measured: '$135,727.20' scrollWidth=97 clientWidth=87, '$113,877.20' scrollWidth=95 clientWidth=87. User requirement: 'tiles: amounts must fit in one line'. Suggest: reduce the title/caption column, allow the amount to wrap or shrink its font (adjustsFontSizeToFit on web uses minimumFontScale + numberOfLines=1 with a smaller base size), or use a 1-column layout above a threshold.",
+        "testID": "finance tiles on /finances",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/finances",
+        "issues": [
+          "Two tiles show truncated amounts with an ellipsis. See ui_bugs above."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_amodo_iter21_demo.py",
+    "/app/test_reports/pytest/pytest_iter21.xml"
+  ],
+  "action_items": [
+    "Fix /finances tile layout so '$135,727.20' and '$113,877.20' render in one line without ellipsis (min-font-size shrink or wrap)."
+  ],
+  "critical_code_review_comments": [
+    "demo_seed.py is 505 lines — close to the 700-line soft cap; still readable but consider splitting the big data arrays into a data module in future iterations.",
+    "clock.py uses a ContextVar for per-request demo time; no middleware shown here resets it after each request — risk of leakage between concurrent requests if an endpoint forgets to call use_clock(user). Not observed in this test run but worth auditing.",
+    "GET /api/records/events was returning 200 but my in-browser evaluate saw zero items for 2026-11-30 even though the backend tests saw them. Likely the endpoint paginates or filters by owner_id — not a bug (the authoritative backend check confirmed dedupe)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_amodo_iter21_demo.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19)",
+    "frontend": "~96% (1 layout defect on /finances tiles)"
+  },
+  "seed_data_creation": "None. The demo accounts' password was NOT changed; they were NOT deleted; the demo was reset to the original scenario twice (pytest end + a final curl) so the user finds it in the original state.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Credentials in /app/memory/test_credentials.md 'Perfil de demostración' section; shared password is DEMO_ACCESS_PASSWORD from backend/.env (Amodo-qBYvS0VhFeBi). Backend regression suite: /app/backend/tests/test_amodo_iter21_demo.py. Always run /api/demo/reset as the last step. The Organize AI parse call returns in 10–30s. The remaining open bug is cosmetic (finance tile text overflow), easy to retest by visiting /finances as Sofía and checking that '$135,727.20' and '$113,877.20' render in full.",
+  "rca_of_issue": "FinanceTile truncation: the tiles use a grid where each cell has a fixed max-width and the amount <Text> inherits numberOfLines=1 with overflow:hidden + textOverflow:ellipsis. When the amount string exceeds ~9 chars (e.g. '$135,727.20' = 11 chars) at the current font-size (title variant), scrollWidth overflows clientWidth by ~10px. Fix in frontend/app/finances.tsx (or shared FinanceTile component): either (a) reduce the amount font-size at >=10 chars, (b) allow 2 lines for the amount, or (c) widen the tile when the value is big."
+}

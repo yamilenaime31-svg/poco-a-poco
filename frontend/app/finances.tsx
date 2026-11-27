@@ -160,7 +160,7 @@ export default function Finances() {
               <View style={styles.bento} testID="finances-tiles">
                 {["total", "paid_own", "pending_pay", "direct", "requested", "authorized", "received", "pending_receive", "supports"].filter((k) => k === "total" || k === "paid_own" || k === "pending_pay" || t[k] > 0).map((k) => (
                   <Pressable key={k} onPress={() => setInfo(k)} testID={`finances-tile-${k}`} style={({ pressed }) => [styles.tile, { backgroundColor: (colors as any)[INFO[k].tint], transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
-                    <Txt v="title">{money(t[k]).replace(" MXN", "")}</Txt>
+                    <Txt v="title" numberOfLines={1} style={money(t[k]).length > 13 ? { fontSize: 13, letterSpacing: -0.3 } : undefined}>{money(t[k]).replace(" MXN", "")}</Txt>
                     <Txt v="caption" color={colors.onSurface} style={{ fontSize: 12, lineHeight: 15 }}>{INFO[k].l}{k === "pending_receive" ? " · estimado" : ""}</Txt>
                   </Pressable>
                 ))}

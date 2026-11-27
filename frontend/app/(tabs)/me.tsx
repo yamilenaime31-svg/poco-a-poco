@@ -27,6 +27,7 @@ export default function Me() {
   const isCg = user?.role === "caregiver";
   const { plus } = usePlus();
 
+  const demoGroup: { title: string; items: Item[] }[] = (user as any)?.demo_set ? [{ title: "Presentación", items: [{ icon: "presentation", title: "Perfil de demostración", href: "/demo", tint: "lavender" }] }] : [];
   const compras: Item[] = [
     { icon: "heart", title: "Biblioteca y favoritos", href: "/favorites", tint: "coral" },
     { icon: "truck", title: "Mis pedidos e historial", href: "/orders", tint: "sky" },
@@ -64,7 +65,7 @@ export default function Me() {
     ] },
     { title: "Compras", items: compras },
     config,
-  ] : [
+  ].concat(demoGroup) : [
     { title: "Mi identidad", items: [
       { icon: "heart", title: "Mis gustos y actividades", href: edit("tastes"), tint: "coral" },
       { icon: "sparkles", title: "Mi estilo", href: edit("identity"), tint: "lavender" },
@@ -88,7 +89,7 @@ export default function Me() {
     ] },
     { title: "Compras", items: [...compras, { icon: "file-text", title: "Reporte personal", plus: "Plus · tu resumen listo para compartir", href: "/report" }] },
     config,
-  ];
+  ].concat(demoGroup);
 
   const saveInfo = async () => {
     await updateMe({ name, preferred_name: pref });
@@ -118,7 +119,10 @@ export default function Me() {
           <View style={{ position: "absolute", right: 0, bottom: 4, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceInverse, alignItems: "center", justifyContent: "center" }}><Ic name="pencil" size={15} color={colors.onSurfaceInverse} /></View>
         </Pressable>
         <Txt v="h1" style={{ marginTop: space.md, textAlign: "center" }} testID="profile-name">{user?.preferred_name || user?.name}</Txt>
-        <View style={{ alignItems: "center" }}><Badge label={isCg ? "Acompañante" : "Paciente"} tint="sand" testID="profile-role-badge" /></View>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 6 }}>
+          <Badge label={isCg ? "Acompañante" : "Paciente"} tint="sand" testID="profile-role-badge" />
+          {(user as any)?.demo_set ? <Pressable onPress={() => router.push("/demo")} testID="profile-demo-badge" accessibilityRole="button"><Badge label="Demostración" tint="lavender" /></Pressable> : null}
+        </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginTop: space.lg }}>
           <Btn label="Mi avatar" small icon="smile" onPress={() => router.push("/avatar")} testID="profile-edit-avatar" />
           <Btn label="Mis datos" small variant="secondary" icon="pencil" onPress={() => setInfo(true)} testID="profile-edit-info" />

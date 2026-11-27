@@ -183,3 +183,10 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 - /home (caregiver) añade journal, own_tasks, care, can_finance y shares_preferences por paciente.
 - Permiso nuevo link.permissions.preferences (default False; SHARE_KEYS). GET /api/network/preferences/{patient_id}. /recommendations y /recommendations/explain para acompañante: gustos del paciente solo si autorizó; si no, ideas generales (nunca los gustos del acompañante). kit-builder muestra lo compartido o aviso de selección manual.
 - GET /api/process/shared: recuento propio de acompañamiento + por persona lo compartido (sección aparte en /process). Perfil con grupos distintos por rol. Textos de Gratis/Plus por rol (freeFeatures/plusFeatures/plusBenefits/plusTagline) sin tocar precios. Organiza oculta Tratamientos/Medicamentos al acompañante.
+
+## Iteration 28 — Perfil demostrativo completo (Sofía Méndez) + reloj de demostración
+- backend/demo_seed.py: seed(password?) crea/reconstruye 4 cuentas (demo_set="sofia", demo_clock="2026-11-27", demo_now) con ~216 registros + dosis, coberturas, gastos con reembolsos y PDFs "DEMOSTRACIÓN - SIN VALIDEZ", kits, 3 pedidos (place_order real, fechas retro), créditos, reportes, listas, señales, notificaciones. ensure_demo() en startup si DEMO_ACCESS_PASSWORD está en .env y falta la cuenta. wipe() solo borra datos de esas 4 cuentas.
+- backend/clock.py: reloj por petición (contextvar) fijado en current_user; lo usan business.now y membership._now. reminder_loop ignora cuentas demo.
+- Frontend: constants.setFixedDate (auth lo aplica con user.demo_clock) → today()/addDays fijos; app/demo.tsx (cambiar de cuenta, restablecer); insignia "Demostración" en Perfil.
+- Asistente: /organize/parse marca `existing` (misma fecha/hora o palabras en común; sesiones ya en agenda); /organize/commit respeta on_existing keep|update|new. UI en organize-review.
+- No existe: estado "hecho" en eventos de agenda (las actividades realizadas de la mañana son pendientes con hora), estados intermedios de pendientes (van en notas), historial de conversaciones del asistente (solo conteo de uso), destinatario individual por señal.

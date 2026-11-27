@@ -243,8 +243,12 @@ export function isoDate(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-export const today = () => isoDate(new Date());
-export const addDays = (n: number) => isoDate(new Date(Date.now() + n * 86400000));
+// Demo accounts live on a fixed date so their prepared scenario stays coherent for screenshots.
+let fixedDate: string | null = null;
+export const setFixedDate = (d?: string | null) => { fixedDate = d || null; };
+const base = () => (fixedDate ? new Date(`${fixedDate}T12:00:00`) : new Date());
+export const today = () => isoDate(base());
+export const addDays = (n: number) => isoDate(new Date(base().getTime() + n * 86400000));
 
 function parse(d: string) {
   const [y, m, day] = d.split("-").map(Number);

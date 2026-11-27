@@ -321,7 +321,7 @@ async def reminder_loop():
         try:
             now = datetime.now(timezone.utc)
             from finance import weekly_prepare
-            async for u in db.users.find({}):
+            async for u in db.users.find({"demo_now": {"$exists": False}}):  # demo accounts live on a fixed date: no live reminders
                 await weekly_prepare(u, now)
                 for r in await compute_reminders(u, days=1):
                     if datetime.fromisoformat(r["fire_at"]) <= now + timedelta(seconds=60):

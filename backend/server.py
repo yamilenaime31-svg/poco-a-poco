@@ -3,6 +3,7 @@ import hashlib
 import logging
 import os
 import random
+import re
 import secrets
 import uuid
 from contextlib import suppress
@@ -17,6 +18,8 @@ from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
+
+from clock import use_clock
 from pymongo import ASCENDING, DESCENDING, IndexModel
 from starlette.middleware.cors import CORSMiddleware
 
@@ -119,6 +122,7 @@ async def current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(b
     user = await db.users.find_one({"id": payload["sub"]})
     if not user:
         raise HTTPException(401, "Usuario no encontrado")
+    use_clock(user)
     return user
 
 
@@ -1146,7 +1150,9 @@ def clean_items(raw) -> list[dict]:
         out.append({"category": it["category"], "title": str(it["title"]).strip()[:120], "date": _date_or_empty(it.get("date")), "time": _time_or_empty(it.get("time")),
                     "responsible": str(it.get("responsible") or "")[:80], "location": str(it.get("location") or "")[:120], "amount": amount,
                     "notes": str(it.get("notes") or "")[:400], "event_type": str(it.get("event_type") or ""),
-                    "related_to": rel if isinstance(rel, int) else None, "questions": [str(q)[:140] for q in (it.get("questions") or [])][:3]})
+                    "related_to": rel if isinstance(rel, int) else None, "questions": [str(q)[:140] for q in (it.get("questions") or [])][:3],
+                    "existing": it.get("existing") if isinstance(it.get("existing"), dict) and it["existing"].get("id") else None,
+                    "on_existing": it.get("on_existing") if it.get("on_existing") in ("keep", "update", "new") else "keep"})
     return out
 
 
@@ -1179,7 +1185,32 @@ async def organize_parse(text: str = Body(..., embed=True), today: str = Body(..
         await refund_ai(user)
         raise HTTPException(503, "No pudimos interpretar el texto ahora. Intenta de nuevo en un momento.")
     items = clean_items(data.get("items"))
+    for it in items:  # point out what is already registered, so confirming never duplicates it silently
+        it["existing"] = await find_existing(user["id"], it)
     return {"items": items, "engine": "ai"}
+
+
+def _words(t: str) -> set[str]:
+    return {w for w in re.findall(r"[a-záéíóúñ]+", t.lower()) if len(w) > 4}
+
+
+async def find_existing(owner: str, it: dict) -> Optional[dict]:
+    kind = CAT_KIND[it["category"]]
+    if kind == "tasks" and not it["date"]:  # undated: compare with open tasks that share at least two meaningful words
+        async for r in db.records.find({"kind": "tasks", "owner_id": owner, "done": {"$ne": True}}):
+            if len(_words(it["title"]) & _words(r.get("title", ""))) >= 2:
+                return {"id": r["id"], "title": r.get("title", ""), "time": r.get("time", "")}
+        return None
+    if kind == "treatments" and it["date"]:  # a session that is already in the agenda
+        r = await db.records.find_one({"kind": "events", "owner_id": owner, "date": it["date"], "type": "Sesión de tratamiento"})
+        return {"id": r["id"], "title": r.get("title", ""), "time": r.get("time", "")} if r else None
+    if kind not in ("events", "transfers", "tasks") or not it["date"]:
+        return None
+    async for r in db.records.find({"kind": kind, "owner_id": owner, "date": it["date"]}):
+        same_time = bool(it["time"]) and r.get("time") == it["time"]
+        if (kind != "tasks" and same_time) or (_words(it["title"]) & _words(r.get("title", ""))):
+            return {"id": r["id"], "title": r.get("title", ""), "time": r.get("time", "")}
+    return None
 
 
 @api.post("/organize/commit")
@@ -1210,6 +1241,15 @@ async def organize_commit(items: list = Body(..., embed=True), shared_with: list
             rec = {"name": t, "schedule": tm, "notes": notes}
         else:
             rec = {"name": t, "date": d, "notes": notes}
+        old = it["existing"] and it["on_existing"] != "new" and await db.records.find_one({"id": it["existing"]["id"], "owner_id": user["id"]})
+        if old:
+            ids[i] = old["id"]
+            if it["on_existing"] == "update" and old["kind"] == kind:
+                await db.records.update_one({"id": old["id"]}, {"$set": {**{k: v for k, v in rec.items() if v not in ("", None) and k != "done"}, "updated_at": now_iso()}})
+                counts["actualizados"] = counts.get("actualizados", 0) + 1
+            else:
+                counts["conservados"] = counts.get("conservados", 0) + 1
+            continue
         await db.records.insert_one({**base, **rec})
         ids[i] = base["id"]
         counts[kind] = counts.get(kind, 0) + 1
@@ -1407,6 +1447,7 @@ import preparation  # noqa: E402,F401
 import process  # noqa: E402,F401
 import style  # noqa: E402,F401
 import finance  # noqa: E402,F401
+import demo_seed  # noqa: E402,F401
 
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -1421,6 +1462,10 @@ async def startup():
     await migrate_sharing()
     await knowledge.seed_knowledge()
     await business.seed_business()
+    try:
+        await demo_seed.ensure_demo()
+    except Exception:
+        logging.exception("demo profile seed failed")
     await db.code_activations.create_index([("code_id", 1), ("user_id", 1)], unique=True)
     app.state.reminder_task = asyncio.create_task(planner.reminder_loop())
     app.state.media_task = asyncio.create_task(planner.warm_media())

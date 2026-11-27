@@ -1,5 +1,6 @@
 """AMODO membership model (prototype): Plus subscription (simulated, no charges), monthly Plus credits ledger,
 AI usage limits per plan and the admin membership dashboard. All amounts are configurable demo values."""
+import clock
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Body, Depends, HTTPException
@@ -10,7 +11,7 @@ PERIOD_DAYS = 30
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return clock.now()
 
 
 async def ensure_indexes():

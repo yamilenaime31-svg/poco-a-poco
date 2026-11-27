@@ -1,6 +1,7 @@
 """AMODO business model (prototype): wholesale catalog with internal costs, kit sizes with included/premium items,
 inventory with reservations, Free/Plus plans, institutional codes, checkout breakdown and an admin API.
 All commercial figures are illustrative demo values editable from admin; payments are never processed."""
+import clock
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -48,7 +49,7 @@ USER_CANCELLABLE = ("Pedido confirmado", "En preparación")
 
 
 def now() -> datetime:
-    return datetime.now(timezone.utc)
+    return clock.now()
 
 
 async def setting(key: str, default: dict) -> dict:
