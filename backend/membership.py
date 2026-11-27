@@ -170,6 +170,22 @@ async def admin_memberships(user=Depends(current_user)):
             "note": "Cifras de demostración: no hay cobros reales. El costo de IA solo se calcula si administración captura un costo estimado por interacción."}
 
 
+async def mark_used(user: dict, key: str):
+    """Remembers that the person has tried a Plus tool at least once (only the fact, no content)."""
+    await db.plus_marks.update_one({"user_id": user["id"], "key": key}, {"$setOnInsert": {"at": now_iso()}}, upsert=True)
+
+
+PLUS_TOOLS = [  # key, title, why, where it opens
+    ("next_week", "Mi próxima semana", "Tus próximos siete días y lo que conviene preparar.", "/next-week"),
+    ("style", "Identidad y estilo", "Propuestas del catálogo con tus colores y texturas.", "/style"),
+    ("process_report", "Reporte de Mi proceso", "Un PDF con el periodo y las secciones que elijas.", "/process-report"),
+    ("finance_report", "Reportes de gastos", "Reporte financiero, de reembolsos o expediente en PDF.", "/finances"),
+    ("cashflow", "Flujo de efectivo estimado", "En Gastos: lo que viene por pagar y recuperar, mes a mes.", "/finances"),
+    ("doc_ai", "Lectura de documentos con IA", "Adjunta un comprobante a un gasto y la IA te propone los datos.", "/finances"),
+    ("kit_discount", "Descuento Plus en kits", "Se aplica solo al pagar un kit.", "/kit-builder"),
+]
+
+
 @api.get("/me/plus-usage")
 async def plus_usage(user=Depends(current_user)):
     """What the membership gave this calendar month, counted only from what really happened in the account."""
@@ -195,6 +211,17 @@ async def plus_usage(user=Depends(current_user)):
             saved, orders = saved + s, orders + 1
     ai = await db.ai_usage.find_one({**me, "month": month}) or {}
     images = await db.style_images.count_documents({**me, "created_at": this})
-    return {"month": month, "reports": reports + fin_reports, "credits_received": round(received, 2), "credits_used": round(used, 2), "kit_savings": round(saved, 2), "kit_orders": orders,
+    marks = {m["key"] async for m in db.plus_marks.find(me)}
+    tried = {
+        "next_week": "next_week" in marks,
+        "style": "style" in marks or bool(await db.style_images.find_one(me)),
+        "process_report": bool(await db.process_reports.find_one(me)),
+        "finance_report": bool(await db.finance_links.find_one({**me, "report": {"$exists": True}})),
+        "cashflow": "cashflow" in marks,
+        "doc_ai": "doc_ai" in marks,
+        "kit_discount": bool(await db.orders.find_one({**me, "status": {"$ne": "Cancelado"}, "discounts.label": {"$regex": "Plus"}})),
+    }
+    unused = [{"key": k, "title": t, "why": w, "href": h} for k, t, w, h in PLUS_TOOLS if not tried[k]]
+    return {"month": month, "unused": unused, "tools": len(PLUS_TOOLS), "reports": reports + fin_reports, "credits_received": round(received, 2), "credits_used": round(used, 2), "kit_savings": round(saved, 2), "kit_orders": orders,
             "ai": ai.get("count", 0), "inspirations": images, "value": round(received + saved, 2),
             "price": (plan.get("subscription") or {}).get("price") or plan["prices"]["plus_price"], "by_institution": bool(plan.get("plus_by_institution"))}

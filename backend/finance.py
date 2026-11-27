@@ -248,6 +248,9 @@ async def cashflow(today: str, owner_id: str | None = None, user=Depends(require
             in_review = round(in_review + c["requested"], 2)
     for b in buckets.values():
         b["items"].sort(key=lambda i: i["date"])
+    if any(b["items"] for b in buckets.values()) and owner == user["id"]:
+        from membership import mark_used
+        await mark_used(user, "cashflow")
     return {"months": [buckets[k] for k in keys], "overdue": buckets["overdue"], "later": buckets["later"], "undated": buckets["undated"], "in_review": in_review,
             "has_any": any(b["items"] for b in buckets.values()),
             "note": "Estimación con las fechas e importes que registraste. Las recuperaciones no están garantizadas y lo solicitado sin autorizar no se incluye."}
@@ -395,7 +398,7 @@ async def extract_doc(did: str, kind: str = Body("receipt", embed=True), consent
     import json
     import re
     from emergentintegrations.llm.chat import ImageContent, LlmChat, UserMessage
-    from membership import refund_ai, use_ai
+    from membership import mark_used, refund_ai, use_ai
     from planner import llm_json
     import os
     if not consent:
@@ -422,6 +425,7 @@ async def extract_doc(did: str, kind: str = Body("receipt", embed=True), consent
         logger.error("finance extract: %s", exc)
         await refund_ai(user)
         raise HTTPException(503, "No pudimos leer el documento ahora. Puedes capturar los datos a mano.")
+    await mark_used(user, "doc_ai")
     return {"fields": {k: v for k, v in out.items() if v not in ("", None, {}, [])}, "note": "Borrador creado con IA a partir del documento. Revisa cada dato antes de guardarlo."}
 
 

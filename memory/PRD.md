@@ -171,3 +171,7 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 ## Iteration 25 — Resumen de mi Plus en Perfil
 - GET /api/me/plus-usage (membership.py, solo Plus → 403 si no): mes calendario UTC; reports (process_reports + reportes financieros vía finance_links), credits_received/used (credit_moves source=plus), kit_savings/kit_orders (descuentos con "Plus" en pedidos no cancelados), ai, inspirations, value, price.
 - src/components/plus-usage.tsx bajo PlanCard en Perfil (solo con Plus).
+
+## Iteration 26 — Beneficios Plus sin usar
+- membership.py: db.plus_marks (mark_used) + PLUS_TOOLS; /me/plus-usage devuelve `unused` [{key,title,why,href}] y `tools`. Marcas: next_week y style al abrir, cashflow cuando muestra datos propios, doc_ai al leer un documento; reportes y descuento en kits se detectan por datos existentes.
+- plus-usage.tsx: sección "Aún por descubrir" con acceso directo.

@@ -77,6 +77,8 @@ async def proposals(user: dict, prefs: dict) -> list[dict]:
 
 @api.get("/style")
 async def get_style(user=Depends(require_plus)):
+    from membership import mark_used
+    await mark_used(user, "style")
     prefs = _prefs(user)
     images = [clean(i) async for i in db.style_images.find({"user_id": user["id"], "deleted_at": None}).sort("created_at", -1).limit(MAX_IMAGES)]
     chosen = any(prefs.values())

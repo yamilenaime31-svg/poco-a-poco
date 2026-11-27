@@ -32,6 +32,13 @@ export function PlusUsage() {
           Entre créditos y ahorro: {money(d.value)} este mes.{d.by_institution ? " Tu institución cubre tu membresía." : ` Tu membresía: ${money(d.price)} al mes (demostración, sin cobro).`}
         </Txt>
       ) : null}
+      {d.unused?.length ? (
+        <View style={{ marginTop: space.lg }} testID="plus-unused">
+          <Txt v="label" color={colors.onSurface}>Aún por descubrir · {d.unused.length} de {d.tools}</Txt>
+          <Txt v="caption" style={{ marginBottom: 4 }}>Sin prisa: son parte de tu membresía y están aquí para cuando te sirvan.</Txt>
+          {d.unused.map((u: any, i: number) => <Row key={u.key} icon="sparkles" tint="lavender" title={u.title} subtitle={u.why} onPress={() => router.push(u.href)} testID={`plus-unused-${u.key}`} last={i === d.unused.length - 1} />)}
+        </View>
+      ) : d.unused ? <Txt v="caption" style={{ marginTop: space.md }} testID="plus-unused-none">Ya probaste todas las herramientas de tu membresía.</Txt> : null}
       {!used ? <Txt v="caption" style={{ marginTop: space.sm }}>Aún no has usado tus beneficios este mes. Están aquí para cuando los necesites.</Txt> : null}
     </View>
   );

@@ -174,6 +174,8 @@ async def next_week(today: str = Query(...), user=Depends(require_plus)):
     """Next seven days at a glance plus what can be prepared. Only uses what the person registered; nothing is assumed or diagnosed."""
     if not _date_or_empty(today):
         raise HTTPException(422, "Fecha no válida")
+    from membership import mark_used
+    await mark_used(user, "next_week")
     d0 = datetime.strptime(today, "%Y-%m-%d").date()
     end = (d0 + timedelta(days=6)).isoformat()
     items = await agenda_items(user, user["id"], today, end)
