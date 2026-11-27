@@ -164,3 +164,6 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 ## Iteration 23 — Etiqueta "Plus" visible en cada beneficio
 - PlusTag (src/components/plus-gate.tsx): píldora "✦ Plus" + frase breve de por qué vale la pena; se muestra también con Plus activo. PlusGate acepta `why`.
 - Colocada en: Mi próxima semana, Identidad y estilo, Reporte personal, reportes de Mi proceso (pantalla, tarjeta en Mi proceso e Inicio), comparativo de Mi proceso, sugerencias según tratamiento y explicación ampliada, guías, asistente de tratamiento, créditos mensuales, checkout (descuento y créditos Plus), Gastos (reportes, flujo de efectivo, PDF de siniestro, lectura con IA). Perfil y Organiza muestran "Plus · …" bajo el acceso.
+
+## Iteration 24 — Invitación a la red: QR siempre visible, copiar y WhatsApp
+- src/components/invite-share.tsx: InviteCard (QR de la invitación activa; si no hay, crea una; código seleccionable) + InviteActions (copiar código, copiar mensaje, WhatsApp vía wa.me, compartir). Usado en /network (paciente) y /link.

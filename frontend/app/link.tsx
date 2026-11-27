@@ -6,6 +6,7 @@ import QRCode from "react-native-qrcode-svg";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
+import { InviteActions } from "@/src/components/invite-share";
 import { fmtDateTime } from "@/src/constants";
 import { inviteUrl, tokenFrom } from "@/src/invite";
 import { useToast } from "@/src/toast";
@@ -80,7 +81,8 @@ export default function LinkScreen() {
           <Btn label="Crear invitación para otra persona" variant="ghost" icon="user-plus" onPress={create} testID="link-new-button" style={{ marginTop: space.sm }} />
           <Card tint="sage" style={{ marginTop: space.lg }}>
             <Txt v="label" color={colors.onSurface}>Código manual</Txt>
-            <Txt v="h1" style={{ letterSpacing: 4, marginTop: 4 }} testID="link-manual-code">{user?.invite_code}</Txt>
+            <Txt v="h1" selectable style={{ letterSpacing: 4, marginTop: 4, marginBottom: space.md }} testID="link-manual-code">{user?.invite_code}</Txt>
+            <InviteActions code={user?.invite_code} url={url} testID="link-invite" />
           </Card>
           <Section title="Invitaciones activas" testID="link-invites">
             {(invites.data || []).length === 0 ? <Txt v="caption">No hay invitaciones activas.</Txt> : invites.data!.map((i, k) => (

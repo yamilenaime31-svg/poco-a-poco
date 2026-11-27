@@ -1,10 +1,11 @@
 import { Spot } from "@/src/art";
 import { useState } from "react";
-import { Share, View } from "react-native";
+import { View } from "react-native";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { Avatar } from "@/src/components/avatar";
+import { InviteCard } from "@/src/components/invite-share";
 import { RELATIONS, SHARE_KEYS } from "@/src/constants";
 import { SingleChoice } from "@/src/form";
 import { useToast } from "@/src/toast";
@@ -97,15 +98,7 @@ export default function Network() {
         <>
           {!isCg ? (
             <>
-              <Card tint="sage" style={{ borderRadius: 24, overflow: "hidden" }} testID="network-invite-code-card">
-                <View style={{ position: "absolute", right: 10, top: 10 }} pointerEvents="none"><Spot name="network" size={76} /></View>
-                <Txt v="label">Tu código de invitación</Txt>
-                <Txt v="display" style={{ letterSpacing: 4, marginVertical: space.sm }} testID="network-invite-code">
-                  {d.invite_code}
-                </Txt>
-                <Txt v="caption">Quien lo use se unirá a tu red con los permisos que definiste por defecto.</Txt>
-                <Btn label="Compartir código" small icon="share-2" onPress={() => Share.share({ message: `Únete a mi red en AMODO con el código ${d.invite_code}` })} testID="network-share-code-button" style={{ alignSelf: "flex-start", marginTop: space.md }} />
-              </Card>
+              <InviteCard code={d.invite_code} />
               <Section title="Invitar por correo">
                 <Field label="Nombre" value={name} onChangeText={setName} testID="network-invite-name-input" />
                 <Field label="Correo" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" testID="network-invite-email-input" />
