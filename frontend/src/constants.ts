@@ -230,6 +230,7 @@ export const RELATIONS = ["Pareja", "Madre o padre", "Hijo/a", "Hermano/a", "Ami
 export const SHARE_KEYS: { key: string; label: string }[] = [
   { key: "signals", label: "Recibe mis señales rápidas" },
   { key: "edit", label: "Puede agregar cosas en mi espacio y editar lo compartido" },
+  { key: "preferences", label: "Puede ver mis gustos y preferencias para prepararme kits" },
 ];
 
 // ---------------------------------------------------------------- formatting
@@ -283,3 +284,19 @@ export const PLUS_BENEFITS = (c: any) => [
   { i: "wallet", t: `Cada mes recibes $${c.monthly_credit} para tus kits`, s: "Se acumulan y los usas cuando quieras." },
   { i: "percent", t: `${c.plus_kit_discount_pct}% de descuento en kits`, s: "Sobre el precio base; no aplica a suplementos premium." },
 ];
+
+// ---------------------------------------------------------------- plan copy by role (same prices, credits and discounts for everyone)
+const FREE_FEATURES_CG = ["Tu agenda, tus pendientes y tus listas de preparación", "Lo que cada persona decida compartir contigo: citas, tareas y traslados", "Señales rápidas de quien acompañas y control de privacidad", "Avatar y registro de tu propio bienestar", "Catálogo completo, kits para regalar y seguimiento de pedidos", "Asistente de IA con interacciones limitadas al mes"];
+const PLUS_FEATURES_CG = ["Todo lo de AMODO Gratis", "Coordina responsabilidades con la persona que acompañas y con otros acompañantes", "Anticipa tu semana: citas compartidas, traslados y lo que conviene preparar", "Ayuda administrativa: gastos, trámites y documentos que te autoricen, con reportes en PDF", "Prepara documentos y expedientes sin armar todo a mano", "Cada mes recibes $20 para los kits que prepares", "10% de descuento en el precio base de los kits"];
+const PLUS_BENEFITS_CG = (c: any) => [
+  { i: "users", t: "Coordina responsabilidades", s: "Tareas compartidas y seguimiento de quién se encarga de qué." },
+  { i: "calendar-range", t: "Planea con anticipación", s: "Una vista de tu próxima semana con lo que acompañas y lo tuyo." },
+  { i: "file-check", t: "Asistencia administrativa", s: "Gastos, reembolsos y documentos que la persona te autorice, con reportes listos." },
+  { i: "wand-sparkles", t: "Organiza escribiendo como hablas", s: "Cuéntale al asistente lo que hay que hacer y confirma antes de guardar." },
+  { i: "wallet", t: `Cada mes recibes $${c.monthly_credit} para kits`, s: "Se acumulan y los usas cuando quieras." },
+  { i: "percent", t: `${c.plus_kit_discount_pct}% de descuento en kits`, s: "Sobre el precio base; no aplica a suplementos premium." },
+];
+export const freeFeatures = (role?: string) => (role === "caregiver" ? FREE_FEATURES_CG : FREE_FEATURES);
+export const plusFeatures = (role?: string) => (role === "caregiver" ? PLUS_FEATURES_CG : PLUS_FEATURES);
+export const plusBenefits = (c: any, role?: string) => (role === "caregiver" ? PLUS_BENEFITS_CG(c) : PLUS_BENEFITS(c));
+export const plusTagline = (role?: string) => (role === "caregiver" ? "Coordina, planea y lleva lo administrativo con más apoyo." : "Anticípate, prepárate y recibe un acompañamiento más personalizado.");

@@ -185,8 +185,9 @@ Usa SOLO los motivos dados. No afirmes que el artículo previene, trata o alivia
 
 @api.get("/recommendations/explain/{pid}")
 async def explain(pid: str, today: str = Query(...), user=Depends(current_user)):
-    from server import score_products
-    scored, _ = await score_products(user, today)
+    from server import reco_subject, score_products
+    subject, _for = await reco_subject(user, None)
+    scored, _ = await score_products(subject, today)
     hit = next(((s, w, p, d) for s, w, p, d in scored if p["id"] == pid), None)
     if not hit:
         raise HTTPException(404, "No encontramos esta recomendación")

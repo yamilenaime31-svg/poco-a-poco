@@ -67,7 +67,7 @@ export default function Settings() {
       </Section>
       {section !== "privacy" ? privacy : null}
       <Section title="Cuenta">
-        <Row icon="user-round" title="Perfil y preferencias" onPress={() => router.push({ pathname: "/onboarding", params: { edit: "1", step: user?.role === "caregiver" ? "about" : "tastes" } })} testID="settings-preferences-link" />
+        <Row icon="user-round" title="Perfil y preferencias" onPress={() => router.push({ pathname: "/onboarding", params: { edit: "1", step: user?.role === "caregiver" ? "relation" : "tastes" } })} testID="settings-preferences-link" />
         <Row icon="circle-help" title="Ayuda" onPress={() => router.push({ pathname: "/info/[page]", params: { page: "help" } })} testID="settings-help-link" />
         <Row icon="file-text" title="Términos y privacidad" onPress={() => router.push({ pathname: "/info/[page]", params: { page: "privacy" } })} testID="settings-privacy-link" last />
       </Section>

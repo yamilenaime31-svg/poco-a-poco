@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { PLUS_BENEFITS, money } from "@/src/constants";
+import { money, plusBenefits, plusTagline } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Ic, Loading, Screen, Section, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
@@ -15,7 +15,7 @@ export default function PlusCheckout() {
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();
-  const { refresh } = useAuth();
+  const { refresh, user } = useAuth();
   const { onboarding } = useLocalSearchParams<{ onboarding?: string }>();
   const q = useApi<any>("/me/plan");
   const [busy, setBusy] = useState(false);
@@ -37,7 +37,7 @@ export default function PlusCheckout() {
   };
 
   return (
-    <Screen title="AMODO Plus" subtitle="Anticípate, prepárate y recibe un acompañamiento más personalizado." testID="plus-screen"
+    <Screen title="AMODO Plus" subtitle={plusTagline(user?.role)} testID="plus-screen"
       footer={p.tier === "plus" ? <Btn label="Ya tienes AMODO Plus" disabled onPress={() => {}} /> : (
         <>
           <Btn label={`Activar Plus · ${money(c.plus_price)} al mes`} loading={busy} onPress={activate} testID="plus-activate-button" />
@@ -51,7 +51,7 @@ export default function PlusCheckout() {
         <Txt v="caption">al mes, impuestos incluidos · sin permanencia</Txt>
       </View>
       <Section title="Lo que cambia para ti">
-        {PLUS_BENEFITS(c).map((b) => (
+        {plusBenefits(c, user?.role).map((b) => (
           <View key={b.t} style={styles.li}>
             <View style={{ width: 36, height: 36, borderRadius: 13, backgroundColor: colors.lavenderSoft, alignItems: "center", justifyContent: "center" }}><Ic name={b.i} size={16} /></View>
             <View style={{ flex: 1 }}>

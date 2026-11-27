@@ -1,18 +1,21 @@
+import { useAuth } from "@/src/auth";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
-import { FREE_FEATURES as FREE, PLUS_FEATURES, fmtDate, fmtDateTime, money } from "@/src/constants";
+import { fmtDate, fmtDateTime, freeFeatures, money, plusFeatures } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Badge, Btn, Card, Ic, Loading, Row, Screen, Section, Sheet, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
 const KIND: Record<string, string> = { plus_access: "Acceso Plus", kit_discount_pct: "Descuento en kits", credit: "Crédito para artículos" };
-const PLUS = PLUS_FEATURES;
 
 /** Mi plan y beneficios + comparison Free vs Plus (demo activation, no charge). */
 export default function Plan() {
+  const { user } = useAuth();
+  const FREE = freeFeatures(user?.role);
+  const PLUS = plusFeatures(user?.role);
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();

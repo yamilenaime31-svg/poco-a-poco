@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
+import { useAuth } from "@/src/auth";
 import { api, invalidate, useApi } from "@/src/api";
 import { TabScreen } from "@/src/components/tab-screen";
 import { RecoCard, NeedsPrompt } from "@/src/components/reco-card";
@@ -19,6 +20,8 @@ export default function MyKits() {
   const { colors } = useTheme();
   const kits = useApi<any[]>("/kits");
   const favs = useApi<any[]>("/favorites");
+  const { user } = useAuth();
+  const cg = user?.role === "caregiver";
   const reco = useApi<any>(`/recommendations?today=${today()}`);
   const again = useApi<any[]>("/reorder");
   const guided = useApi<any>("/guided-kits");
@@ -32,11 +35,11 @@ export default function MyKits() {
   };
 
   return (
-    <TabScreen title="Kits" subtitle="Objetos que te acompañan, elegidos por ti" testID="kits-screen" refreshing={kits.isRefetching} onRefresh={() => invalidate()}
+    <TabScreen title="Kits" subtitle={cg ? "Objetos para acompañar, elegidos con cuidado" : "Objetos que te acompañan, elegidos por ti"} testID="kits-screen" refreshing={kits.isRefetching} onRefresh={() => invalidate()}
       right={<View style={{ marginRight: space.sm }}><IconBtn icon="shopping-bag" badge={!!cart.data?.count} onPress={() => router.push("/cart")} testID="kits-cart-button" /></View>}>
       <Pressable onPress={() => router.push("/kit-builder")} testID="kits-new-button" style={({ pressed }) => [styles.cta, { backgroundColor: colors.coral, transform: [{ scale: pressed ? 0.985 : 1 }] }]}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt v="section">Arma un kit{"\n"}a tu modo</Txt>
+          <Txt v="section">{cg ? "Prepara un kit\npara quien acompañas" : "Arma un kit\na tu modo"}</Txt>
           <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>Elige tamaño, momento y cada artículo. Envío incluido.</Txt>
           <View style={[styles.ctaBtn, { backgroundColor: colors.surfaceInverse }]}>
             <Txt v="label" color={colors.onSurfaceInverse}>Empezar</Txt>
@@ -68,7 +71,7 @@ export default function MyKits() {
         )}
       </Section>
 
-      <Section title="Recomendados para ti" action="Preferencias" onAction={() => router.push({ pathname: "/onboarding", params: { edit: "1", step: "identity" } })} testID="kits-reco">
+      <Section title={cg ? "Ideas para quien acompañas" : "Recomendados para ti"} action={cg ? "Permisos" : "Preferencias"} onAction={() => (cg ? router.push("/network") : router.push({ pathname: "/onboarding", params: { edit: "1", step: "identity" } }))} testID="kits-reco">
         {reco.isLoading ? <Loading /> : (
           <>
             <NeedsPrompt />

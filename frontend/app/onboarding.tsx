@@ -5,8 +5,9 @@ import Animated, { FadeIn } from "react-native-reanimated";
 
 import { api } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { ASK_WAYS, CAREGIVER_SUPPORT, IDENTITY, NEEDS, PATIENT_TASTES, RELATIONS, SHARE_KEYS } from "@/src/constants";
+import { ASK_WAYS, IDENTITY, NEEDS, PATIENT_TASTES, RELATIONS, SHARE_KEYS } from "@/src/constants";
 import { DateField, MultiChoice, SingleChoice } from "@/src/form";
+import { CaregiverOnboarding } from "@/src/onboarding/caregiver";
 import { useToast } from "@/src/toast";
 import { Btn, Card, Field, Ic, ProgressBar, Row, Screen, SwitchRow, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
@@ -15,13 +16,18 @@ const TREAT_TYPES = ["Quimioterapia", "Radioterapia", "Inmunoterapia", "Cirugía
 const TREAT_FLAGS = ["Todavía no lo sé", "Prefiero agregarlo después", "Mi calendario cambia"];
 
 export default function Onboarding() {
+  const { user } = useAuth();
+  return user?.role === "caregiver" ? <CaregiverOnboarding /> : <PatientOnboarding />;
+}
+
+function PatientOnboarding() {
   const { user, updateMe } = useAuth();
   const params = useLocalSearchParams<{ edit?: string; step?: string }>();
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();
-  const isPatient = user?.role !== "caregiver";
-  const steps = isPatient ? ["treatment", "tastes", "identity", "needs", "companions", "privacy", "done"] : ["about", "tastes", "identity", "companions", "privacy", "done"];
+  const isPatient = true;
+  const steps = ["treatment", "tastes", "kitprefs", "identity", "needs", "companions", "privacy", "done"];
   const editing = params.edit === "1";
   const [i, setI] = useState(Math.max(0, steps.indexOf(params.step || "")));
   const step = steps[i];
@@ -29,12 +35,10 @@ export default function Onboarding() {
   const [treatment, setTreatment] = useState<Record<string, any>>({ types: [], flags: [], ...(p.treatment || {}) });
   const [tastes, setTastes] = useState<Record<string, any>>({ activities: [], objects: [], comfort: [], colors: [], styles: [], dislikes: [], ...(p.tastes || {}) });
   const [needs, setNeeds] = useState<Record<string, any>>({ support: [], ask: [], note: "", ...(p.needs || {}) });
-  const [about, setAbout] = useState<Record<string, any>>({ relation: "", support: [], ...(p.about || {}) });
   const [identity, setIdentity] = useState<Record<string, any>>({ explore: "", accessories: [], styles: [], comfort: [], avoid: [], ...(p.identity || {}) });
   const [budget, setBudget] = useState<number>(p.kit_prefs?.budget || 0);
   const [share, setShare] = useState<Record<string, boolean>>({ events: true, tasks: true, transfers: true, expenses: false, treatments: false, medications: false, journal: false, edit: true, ...(p.privacy?.share || {}) });
   const [inv, setInv] = useState({ name: "", email: "", relation: "" });
-  const [code, setCode] = useState("");
   const [invited, setInvited] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -47,10 +51,9 @@ export default function Onboarding() {
         if (treatment.next) await api("/records/events", { method: "POST", body: { title: "Próxima sesión", type: "Sesión de tratamiento", date: treatment.next, location: treatment.center } });
       }
     }
-    if (step === "tastes") await updateMe({ profile: { tastes } });
+    if (step === "tastes" || step === "kitprefs") await updateMe({ profile: { tastes } });
     if (step === "identity") await updateMe({ profile: { identity, kit_prefs: { budget } } });
     if (step === "needs") await updateMe({ profile: { needs } });
-    if (step === "about") await updateMe({ profile: { about } });
     if (step === "privacy") await updateMe({ profile: { privacy: { share } } });
   };
 
@@ -87,17 +90,6 @@ export default function Onboarding() {
     }
   };
 
-  const join = async () => {
-    try {
-      const l = await api("/network/join", { method: "POST", body: { code, relation: about.relation } });
-      setInvited((x) => [...x, l.patient_name]);
-      setCode("");
-      toast.show(`Te vinculaste con ${l.patient_name}`);
-    } catch (e: any) {
-      toast.show(e.message, "error");
-    }
-  };
-
   const footer = (
     <View style={{ flexDirection: "row", gap: space.sm }}>
       {step !== "done" && !editing ? <Btn label="Completar después" variant="ghost" onPress={() => next(true)} testID="onboarding-skip-button" style={{ flex: 1 }} /> : null}
@@ -106,8 +98,13 @@ export default function Onboarding() {
   );
 
   return (
-    <Screen back={editing || i > 0} testID={`onboarding-${step}-screen`} footer={footer}>
-      {!editing ? <ProgressBar value={(i + 1) / steps.length} /> : null}
+    <Screen back={editing || i > 0} onBack={!editing && i > 0 ? () => setI(i - 1) : undefined} testID={`onboarding-${step}-screen`} footer={footer}>
+      {!editing ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+          <View style={{ flex: 1 }}><ProgressBar value={(i + 1) / steps.length} /></View>
+          <Txt v="caption" testID="onboarding-progress">{i + 1} de {steps.length}</Txt>
+        </View>
+      ) : null}
       <Animated.View key={step} entering={FadeIn.duration(300)} style={{ marginTop: space.xl }}>
         {step === "treatment" && (
           <>
@@ -134,6 +131,14 @@ export default function Onboarding() {
             <MultiChoice label="¿Qué actividades disfrutas?" options={PATIENT_TASTES.activities} value={tastes.activities} onChange={(v) => setTastes({ ...tastes, activities: v })} testID="taste-activity" allowCustom />
             <MultiChoice label="¿Qué objetos sueles llevar contigo?" options={PATIENT_TASTES.objects} value={tastes.objects} onChange={(v) => setTastes({ ...tastes, objects: v })} testID="taste-object" allowCustom />
             <MultiChoice label="¿Qué te hace sentir cómodo/a?" options={PATIENT_TASTES.comfort} value={tastes.comfort} onChange={(v) => setTastes({ ...tastes, comfort: v })} testID="taste-comfort" allowCustom />
+          </>
+        )}
+        {step === "kitprefs" && (
+          <>
+            <Txt v="h1">Tus kits, a tu gusto.</Txt>
+            <Txt v="caption" style={{ marginTop: space.xs, marginBottom: space.xl }}>
+              Con esto elegimos colores y estilos, y evitamos lo que no te gusta. Todo es opcional.
+            </Txt>
             <MultiChoice label="Colores que prefieres" options={PATIENT_TASTES.colors} value={tastes.colors} onChange={(v) => setTastes({ ...tastes, colors: v })} testID="taste-color" />
             <MultiChoice label="Estilos" options={PATIENT_TASTES.styles} value={tastes.styles} onChange={(v) => setTastes({ ...tastes, styles: v })} testID="taste-style" />
             <MultiChoice label="¿Qué artículos o cosas no te gustan?" options={PATIENT_TASTES.dislikes} value={tastes.dislikes} onChange={(v) => setTastes({ ...tastes, dislikes: v })} testID="taste-dislike" allowCustom />
@@ -164,16 +169,6 @@ export default function Onboarding() {
             <Field label="Algo más que quieras que sepamos" value={needs.note} onChangeText={(v) => setNeeds({ ...needs, note: v })} multiline testID="need-note-input" />
           </>
         )}
-        {step === "about" && (
-          <>
-            <Txt v="h1">Gracias por acompañar.</Txt>
-            <Txt v="caption" style={{ marginTop: space.xs, marginBottom: space.xl }}>
-              Cuéntanos cómo te gustaría ayudar. Podrás ajustarlo después.
-            </Txt>
-            <SingleChoice label="Tu relación con la persona" options={RELATIONS} value={about.relation} onChange={(v) => setAbout({ ...about, relation: v })} testID="about-relation" />
-            <MultiChoice label="¿Con qué puedes apoyar?" options={CAREGIVER_SUPPORT} value={about.support} onChange={(v) => setAbout({ ...about, support: v })} testID="about-support" allowCustom />
-          </>
-        )}
         {step === "companions" && isPatient && (
           <>
             <Txt v="h1">Tu red de apoyo</Txt>
@@ -196,16 +191,6 @@ export default function Onboarding() {
             <Field label="Correo" value={inv.email} onChangeText={(v) => setInv({ ...inv, email: v })} autoCapitalize="none" keyboardType="email-address" testID="invite-email-input" />
             <SingleChoice label="Relación" options={RELATIONS} value={inv.relation} onChange={(v) => setInv({ ...inv, relation: v })} testID="invite-relation" />
             <Btn label="Agregar invitación" variant="secondary" icon="user-plus" disabled={!inv.email} onPress={invite} testID="invite-add-button" />
-          </>
-        )}
-        {step === "companions" && !isPatient && (
-          <>
-            <Txt v="h1">Vincúlate con quien acompañas</Txt>
-            <Txt v="caption" style={{ marginTop: space.xs, marginBottom: space.xl }}>
-              Pídele su código de AMODO. También puedes enviar una solicitud por correo desde Personas vinculadas.
-            </Txt>
-            <Field label="Código de invitación" value={code} onChangeText={(v) => setCode(v.toUpperCase())} autoCapitalize="characters" maxLength={6} testID="join-code-input" />
-            <Btn label="Vincularme" variant="secondary" icon="link" disabled={code.length < 6} onPress={join} testID="join-code-button" />
           </>
         )}
         {step === "companions" && invited.length > 0 && (

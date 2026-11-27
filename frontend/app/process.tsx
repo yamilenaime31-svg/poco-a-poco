@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
+import { useAuth } from "@/src/auth";
 import { PlusTag } from "@/src/components/plus-gate";
 import { useApi } from "@/src/api";
 import { Company, MoodFigure, Spot } from "@/src/art";
@@ -32,6 +33,9 @@ export default function Process() {
   const [mood, setMood] = useState("");
   const q = useApi<any>(`/process?today=${today()}&days=${days}`);
   const d = q.data;
+  const { user } = useAuth();
+  const cg = user?.role === "caregiver";
+  const care = useApi<any>(cg ? `/process/shared?today=${today()}&days=${days}` : null).data;
   const show = (k: string) => filter === "all" || filter === k;
   const top = d ? Math.max(1, ...d.feelings.moods.map((m: any) => m.value)) : 1;
   const moodDays = d && mood ? d.daily.filter((x: any) => x.moods.includes(mood)) : [];
@@ -42,10 +46,10 @@ export default function Process() {
     { k: "doses", n: d.medications.done, l: "tomas marcadas como realizadas", c: colors.coral, f: "meds" },
     { k: "tasks", n: d.tasks.done, l: `pendientes completados${d.tasks.open ? ` · ${d.tasks.open} abiertos` : ""}`, c: colors.mauve, f: "" },
     { k: "spent", n: money(d.expenses.total).replace(" MXN", ""), l: "en gastos registrados", c: colors.butter, f: "money" },
-  ] : [];
+  ].filter((x) => !cg || !["treatments", "doses"].includes(x.k) || Number(x.n) > 0).map((x) => (cg && x.k === "appointments" ? { ...x, l: "actividades en tu agenda personal" } : x)) : [];
 
   return (
-    <Screen title="Mi proceso" subtitle="Tu experiencia a lo largo del tiempo, a tu modo" testID="process-screen" refreshing={q.isRefetching} onRefresh={q.refetch}
+    <Screen title="Mi proceso" subtitle={cg ? "Tu experiencia de acompañar, a lo largo del tiempo" : "Tu experiencia a lo largo del tiempo, a tu modo"} testID="process-screen" refreshing={q.isRefetching} onRefresh={q.refetch}
       overlay={
         <>
           <DaySheet day={day} onClose={() => setDay(null)} />
@@ -69,7 +73,7 @@ export default function Process() {
             <View style={[styles.empty, { backgroundColor: colors.lavenderSoft }]} testID="process-empty">
               <Company size={76} />
               <View style={{ flex: 1 }}>
-                <Txt v="title">Tu proceso se irá construyendo contigo</Txt>
+                <Txt v="title">{cg ? "Tu experiencia de acompañar se irá construyendo contigo" : "Tu proceso se irá construyendo contigo"}</Txt>
                 <Txt v="caption" color={colors.onSurface}>Aquí aparecerá lo que decidas registrar. No hay ritmo correcto.</Txt>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.sm }}>
                   <Btn label="Cómo me siento hoy" small onPress={() => router.push("/(tabs)")} testID="process-empty-mood" />
@@ -77,6 +81,24 @@ export default function Process() {
                 </View>
               </View>
             </View>
+          ) : null}
+
+          {cg && care ? (
+            <>
+              <Section title="Tus responsabilidades de acompañamiento" testID="process-care-mine">
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+                  {[[care.mine.done, "tareas asignadas que completaste"], [care.mine.open, "tareas asignadas pendientes"], [care.mine.accompanied, "actividades compartidas contigo en el periodo"]].map(([n, l]) => (
+                    <View key={String(l)} style={{ flexBasis: "30%", flexGrow: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 16, padding: space.md }}>
+                      <Txt v="section">{n}</Txt>
+                      <Txt v="caption" color={colors.onSurface}>{l}</Txt>
+                    </View>
+                  ))}
+                </View>
+                <Txt v="caption" style={{ marginTop: space.sm }}>Es solo un recuento de lo que registraste. No mide qué tan bien acompañas.</Txt>
+              </Section>
+              <Txt v="label" color={colors.onSurface} style={{ marginTop: space.lg }}>Tus registros personales</Txt>
+              <Txt v="caption" style={{ marginBottom: space.sm }}>Tu bienestar, tu agenda y tus notas. No se mezclan con los de nadie más.</Txt>
+            </>
           ) : null}
 
           <View style={styles.filters}>
@@ -191,6 +213,17 @@ export default function Process() {
               ))}
             </Section>
           ) : null}
+
+          {cg && care ? care.people.map((pp: any) => (
+            <View key={pp.patient_id} style={[styles.card, { backgroundColor: colors.skySoft, marginBottom: space.md }]} testID={`process-shared-${pp.patient_id}`}>
+              <Badge label="Sección aparte · no son tus registros" tint="sky" />
+              <Txt v="title" style={{ marginTop: 6 }}>Lo que {pp.name} comparte contigo</Txt>
+              {pp.counts.length === 0 ? <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>{pp.name} no ha compartido registros contigo en este periodo.</Txt>
+                : <Txt v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>{pp.counts.map((c: any) => `${c.n} ${c.label}`).join(" · ")}</Txt>}
+              {pp.recent.map((e: any, i: number) => <Row key={e.id} icon="calendar" tint="sand" title={e.title} subtitle={[cap(fmtDate(e.date)), e.type].filter(Boolean).join(" · ")} onPress={() => router.push({ pathname: "/event/[id]", params: { id: e.id } })} testID={`process-shared-event-${e.id}`} last={i === pp.recent.length - 1} />)}
+              <Txt v="caption" style={{ marginTop: 6 }}>Solo aparece lo que {pp.name} decidió compartir. Su bienestar y sus datos médicos no se muestran aquí salvo que los comparta.</Txt>
+            </View>
+          )) : null}
 
           <View style={[styles.report, { backgroundColor: colors.butter }]} testID="process-report-card">
             <Spot name="report" size={60} pop={colors.lavender} />

@@ -9,8 +9,8 @@ import { Btn, Field, Ic, ProgressBar, Screen, Txt } from "@/src/ui";
 import { radius, space, useTheme } from "@/src/theme";
 
 const ROLES = [
-  { key: "patient", title: "Soy paciente", text: "Quiero organizar mi experiencia y personalizar mi acompañamiento.", icon: "sprout", tint: "sageSoft" },
-  { key: "caregiver", title: "Soy acompañante", text: "Quiero apoyar a alguien y organizar lo que compartimos.", icon: "hand-heart", tint: "lavenderSoft" },
+  { key: "patient", title: "Soy paciente", text: "Estoy en un proceso oncológico. Quiero organizar mis días, registrar cómo me siento y recibir apoyo a mi modo.", icon: "sprout", tint: "sageSoft" },
+  { key: "caregiver", title: "Soy acompañante", text: "Acompaño a alguien en su proceso. Quiero organizar mis responsabilidades, coordinarme con esa persona y tener espacio para mí.", icon: "hand-heart", tint: "lavenderSoft" },
 ] as const;
 
 const CONSENTS = [

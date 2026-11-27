@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { View } from "react-native";
 
-import { Chip, ChipRow, Field, Txt } from "@/src/ui";
+import { AddOwn } from "@/src/onboarding/options";
+import { Chip, ChipRow, Txt } from "@/src/ui";
 import { space } from "@/src/theme";
 
 export { DateField, TimeField, TimesField } from "@/src/pickers";
@@ -25,7 +25,6 @@ export function SingleChoice({ label, options, value, onChange, testID }: { labe
 
 /** Multi-select chips with an optional "add your own" entry. */
 export function MultiChoice({ label, options, value, onChange, testID, allowCustom }: { label?: string; options: string[]; value: string[]; onChange: (v: string[]) => void; testID: string; allowCustom?: boolean }) {
-  const [custom, setCustom] = useState("");
   const all = [...options, ...value.filter((v) => !options.includes(v))];
   const toggle = (o: string) => onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
   return (
@@ -40,21 +39,7 @@ export function MultiChoice({ label, options, value, onChange, testID, allowCust
           <Chip key={o} label={o} selected={value.includes(o)} onPress={() => toggle(o)} testID={`${testID}-${o}`} />
         ))}
       </ChipRow>
-      {allowCustom ? (
-        <Field
-          value={custom}
-          onChangeText={setCustom}
-          placeholder="Agregar otra opción y presionar Enter"
-          returnKeyType="done"
-          testID={`${testID}-custom-input`}
-          style={{ marginTop: space.md }}
-          onSubmitEditing={() => {
-            const c = custom.trim();
-            if (c && !value.includes(c)) onChange([...value, c]);
-            setCustom("");
-          }}
-        />
-      ) : null}
+      {allowCustom ? <AddOwn testID={testID} placeholder="Agregar otra opción" onAdd={(c) => !value.includes(c) && onChange([...value, c])} /> : null}
     </View>
   );
 }

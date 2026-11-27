@@ -1,3 +1,4 @@
+import { useAuth } from "@/src/auth";
 import { useCallback, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -15,6 +16,7 @@ import { fonts, radius, space, useTheme } from "@/src/theme";
 
 export default function Organiza() {
   const router = useRouter();
+  const cg = useAuth().user?.role === "caregiver";
   const toast = useToast();
   const { colors } = useTheme();
   const [text, setText] = useState(organizeDraft.text);
@@ -51,7 +53,7 @@ export default function Organiza() {
           value={text}
           onChangeText={setText}
           multiline
-          placeholder="Ej. El jueves tengo consulta a las 10, mi mamá me va a llevar y tengo que pagar el estacionamiento"
+          placeholder={cg ? "Ej. El jueves acompaño a mi mamá a consulta a las 10, hay que pagar el estacionamiento y recoger sus estudios" : "Ej. El jueves tengo consulta a las 10, mi mamá me va a llevar y tengo que pagar el estacionamiento"}
           placeholderTextColor={colors.muted}
           style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.onSurface }]}
         />
@@ -65,7 +67,7 @@ export default function Organiza() {
       </View>
 
       <Section title="Tus herramientas">
-        <TileGrid tiles={ORGANIZE_TILES.map((o) => ({ key: o.label, label: o.label, icon: o.icon, tint: o.tint, spot: o.spot, onPress: () => router.push(o.href as any), testID: `organiza-cat-${o.label}` }))} />
+        <TileGrid tiles={ORGANIZE_TILES.filter((o) => !cg || !["Tratamientos", "Medicamentos"].includes(o.label)).map((o) => (cg && o.label === "Mi red de apoyo" ? { ...o, label: "Personas que acompaño" } : o)).map((o) => ({ key: o.label, label: o.label, icon: o.icon, tint: o.tint, spot: o.spot, onPress: () => router.push(o.href as any), testID: `organiza-cat-${o.label}` }))} />
       </Section>
 
       <Section title="Prepara y mira atrás">

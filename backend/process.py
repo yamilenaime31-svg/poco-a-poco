@@ -136,6 +136,36 @@ def _totals(d: dict) -> dict:
     return {"feel_days": d["feelings"]["days_logged"], "activities": d["activities"]["total"], "doses_done": d["medications"]["done"], "spent": d["expenses"]["total"]}
 
 
+@api.get("/process/shared")
+async def process_shared(today: str = Query(...), days: int = 30, user=Depends(current_user)):
+    """For companions: their own accompaniment activity, and, kept apart, what each linked person shared with them in the period.
+    Only items shared with this companion are counted; nothing emotional or medical is merged with the companion's own records."""
+    if not _date_or_empty(today):
+        raise HTTPException(422, "Fecha no válida")
+    end = datetime.strptime(today, "%Y-%m-%d").date()
+    start = (end - timedelta(days=_days(days) - 1)).isoformat()
+    rng = {"$gte": start, "$lte": today}
+    me = user["id"]
+    mine = {"done": await db.records.count_documents({"kind": "tasks", "assignee_id": me, "owner_id": {"$ne": me}, "done": True}),
+            "open": await db.records.count_documents({"kind": "tasks", "assignee_id": me, "owner_id": {"$ne": me}, "done": {"$ne": True}}),
+            "transfers": await db.records.count_documents({"kind": "transfers", "date": rng, "$or": [{"driver_id": me}, {"assignee_id": me}]}),
+            "accompanied": await db.records.count_documents({"kind": "events", "date": rng, "shared_with": me, "owner_id": {"$ne": me}})}
+    labels = {"events": "citas y actividades", "treatments": "tratamientos", "medications": "medicamentos", "tasks": "pendientes", "transfers": "traslados", "journal": "notas de bienestar"}
+    people = []
+    async for link in db.links.find({"caregiver_id": me, "status": "active"}):
+        p = await db.users.find_one({"id": link["patient_id"]}) or {}
+        counts, recent = [], []
+        for kind, label in labels.items():
+            q = {"kind": kind, "owner_id": link["patient_id"], "shared_with": me, **({"date": rng} if kind in ("events", "transfers", "journal") else {})}
+            n = await db.records.count_documents(q)
+            if n:
+                counts.append({"kind": kind, "label": label, "n": n})
+        async for e in db.records.find({"kind": "events", "owner_id": link["patient_id"], "shared_with": me, "date": rng}).sort("date", -1).limit(5):
+            recent.append({"id": e["id"], "title": e.get("title", ""), "date": e.get("date", ""), "type": e.get("type", "")})
+        people.append({"patient_id": link["patient_id"], "name": p.get("preferred_name") or p.get("name") or "", "counts": counts, "recent": recent})
+    return {"mine": mine, "people": people}
+
+
 @api.get("/process")
 async def process(today: str = Query(...), days: int = 30, user=Depends(current_user)):
     """Everyone sees their own records. Plus adds the comparison with the previous period (descriptive only)."""

@@ -76,6 +76,8 @@ export default function KitBuilder() {
     ? [...catalog].sort((a, b) => Number(b.tags.some((t: string) => tags.includes(t))) - Number(a.tags.some((t: string) => tags.includes(t)))).slice(0, 12)
     : catalog.filter((p) => filter === "sugeridos" || p.category === filter);
   const linked = (net.data?.as_caregiver || []).filter((l: any) => l.status === "active");
+  const prefs = useApi<any>(forWho === "other" && forUserId ? `/network/preferences/${forUserId}` : null).data;
+  const prefList = prefs?.preferences ? [["Le gusta", [...prefs.preferences.tastes.activities, ...prefs.preferences.tastes.comfort]], ["Colores y estilos", [...prefs.preferences.tastes.colors, ...prefs.preferences.tastes.styles]], ["Prefiere evitar", [...prefs.preferences.tastes.dislikes, ...prefs.preferences.identity.avoid]]].filter(([, v]) => (v as string[]).length) : [];
   const unavailable = items.filter((i) => pmap[i.product_id] && !pmap[i.product_id].available);
 
   useEffect(() => {
@@ -165,7 +167,17 @@ export default function KitBuilder() {
             {forWho === "other" ? (
               <View style={{ marginTop: space.lg }}>
                 {linked.length ? <ChipRow>{linked.map((l: any) => <Chip key={l.id} label={l.patient_name} selected={forUserId === l.patient_id} onPress={() => { setForUserId(l.patient_id); setForName(l.patient_name); }} testID={`kit-for-person-${l.patient_id}`} />)}</ChipRow> : null}
-                <Field label="Nombre de la persona" value={forName} onChangeText={setForName} testID="kit-for-name-input" style={{ marginTop: space.md }} />
+                <Field label="Nombre de la persona" value={forName} onChangeText={(v) => { setForName(v); if (forUserId && v !== linked.find((l: any) => l.patient_id === forUserId)?.patient_name) setForUserId(""); }} testID="kit-for-name-input" style={{ marginTop: space.md }} />
+                {forUserId && prefs ? (
+                  <View style={{ backgroundColor: colors.lavenderSoft, borderRadius: 16, padding: space.md }} testID="kit-for-preferences">
+                    {prefs.authorized ? (
+                      <>
+                        <Txt v="medium">Lo que {forName} eligió compartir contigo</Txt>
+                        {prefList.length === 0 ? <Txt v="caption" color={colors.onSurface}>Aún no ha registrado gustos.</Txt> : prefList.map(([l, v]) => <Txt key={l as string} v="caption" color={colors.onSurface} style={{ marginTop: 4 }}>{l as string}: {(v as string[]).join(", ")}</Txt>)}
+                      </>
+                    ) : <Txt v="caption" color={colors.onSurface}>{forName} no ha compartido sus gustos contigo. Puedes elegir cada artículo a mano; no usamos tus gustos como si fueran suyos.</Txt>}
+                  </View>
+                ) : !forUserId ? <Txt v="caption" testID="kit-for-manual">Sin cuenta vinculada: eliges cada artículo a mano.</Txt> : null}
               </View>
             ) : null}
           </>

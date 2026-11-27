@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { FREE_FEATURES, PLUS_FEATURES, money } from "@/src/constants";
+import { freeFeatures, money, plusFeatures } from "@/src/constants";
 import { useToast } from "@/src/toast";
 import { Btn, Ic, Screen, Txt } from "@/src/ui";
 import { space, useTheme } from "@/src/theme";
@@ -15,7 +15,8 @@ export default function ChoosePlan() {
   const router = useRouter();
   const toast = useToast();
   const { colors } = useTheme();
-  const { refresh } = useAuth();
+  const { refresh, user } = useAuth();
+  const cg = user?.role === "caregiver";
   const [busy, setBusy] = useState<string | null>(null);
   const price = useApi<any>("/me/plan").data?.prices?.plus_price ?? 79;
 
@@ -50,10 +51,10 @@ export default function ChoosePlan() {
 
   return (
     <Screen back={false} title="Encuentra la forma de acompañamiento que va contigo." subtitle="Puedes cambiarla después. Nada está preseleccionado." testID="choose-plan-screen">
-      <Card title="AMODO Gratis" price="$0" list={["Organiza tu proceso a tu ritmo.", ...FREE_FEATURES.slice(0, 3)]} bg={colors.sage} testID="choose-plan-free">
+      <Card title="AMODO Gratis" price="$0" list={[cg ? "Organiza lo que acompañas y lo tuyo, a tu ritmo." : "Organiza tu proceso a tu ritmo.", ...freeFeatures(user?.role).slice(0, 3)]} bg={colors.sage} testID="choose-plan-free">
         <Btn label="Continuar gratis" loading={busy === "free"} onPress={() => choose("free")} testID="choose-plan-free-button" />
       </Card>
-      <Card title="AMODO Plus" price={`${money(price)} al mes`} list={["Una experiencia que te ayuda a anticiparte, organizarte y personalizar tu proceso.", ...PLUS_FEATURES.slice(1)]} bg={colors.lavender} testID="choose-plan-plus">
+      <Card title="AMODO Plus" price={`${money(price)} al mes`} list={[cg ? "Más apoyo para coordinar responsabilidades, planear con anticipación y llevar lo administrativo." : "Una experiencia que te ayuda a anticiparte, organizarte y personalizar tu proceso.", ...plusFeatures(user?.role).slice(1)]} bg={colors.lavender} testID="choose-plan-plus">
         <Txt v="caption" color={colors.onSurface} style={{ marginBottom: space.sm }}>Activación de demostración, sin cobro ni datos bancarios.</Txt>
         <Btn label="Elegir Plus" loading={busy === "plus"} onPress={() => choose("plus")} testID="choose-plan-plus-button" />
       </Card>

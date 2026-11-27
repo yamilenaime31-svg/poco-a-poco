@@ -250,7 +250,7 @@ async def update_me(body: dict = Body(...), user=Depends(current_user)):
 
 # ---------------------------------------------------------------- network / permissions
 DEFAULT_PERMS = {"events": True, "tasks": True, "transfers": True, "expenses": False,
-                 "treatments": False, "medications": False, "journal": False, "edit": True, "signals": True}
+                 "treatments": False, "medications": False, "journal": False, "edit": True, "signals": True, "preferences": False}
 KINDS = {"events", "treatments", "medications", "tasks", "transfers", "expenses", "journal"}
 
 
@@ -976,8 +976,14 @@ async def home(today: str = Query(...), user=Depends(current_user)):
         shared.sort(key=sort_key)
         own = [clean(e) async for e in db.records.find({"kind": "events", "owner_id": user["id"], "date": {"$gte": today}})]
         own.sort(key=sort_key)
+        journal = await db.records.find_one({"kind": "journal", "owner_id": user["id"], "date": today})
+        for link in links:
+            fin = link.get("finance") or {}
+            link["can_finance"] = bool(fin.get("view"))
+            link["shares_preferences"] = bool((link.get("permissions") or {}).get("preferences"))
+        own_tasks = [clean(t) async for t in db.records.find({"kind": "tasks", "owner_id": user["id"], "done": {"$ne": True}}).limit(6)]
         return {"role": "caregiver", "patients": links, "signals": signals, "tasks": tasks, "shared_events": shared[:8],
-                "own_events": own[:5], "unread": unread, "cart": cart}
+                "own_events": own[:5], "own_tasks": own_tasks, "journal": clean(journal), "care": (user.get("profile") or {}).get("caregiver"), "unread": unread, "cart": cart}
     events = [clean(e) async for e in db.records.find({"kind": "events", "owner_id": user["id"], "date": {"$gte": today}})]
     events.sort(key=sort_key)
     tasks = [clean(t) async for t in db.records.find({"kind": "tasks", "owner_id": user["id"], "done": False})]
@@ -1282,8 +1288,61 @@ async def score_products(user: dict, today: str) -> tuple[list, str]:
     return out, headline
 
 
+PREF_KEYS = {"tastes": ("activities", "objects", "comfort", "colors", "styles", "dislikes"), "identity": ("accessories", "styles", "comfort", "avoid")}
+
+
+async def shared_preferences(me: dict, patient_id: str) -> Optional[dict]:
+    """A linked person's tastes, only when that person turned on "preferences" for this companion."""
+    link = await active_link(patient_id, me["id"])
+    if not link or not link.get("permissions", {}).get("preferences"):
+        return None
+    p = await db.users.find_one({"id": patient_id}) or {}
+    pr = p.get("profile", {})
+    return {"patient_id": patient_id, "name": display_name(p), **{g: {k: (pr.get(g) or {}).get(k) or [] for k in ks} for g, ks in PREF_KEYS.items()}, "kit_prefs": pr.get("kit_prefs") or {}}
+
+
+@api.get("/network/preferences/{patient_id}")
+async def get_shared_preferences(patient_id: str, user=Depends(current_user)):
+    prefs = await shared_preferences(user, patient_id)
+    return {"authorized": bool(prefs), "preferences": prefs}
+
+
+THIRD = [("Mencionaste que disfrutas", "{n} compartió que disfruta"), ("Dijiste que sueles llevar", "{n} compartió que suele llevar"), (" contigo.", " consigo."), ("Elegiste", "{n} eligió"),
+         ("como algo que te hace sentir cómodo/a", "como algo que le hace sentir cómodo/a"), ("Indicaste que te gusta usar", "{n} indicó que le gusta usar"), ("Dijiste que quieres explorar", "{n} quiere explorar"),
+         ("Mencionaste que te vendría bien", "{n} mencionó que le vendría bien"), ("Has incluido", "Tú has incluido"), ("Sueles guardar", "Tú sueles guardar")]
+
+
+def third_person(reason: str, name: str) -> str:
+    for a, b in THIRD:
+        reason = reason.replace(a, b.format(n=name))
+    return reason
+
+
+async def reco_subject(user: dict, for_user_id: Optional[str]) -> tuple[dict, Optional[str]]:
+    """Whose tastes drive the suggestions. A companion's own interests are never used as if they were the patient's:
+    companions get the linked person's tastes when authorised, otherwise only general ideas."""
+    if user.get("role") != "caregiver":
+        return user, None
+    ids = [for_user_id] if for_user_id else [l["patient_id"] async for l in db.links.find({"caregiver_id": user["id"], "status": "active"})]
+    for pid in ids:
+        prefs = await shared_preferences(user, pid)
+        if prefs:
+            return {"id": "", "profile": {"tastes": prefs["tastes"], "identity": prefs["identity"], "kit_prefs": prefs["kit_prefs"], "reco": (user.get("profile") or {}).get("reco") or {}}}, prefs["name"]
+    return {"id": "", "profile": {"reco": (user.get("profile") or {}).get("reco") or {}}}, ""
+
+
 @api.get("/recommendations")
-async def recommendations(today: str = Query(...), user=Depends(current_user)):
+async def recommendations(today: str = Query(...), for_user_id: Optional[str] = None, user=Depends(current_user)):
+    subject, for_name = await reco_subject(user, for_user_id)
+    if for_name is not None:  # companion
+        scored, _ = await score_products(subject, today)
+        personal = [(s, w, p, d) for s, w, p, d in scored if s > 0][:8] if for_name else []
+        general = [p for s, w, p, d in scored if s <= 0 or not for_name][: max(0, 4 - len(personal))]
+        txt = "Una idea general. Cuando la persona que acompañas te comparta sus gustos, verás ideas a su modo."
+        items = [{**pub(p), "reasons": [third_person(r, for_name) for r in w[:2]], "reason_details": []} for s, w, p, d in personal] + [{**pub(p), "reasons": [txt], "reason_details": [], "general": True} for p in general]
+        kits = [{**(await kit_view({**t, "template": True, "items": [{"product_id": x, "options": {}} for x in t["items"]]})), "reason": "Un punto de partida que puedes cambiar por completo."} for t in TEMPLATES]
+        return {"headline": f"Según lo que {for_name} eligió compartir contigo." if personal else "Ideas generales para preparar un kit. No usamos tus gustos como si fueran de la persona que acompañas.",
+                "personalized": bool(personal), "for_name": for_name, "companion": True, "products": items, "kits": kits}
     scored, headline = await score_products(user, today)
     personal = [(s, w, p, d) for s, w, p, d in scored if s > 0][:8]
     general = [p for s, w, p, d in scored if s <= 0][: max(0, 4 - len(personal))]

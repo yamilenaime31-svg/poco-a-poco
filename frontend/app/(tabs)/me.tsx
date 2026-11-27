@@ -27,24 +27,56 @@ export default function Me() {
   const isCg = user?.role === "caregiver";
   const { plus } = usePlus();
 
-  const groups: { title: string; items: Item[] }[] = [
+  const compras: Item[] = [
+    { icon: "heart", title: "Biblioteca y favoritos", href: "/favorites", tint: "coral" },
+    { icon: "truck", title: "Mis pedidos e historial", href: "/orders", tint: "sky" },
+  ];
+  const config = { title: "Configuración y privacidad", items: [
+    { icon: "bell", title: "Notificaciones", href: "/notifications" },
+    { icon: "shield-check", title: "Privacidad", href: { pathname: "/settings", params: { section: "privacy" } } },
+    { icon: "accessibility", title: "Accesibilidad y cuenta", href: "/settings" },
+    { icon: "circle-help", title: "Ayuda", href: { pathname: "/info/[page]", params: { page: "help" } } },
+  ] as Item[] };
+  const groups: { title: string; items: Item[] }[] = isCg ? [
+    { title: "Mi identidad", items: [
+      { icon: "smile", title: "Mi avatar", href: "/avatar", tint: "sky" },
+      { icon: "heart", title: "Lo que disfruto en mi tiempo", href: edit("wellbeing"), tint: "coral" },
+    ] },
+    { title: "Mi experiencia como acompañante", items: [
+      { icon: "users", title: "A quién acompaño y cómo", href: edit("relation"), tint: "lavender" },
+      { icon: "list-checks", title: "Mis responsabilidades", href: edit("duties"), tint: "sage" },
+      { icon: "cloud", title: "Lo que más me cuesta organizar", href: edit("hard"), tint: "mauve" },
+      { icon: "clock", title: "Mi disponibilidad", href: edit("availability"), tint: "sky" },
+      { icon: "layout-grid", title: "Mis preferencias de organización", href: edit("organize"), tint: "butter" },
+      { icon: "star", title: "Lo que quiero tener a la mano", href: edit("at_hand"), tint: "coral" },
+    ] },
+    { title: "Mi bienestar", items: [
+      { icon: "coffee", title: "Lo que necesito yo", href: edit("wellbeing"), tint: "butter" },
+      { icon: "chart-no-axes-column", title: "Mi proceso como acompañante", href: "/process", tint: "sage" },
+      { icon: "history", title: "Historial personal", href: "/history", tint: "lavender" },
+    ] },
+    { title: "Personas que acompaño", items: [
+      { icon: "users", title: "Personas vinculadas, permisos y accesos", href: "/network", tint: "lavender" },
+      { icon: "qr-code", title: "Vincularme con alguien", href: "/link", tint: "sage" },
+      { icon: "inbox", title: "Solicitudes recibidas", href: "/signals", tint: "lavender" },
+      { icon: "list-checks", title: "Tareas que me asignaron", href: { pathname: "/records/[kind]", params: { kind: "tasks", assigned: "me" } }, tint: "coral" },
+      { icon: "clipboard-list", title: "Listas de preparación", href: "/checklists", tint: "sage" },
+    ] },
+    { title: "Compras", items: compras },
+    config,
+  ] : [
     { title: "Mi identidad", items: [
       { icon: "heart", title: "Mis gustos y actividades", href: edit("tastes"), tint: "coral" },
       { icon: "sparkles", title: "Mi estilo", href: edit("identity"), tint: "lavender" },
       { icon: "palette", title: "Identidad y estilo", plus: "Plus · propuestas visuales con tus colores", href: "/style", tint: "lavender" },
-      { icon: "sliders-horizontal", title: "Mis preferencias", href: edit(isCg ? "about" : "needs"), tint: "butter" },
+      { icon: "sliders-horizontal", title: "Mis preferencias", href: edit("needs"), tint: "butter" },
       { icon: "smile", title: "Mi avatar", href: "/avatar", tint: "sky" },
     ] },
-    { title: "Mi experiencia", items: isCg ? [
-      { icon: "list-checks", title: "Mis pendientes asignados", href: { pathname: "/records/[kind]", params: { kind: "tasks", assigned: "me" } }, tint: "coral" },
-      { icon: "inbox", title: "Solicitudes recibidas", href: "/signals", tint: "lavender" },
-      { icon: "wallet", title: "Mis gastos", href: "/records/expenses", tint: "butter" },
-      { icon: "clipboard-list", title: "Listas de preparación", href: "/checklists", tint: "sage" },
-    ] : [
+    { title: "Mi experiencia", items: [
       { icon: "layers", title: "Tratamientos registrados", href: "/records/treatments", tint: "sage" },
       { icon: "hand-helping", title: "Necesidades cotidianas", href: edit("needs"), tint: "coral" },
       { icon: "layout-grid", title: "Preferencias de organización", href: edit("treatment"), tint: "sky" },
-      { icon: "package", title: "Preferencias de kits", href: edit("identity"), tint: "butter" },
+      { icon: "package", title: "Preferencias de kits", href: edit("kitprefs"), tint: "butter" },
       { icon: "shield", title: "Mi cobertura médica", href: "/coverage", tint: "lavender" },
       { icon: "chart-no-axes-column", title: "Mi proceso", href: "/process", tint: "sage" },
       { icon: "clipboard-list", title: "Listas de preparación", href: "/checklists", tint: "sage" },
@@ -54,17 +86,8 @@ export default function Me() {
       { icon: "users", title: "Personas vinculadas y permisos", href: "/network", tint: "lavender" },
       { icon: "qr-code", title: "Invitaciones", href: "/link", tint: "sage" },
     ] },
-    { title: "Compras", items: [
-      { icon: "heart", title: "Biblioteca y favoritos", href: "/favorites", tint: "coral" },
-      { icon: "truck", title: "Mis pedidos e historial", href: "/orders", tint: "sky" },
-      { icon: "file-text", title: "Reporte personal", plus: "Plus · tu resumen listo para compartir", href: "/report" },
-    ] },
-    { title: "Configuración", items: [
-      { icon: "bell", title: "Notificaciones", href: "/notifications" },
-      { icon: "shield-check", title: "Privacidad", href: { pathname: "/settings", params: { section: "privacy" } } },
-      { icon: "accessibility", title: "Accesibilidad y cuenta", href: "/settings" },
-      { icon: "circle-help", title: "Ayuda", href: { pathname: "/info/[page]", params: { page: "help" } } },
-    ] },
+    { title: "Compras", items: [...compras, { icon: "file-text", title: "Reporte personal", plus: "Plus · tu resumen listo para compartir", href: "/report" }] },
+    config,
   ];
 
   const saveInfo = async () => {
