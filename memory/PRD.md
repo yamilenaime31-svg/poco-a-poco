@@ -167,3 +167,7 @@ Mobile-first app "AMODO" (Spanish): physical-digital companion system for people
 
 ## Iteration 24 — Invitación a la red: QR siempre visible, copiar y WhatsApp
 - src/components/invite-share.tsx: InviteCard (QR de la invitación activa; si no hay, crea una; código seleccionable) + InviteActions (copiar código, copiar mensaje, WhatsApp vía wa.me, compartir). Usado en /network (paciente) y /link.
+
+## Iteration 25 — Resumen de mi Plus en Perfil
+- GET /api/me/plus-usage (membership.py, solo Plus → 403 si no): mes calendario UTC; reports (process_reports + reportes financieros vía finance_links), credits_received/used (credit_moves source=plus), kit_savings/kit_orders (descuentos con "Plus" en pedidos no cancelados), ai, inspirations, value, price.
+- src/components/plus-usage.tsx bajo PlanCard en Perfil (solo con Plus).

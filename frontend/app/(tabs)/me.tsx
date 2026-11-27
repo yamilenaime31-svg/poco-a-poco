@@ -5,6 +5,8 @@ import { useRouter } from "expo-router";
 import { Shape, Spot } from "@/src/art";
 import { useAuth } from "@/src/auth";
 import { PlanCard } from "@/src/components/plan-card";
+import { usePlus } from "@/src/components/plus-gate";
+import { PlusUsage } from "@/src/components/plus-usage";
 import { Avatar } from "@/src/components/avatar";
 import { TabScreen } from "@/src/components/tab-screen";
 import { useToast } from "@/src/toast";
@@ -23,6 +25,7 @@ export default function Me() {
   const [name, setName] = useState(user?.name || "");
   const [pref, setPref] = useState(user?.preferred_name || "");
   const isCg = user?.role === "caregiver";
+  const { plus } = usePlus();
 
   const groups: { title: string; items: Item[] }[] = [
     { title: "Mi identidad", items: [
@@ -112,6 +115,7 @@ export default function Me() {
         </Section>
       ))}
       <PlanCard />
+      {plus ? <PlusUsage /> : null}
       {user?.is_admin ? (
         <Section title="Administración">
           <Row icon="shield" tint="sand" title="Panel de administración" subtitle="Catálogo, costos, inventario y códigos" onPress={() => router.push("/admin")} testID="profile-admin-row" last />

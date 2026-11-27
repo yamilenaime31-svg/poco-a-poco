@@ -168,3 +168,33 @@ async def admin_memberships(user=Depends(current_user)):
             "limits": {"free": cfg["ai_limit_free"], "plus": cfg["ai_limit_plus"]},
             "history": [clean(s) for s in sorted(subs, key=lambda s: s["at"], reverse=True)[:30]],
             "note": "Cifras de demostración: no hay cobros reales. El costo de IA solo se calcula si administración captura un costo estimado por interacción."}
+
+
+@api.get("/me/plus-usage")
+async def plus_usage(user=Depends(current_user)):
+    """What the membership gave this calendar month, counted only from what really happened in the account."""
+    from business import plan_view
+    plan = await plan_view(user)
+    if plan["tier"] != "plus":
+        raise HTTPException(403, "Esta herramienta es parte de AMODO Plus.")
+    month = _month()
+    me = {"user_id": user["id"]}
+    this = {"$regex": f"^{month}"}
+    reports = await db.process_reports.count_documents({**me, "created_at": this})
+    fin_reports = await db.finance_links.count_documents({**me, "report": {"$exists": True}, "expires": this})
+    received = used = 0.0
+    async for m in db.credit_moves.find({**me, "source": "plus", "at": this}):
+        if m["amount"] > 0:
+            received += m["amount"]
+        else:
+            used -= m["amount"]
+    saved, orders = 0.0, 0
+    async for o in db.orders.find({**me, "created_at": this, "status": {"$ne": "Cancelado"}}):
+        s = sum(d["amount"] for d in o.get("discounts") or [] if "Plus" in d.get("label", ""))
+        if s:
+            saved, orders = saved + s, orders + 1
+    ai = await db.ai_usage.find_one({**me, "month": month}) or {}
+    images = await db.style_images.count_documents({**me, "created_at": this})
+    return {"month": month, "reports": reports + fin_reports, "credits_received": round(received, 2), "credits_used": round(used, 2), "kit_savings": round(saved, 2), "kit_orders": orders,
+            "ai": ai.get("count", 0), "inspirations": images, "value": round(received + saved, 2),
+            "price": (plan.get("subscription") or {}).get("price") or plan["prices"]["plus_price"], "by_institution": bool(plan.get("plus_by_institution"))}
