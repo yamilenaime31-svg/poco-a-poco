@@ -1,6 +1,6 @@
 import { Company } from "@/src/art";
 import { useState } from "react";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,30 +35,30 @@ export default function Welcome() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID="welcome-screen">
       <Header />
-      <View style={{ flex: 1, padding: space.xl, justifyContent: "space-between", paddingBottom: insets.bottom + space.xl }}>
-        <Animated.View entering={FadeInDown.duration(500)} style={{ marginTop: space.xxl }}>
-          <Company size={132} />
-          <View style={{ height: space.lg }} />
-          <Logo size={44} />
-          <Txt v="display" style={{ marginTop: space.xxl }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: insets.bottom + space.xl }}>
+        <Animated.View entering={FadeInDown.duration(500)}>
+          <Company size={96} />
+          <View style={{ height: space.md }} />
+          <Logo size={40} />
+          <Txt v="display" style={{ marginTop: space.lg }}>
             Bienvenido a AMODO.
           </Txt>
           <Txt v="h2" color={colors.muted} style={{ marginTop: space.sm }}>
             Un día a la vez, a tu modo.
           </Txt>
         </Animated.View>
-        <Animated.View entering={FadeInDown.delay(150)} style={{ gap: space.sm }}>
+        <Animated.View entering={FadeInDown.delay(150)} style={{ gap: space.sm, marginTop: space.xl }}>
           <Btn label="Crear cuenta" onPress={() => router.push("/register")} testID="welcome-register-button" />
           <Btn label="Iniciar sesión" variant="secondary" onPress={() => router.push("/login")} testID="welcome-login-button" />
-          <Txt v="label" style={{ marginTop: space.xl, marginBottom: space.xs }}>
-            Explorar demostración
+          <Txt v="label" style={{ marginTop: space.md, marginBottom: space.xs }}>
+            Explorar la demostración como
           </Txt>
           <View style={{ flexDirection: "row", gap: space.sm }}>
-            <Btn label="Como paciente" variant="accent" small loading={loading === "patient"} onPress={() => demo("patient")} testID="welcome-demo-patient-button" style={{ flex: 1 }} />
-            <Btn label="Como acompañante" variant="secondary" small loading={loading === "caregiver"} onPress={() => demo("caregiver")} testID="welcome-demo-caregiver-button" style={{ flex: 1 }} />
+            <Btn label="Paciente" variant="accent" small loading={loading === "patient"} onPress={() => demo("patient")} testID="welcome-demo-patient-button" style={{ flex: 1 }} />
+            <Btn label="Acompañante" variant="secondary" small loading={loading === "caregiver"} onPress={() => demo("caregiver")} testID="welcome-demo-caregiver-button" style={{ flex: 1 }} />
           </View>
         </Animated.View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

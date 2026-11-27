@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only test of /welcome layout fix across 4 viewports (390x844, 375x667, 360x640, 320x568). Layout fix is successful on all 4 viewports: all four buttons (welcome-register-button, welcome-login-button, welcome-demo-patient-button, welcome-demo-caregiver-button) are fully visible within the viewport without scrolling (bottom=~554px vs smallest viewport height 568px, leaving 14px margin). No overlap between subtitle 'Un día a la vez, a tu modo.' (bottom y=329.8) and 'Crear cuenta' button (top y=349.8) — 20px gap. Demo button labels 'Paciente' and 'Acompañante' render on a single line (height=44px each). Buttons sit in upper/middle part right after the subtitle; no longer pushed to the bottom edge. Header back button (x=16,y=8,44x44) does not overlap the first illustration SVG (starts y=66). Navigation tests: welcome-register-button → /register ✅, welcome-login-button → /login ✅, welcome-demo-patient-button → patient home ✅. welcome-demo-caregiver-button navigates to home '/' but does NOT render CaregiverHome (caregiver-home-screen testID not found); the UI shows the patient home layout (mood selectors '¿Cómo te sientes hoy?') with greeting 'Hola, Sam' — likely a role-handling issue in the /auth/demo flow or user.role persistence, outside the welcome layout scope but blocks requirement (5).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "welcome-demo-caregiver-button → caregiver home", "issue": "Button logs in and navigates to '/(tabs)' but the rendered screen is the PatientHome (shows '¿Cómo te sientes hoy?' mood selector) instead of CaregiverHome. testID 'caregiver-home-screen' (defined in /app/frontend/src/components/caregiver-home.tsx:83) is never present after demo login. Greeting shows 'Hola, Sam' so the demo user is created, but user.role check in /app/frontend/app/(tabs)/index.tsx:7 (user?.role === 'caregiver') is falsy — role is likely not being returned as 'caregiver' from POST /api/auth/demo {role:'caregiver'}, or is being overwritten in signIn. NOTE: this is NOT caused by the welcome layout fix; welcome.tsx correctly calls demo('caregiver').", "affected_testIDs": ["welcome-demo-caregiver-button", "caregiver-home-screen"]}
+    ],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Investigate why welcome-demo-caregiver-button ends up on PatientHome. Check backend POST /api/auth/demo: ensure the response user.role === 'caregiver' when body.role==='caregiver'. Also verify src/auth signIn stores the role and that /app/frontend/app/(tabs)/index.tsx correctly reads user.role (not cached from a prior patient session). Reproduction: clear localStorage, open /welcome, tap 'Acompañante' demo — expected CaregiverHome (testID caregiver-home-screen), got PatientHome."
+  ],
+  "critical_code_review_comments": [
+    "welcome.tsx looks clean: uses ScrollView with flexGrow:1, proper insets.bottom padding, FadeInDown entrance animation, Btn with testIDs. No deprecated expo packages introduced by this change."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "~92% (welcome layout 100%; demo caregiver role routing broken)"},
+  "seed_data_creation": "None. Did NOT modify test_credentials users. Only exercised /auth/demo which creates ephemeral demo users server-side.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Welcome screen layout fix is verified visually and via bounding-box checks on 4 viewports. The caregiver-home-screen routing problem is orthogonal to the welcome bug being fixed — flag to main agent but do not revert welcome layout. If re-testing welcome: wait ~1.5s after wait_for_selector welcome-screen to let FadeInDown finish before measuring boxes.",
+  "rca_of_issue": "Welcome bug RCA: previous layout used a flex:1 container with justifyContent:'space-between', which pushed the second block of buttons to the bottom of the viewport; on small phones that bottom-anchored block overflowed and clipped the demo row. Fix: wrap content in ScrollView with contentContainerStyle={flexGrow:1, paddingHorizontal:xl, paddingTop:sm, paddingBottom:insets.bottom+xl}, remove space-between, and let the Animated.View block sit naturally below the subtitle with marginTop:xl and gap between buttons. Also shortened labels to 'Paciente'/'Acompañante' with a caption to avoid 2-line wrapping. Verified fix. Caregiver routing: separate bug, unrelated to this layout fix."
+}

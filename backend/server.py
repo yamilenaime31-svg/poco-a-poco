@@ -193,6 +193,10 @@ async def demo_login(role: str = Body("patient", embed=True)):
     if not user:
         await seed_demo()
         user = await db.users.find_one({"email": email})
+    want = "caregiver" if role == "caregiver" else "patient"
+    if user.get("role") != want:  # the demo always opens in the mode that was chosen, even if it was switched in an earlier visit
+        await db.users.update_one({"id": user["id"]}, {"$set": {"role": want}, "$addToSet": {"roles": want}})
+        user = await db.users.find_one({"id": user["id"]})
     return {"token": make_token(user["id"]), "user": clean(user)}
 
 
