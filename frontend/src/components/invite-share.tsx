@@ -37,6 +37,7 @@ export function InviteActions({ code, url, testID = "invite" }: { code?: string;
 /** Always shows a QR: uses the active invitation or creates one when there is none. */
 export function InviteCard({ code }: { code?: string }) {
   const { colors } = useTheme();
+  const toast = useToast();
   const invites = useApi<any[]>("/invites");
   const creating = useRef(false);
   const current = invites.data?.[0];
@@ -54,6 +55,12 @@ export function InviteCard({ code }: { code?: string }) {
       <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: space.md, marginTop: space.md, minHeight: 204, minWidth: 204, alignItems: "center", justifyContent: "center" }} testID="network-qr">
         {url ? <QRCode value={url} size={180} color={colors.onSurface} backgroundColor={colors.surface} /> : <Loading />}
       </View>
+      {url ? (
+        <View style={{ flexDirection: "row", gap: space.sm, alignSelf: "stretch", marginTop: space.md }}>
+          <Btn label="Copiar enlace" small icon="link" variant="secondary" onPress={async () => { await Clipboard.setStringAsync(url); toast.show("Enlace copiado"); }} testID="network-link-copy" style={{ flex: 1 }} />
+          <Btn label="Enlace por WhatsApp" small icon="message-circle" onPress={() => sendWhatsApp(`Te invito a mi red de apoyo en AMODO. Abre este enlace: ${url}`).catch(() => toast.show("No pudimos abrir WhatsApp. Copia el enlace y pégalo.", "error"))} testID="network-link-whatsapp" style={{ flex: 1 }} />
+        </View>
+      ) : null}
       {current ? <Txt v="caption" style={{ marginTop: 6 }}>Este QR es para una persona y vence {fmtDateTime(current.expires_at)}. Después se genera uno nuevo.</Txt> : null}
       <Txt v="caption" style={{ marginTop: space.md }}>Tu código</Txt>
       <Txt v="display" selectable style={{ letterSpacing: 4, marginBottom: space.md }} testID="network-invite-code">{code}</Txt>

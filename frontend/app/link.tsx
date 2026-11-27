@@ -6,7 +6,7 @@ import QRCode from "react-native-qrcode-svg";
 
 import { api, invalidate, useApi } from "@/src/api";
 import { useAuth } from "@/src/auth";
-import { InviteActions } from "@/src/components/invite-share";
+import { InviteActions, sendWhatsApp } from "@/src/components/invite-share";
 import { fmtDateTime } from "@/src/constants";
 import { inviteUrl, tokenFrom } from "@/src/invite";
 import { useToast } from "@/src/toast";
@@ -78,6 +78,7 @@ export default function LinkScreen() {
             <Btn label="Copiar enlace" icon="copy" variant="secondary" disabled={!url} onPress={async () => { await Clipboard.setStringAsync(url); toast.show("Enlace copiado"); }} testID="link-copy-button" style={{ flex: 1 }} />
             <Btn label="Compartir" icon="share-2" disabled={!url} onPress={() => Share.share({ message: `Te invito a mi red de apoyo en AMODO: ${url}` })} testID="link-share-button" style={{ flex: 1 }} />
           </View>
+          <Btn label="Enviar enlace por WhatsApp" icon="message-circle" disabled={!url} onPress={() => sendWhatsApp(`Te invito a mi red de apoyo en AMODO. Abre este enlace: ${url}`).catch(() => toast.show("No pudimos abrir WhatsApp. Copia el enlace y pégalo.", "error"))} testID="link-whatsapp-button" style={{ marginTop: space.sm }} />
           <Btn label="Crear invitación para otra persona" variant="ghost" icon="user-plus" onPress={create} testID="link-new-button" style={{ marginTop: space.sm }} />
           <Card tint="sage" style={{ marginTop: space.lg }}>
             <Txt v="label" color={colors.onSurface}>Código manual</Txt>
